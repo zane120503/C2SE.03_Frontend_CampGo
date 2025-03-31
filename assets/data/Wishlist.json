@@ -1,0 +1,72 @@
+{
+    "wishlist": {
+      "id": "wl123456",
+      "userId": "user123",
+      "product": [
+        {
+          "id": "1",
+          "product": {
+            "id": "1",
+            "name": "Lều Camping 2 Người",
+            "price": 199.99,
+            "images": ["assets/images/tent1.png"],
+            "rating": 4.5
+          }
+        },
+        {
+          "id": "2",
+          "product": {
+            "id": "2",
+            "name": "Túi Ngủ 3 Mùa",
+            "price": 89.99,
+            "images": ["assets/images/sleepingbag1.png"],
+            "rating": 4.8
+          }
+        }
+      ],
+      "createdAt": "2025-03-15T09:30:00Z",
+      "updatedAt": "2025-03-25T10:00:00Z"
+    },
+    "reviews": [
+      {
+        "id": "p001",
+        "rating": 5,
+        "images": [
+          "https://images.unsplash.com/photo-1523987355523-c7b5b0dd90a7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80"
+        ],
+        "comment": "This camping tent is perfect for my weekend hikes. Easy to set up and very durable in the rain."
+      },
+      {
+        "id": "p002",
+        "rating": 4,
+        "images": [
+          "https://images.unsplash.com/photo-1598750939660-3524ea6a6124?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80"
+        ],
+        "comment": "The camping stove works great, heats up quickly and is easy to carry. Would buy again."
+      },
+      {
+        "id": "p003",
+        "rating": 5,
+        "images": [
+          "https://images.unsplash.com/photo-1533625802366-61afaead618f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80"
+        ],
+        "comment": "This backpack is amazing! Lots of space and very comfortable to wear for long periods."
+      },
+      {
+        "id": "p004",
+        "rating": 5,
+        "images": [
+          "https://images.unsplash.com/photo-1516175358796-ed9430cb8288?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80"
+        ],
+        "comment": "The sleeping bag kept me warm even during a cold night in the mountains. Packs small too!"
+      },
+      {
+        "id": "p005",
+        "rating": 4,
+        "images": [
+          "https://images.unsplash.com/photo-1599282481534-c8261361fce7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80"
+        ],
+        "comment": "Great lantern! The battery lasts longer than expected and it's bright enough for the whole campsite."
+      }
+    ]
+  }

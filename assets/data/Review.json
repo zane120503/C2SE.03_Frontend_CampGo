@@ -1,0 +1,16 @@
+{
+  "reviews": [
+    {
+      "id": "1",
+      "rating": 4,
+      "images": ["assets/images/tent1.png"],
+      "comment": "Lều rất tốt, chất lượng cao, dễ dàng lắp đặt"
+    },
+    {
+      "id": "2",
+      "rating": 5,
+      "images": ["assets/images/sleepingbag1.png"],
+      "comment": "Túi ngủ ấm áp, nhẹ và dễ mang theo"
+    }
+  ]
+}

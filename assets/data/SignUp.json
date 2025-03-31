@@ -1,0 +1,9 @@
+{
+    "success": true,
+    "message": "Đăng ký thành công!",
+    "user": {
+      "username": "admin",
+      "email": "admin@campgo.com",
+      "password": "admin123"
+    }
+  }

@@ -1,0 +1,64 @@
+{
+    "products": [
+      {
+        "id": 1,
+        "name": "Lều Camping 2 Người",
+        "imageUrl": "assets/images/img1.png",
+        "price": 199.99,
+        "discountPercentage": 10,
+        "rating": 4.5,
+        "soldCount": 150,
+        "category": "Tent"
+      },
+      {
+        "id": 2,
+        "name": "Túi Ngủ 3 Mùa",
+        "imageUrl": "assets/images/img1.png",
+        "price": 89.99,
+        "discountPercentage": 5,
+        "rating": 4.8,
+        "soldCount": 200,
+        "category": "Sleeping Bag"
+      },
+      {
+        "id": 3,
+        "name": "Insulation Mat",
+        "imageUrl": "assets/images/img1.png",
+        "price": 150,
+        "discountPercentage": 10,
+        "rating": 4.5,
+        "soldCount": 20,
+        "category": "Camp"
+      },
+      {
+        "id": 4,
+        "name": "Mini Gas Stove",
+        "imageUrl": "assets/images/img1.png",
+        "price": 150,
+        "discountPercentage": 70,
+        "rating": 4.5,
+        "soldCount": 20,
+        "category": "Camp"
+      },
+      {
+        "id": 5,
+        "name": "Camping Lamp",
+        "imageUrl": "assets/images/img1.png",
+        "price": 150,
+        "discountPercentage": 90,
+        "rating": 4.5,
+        "soldCount": 20,
+        "category": "Camp"
+      },
+      {
+        "id": 6,
+        "name": "Camping Table",
+        "imageUrl": "assets/images/img1.png",
+        "price": 150,
+        "discountPercentage": 15,
+        "rating": 4.5,
+        "soldCount": 20,
+        "category": "Table"
+      }
+    ]
+  }

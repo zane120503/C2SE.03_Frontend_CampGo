@@ -1,0 +1,24 @@
+{
+    "categories": [
+      {
+        "title": "All Product",
+        "imagePath": null,
+        "isSelected": true
+      },
+      {
+        "title": "Camp",
+        "imagePath": "assets/images/img1.png",
+        "isSelected": false
+      },
+      {
+        "title": "Table",
+        "imagePath": "assets/images/img1.png",
+        "isSelected": false
+      },
+      {
+        "title": "Airbed",
+        "imagePath": "assets/images/img1.png",
+        "isSelected": false
+      }
+    ]
+  }

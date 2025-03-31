@@ -1,0 +1,37 @@
+{
+    "items": [
+      {
+        "id": "1",
+        "name": "Lều Camping 2 Người",
+        "price": 199.99,
+        "quantity": 1,
+        "product": {
+          "id": "1",
+          "name": "Lều Camping 2 Người",
+          "price": 199.99,
+          "images": [
+            "assets/images/img1.png",
+            "assets/images/img1.png"
+          ]
+        }
+      },
+      {
+        "id": "2",
+        "name": "Túi Ngủ 3 Mùa",
+        "price": 89.99,
+        "quantity": 2,
+        "product": {
+          "id": "2",
+          "name": "Túi Ngủ 3 Mùa",
+          "price": 89.99,
+          "images": [
+            "assets/images/img1.png",
+            "assets/images/img1.png"
+          ]
+        }
+      }
+    ],
+    "shippingFee": 30.0,
+    "subTotal": 269.97,
+    "total": 299.97
+  }

@@ -1,0 +1,31 @@
+{
+    "cartItems": [
+      {
+        "id": 1,
+        "name": "Camping Tent",
+        "price": 150,
+        "image": "assets/images/img1.png",
+        "quantity": 1,
+        "isSelected": false,
+        "discount": 20
+      },
+      {
+        "id": 2,    
+        "name": "Camping Tent",
+        "price": 150,
+        "image": "assets/images/img1.png",
+        "quantity": 1,
+        "isSelected": false,
+        "discount": 0
+      },
+      {
+        "id": 3,
+        "name": "Camping Tent",
+        "price": 150,
+        "image": "assets/images/img1.png",
+        "quantity": 1,
+        "isSelected": false,
+        "discount": 10
+      }
+    ]
+  }
