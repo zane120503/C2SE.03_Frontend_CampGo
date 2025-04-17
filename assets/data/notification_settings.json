@@ -1,0 +1,5 @@
+{
+  "inAppNotifications": true,
+  "emailNotifications": false,
+  "smsNotifications": false
+} 

@@ -1,0 +1,20 @@
+{
+  "cards": [
+    {
+      "id": "1",
+      "cardType": "VISA",
+      "cardHolderName": "Thang Nguyen",
+      "lastFourDigits": "4242",
+      "expiryMonth": "12",
+      "expiryYear": "25"
+    },
+    {
+      "id": "2",
+      "cardType": "VISA",
+      "cardHolderName": "Thang Nguyen",
+      "lastFourDigits": "8888",
+      "expiryMonth": "06",
+      "expiryYear": "26"
+    }
+  ]
+} 

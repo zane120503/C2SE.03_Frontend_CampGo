@@ -1,0 +1,32 @@
+{
+  "addresses": [
+    {
+      "fullName": "...",
+  "phoneNumber": "...",
+  "streetAddress": "...",
+  "province": "...",
+  "district": "...",
+  "ward": "...",
+  "isDefault": true,
+  "zipCode": "000000",
+  "user_id": "",
+  "createdAt": "...",
+  "updatedAt": "...",
+  "__v": 0
+    },
+    {
+      "fullName": "...",
+  "phoneNumber": "...",
+  "streetAddress": "...",
+  "province": "...",
+  "district": "...",
+  "ward": "...",
+  "isDefault": true,
+  "zipCode": "000000",
+  "user_id": "",
+  "createdAt": "...",
+  "updatedAt": "...",
+  "__v": 0
+    }
+  ]
+} 

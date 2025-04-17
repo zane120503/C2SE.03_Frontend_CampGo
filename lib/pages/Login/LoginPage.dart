@@ -1,9 +1,7 @@
-import 'dart:convert';
+import 'package:CampGo/services/auth_service.dart';
 import 'package:CampGo/pages/ForgotPassword/ForgotPasswordPage.dart';
-import 'package:CampGo/pages/SignUp/SignUpPage.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
-
+import 'package:CampGo/pages/SignUp/SignUpPage.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -12,60 +10,69 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
   bool _obscureText = true;
   bool _isLoading = false;
 
   bool validateInputs() {
-    if (_nameController.text.isEmpty || _passwordController.text.isEmpty) {
+    String email = _emailController.text.trim();
+    String password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter username and password')),
+        const SnackBar(content: Text('Vui lòng nhập email và mật khẩu')),
       );
       return false;
     }
+
+    if (!RegExp(r'^\S+@\S+\.\S+$').hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập email hợp lệ')),
+      );
+      return false;
+    }
+
     return true;
   }
 
   Future<void> loginUser() async {
     if (!validateInputs()) return;
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final String response = await rootBundle.loadString('assets/data/Login.json');
-      final data = await json.decode(response);
+      final response = await _authService.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
 
-      String username = _nameController.text.trim();
-      String password = _passwordController.text;
-
-      bool isSuccess = false;
-      for (var user in data['users']) {
-        if (user['username'] == username && user['password'] == password) {
-          isSuccess = true;
-          break;
-        }
-      }
-
-      if (isSuccess) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Login successful!')));
+      if (response['success'] == true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đăng nhập thành công!')),
+        );
         Navigator.pushReplacementNamed(context, '/main');
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid username or password')),
+          SnackBar(content: Text(response['message'] ?? 'Đăng nhập thất bại')),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error reading login data: $e')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: ${e.toString()}')),
+      );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -130,11 +137,11 @@ class _LoginPageState extends State<LoginPage> {
 
           // Username TextField
           TextField(
-            controller: _nameController,
+            controller: _emailController,
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.grey.withOpacity(0.1),
-              hintText: 'User Name',
+              hintText: 'Email...',
               labelStyle: const TextStyle(color: Colors.black87),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),

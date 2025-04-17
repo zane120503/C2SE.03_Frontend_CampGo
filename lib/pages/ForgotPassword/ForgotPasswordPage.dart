@@ -78,7 +78,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const OtpPage(),
+                            builder: (context) => OtpPage(
+                              email: _emailController.text.trim(),
+                            ),
                           ),
                         );
                         // Quay về LoginPage sau khi gửi

@@ -1,4 +1,7 @@
 import 'package:CampGo/pages/Login/LoginPage.dart';
+import 'package:CampGo/pages/SignUp/widgets/OtpLogin.dart';
+import 'package:CampGo/services/auth_service.dart';
+import 'package:CampGo/services/share_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
@@ -7,7 +10,7 @@ class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
 
   @override
-  _SignUpPageState createState() => _SignUpPageState();
+  State<SignUpPage> createState() => _SignUpPageState();
 }
 
 class _SignUpPageState extends State<SignUpPage> {
@@ -15,10 +18,11 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
-
+  final AuthService _authService = AuthService();
+  final ShareService _shareService = ShareService();
+  bool _obscureText = true;
+  bool _obscureTextConfirm = true;
   bool _isLoading = false;
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
 
   bool validateSave() {
     String name = _nameController.text.trim();
@@ -57,37 +61,73 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   Future<void> registerUser() async {
-    if (validateSave()) {
-      setState(() {
-        _isLoading = true;
-      });
+    if (!validateSave()) return;
 
-      try {
-        final String response = await rootBundle.loadString('assets/data/SignUp.json');
-        final data = json.decode(response) as Map<String, dynamic>;
+    setState(() {
+      _isLoading = true;
+    });
 
-        setState(() {
-          _isLoading = false;
-        });
+    try {
+      final response = await _authService.register(
+        _emailController.text.trim(),
+        _passwordController.text,
+        _nameController.text.trim(),
+      );
 
-        if (data['success'] == true) {
-          if (!mounted) return;
-          showSnackBar(data['message'] ?? 'Đăng ký thành công!', Colors.green);
+      print('Register response: $response'); // Debug log
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-          );
-        } else {
-          if (!mounted) return;
-          showSnackBar(data['message'] ?? 'Đăng ký thất bại.', Colors.red);
-        }
-      } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
+      if (response['success'] == true) {
         if (!mounted) return;
-        showSnackBar('Lỗi: ${e.toString()}', Colors.red);
+        
+        // Lưu token vào ShareService
+        if (response['token'] != null) {
+          await ShareService.saveToken(response['token']);
+          print('Token saved: ${response['token']}');
+        }
+        
+        // Hiển thị thông báo thành công
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đăng ký thành công!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Đợi 1 giây để người dùng thấy thông báo
+        await Future.delayed(const Duration(seconds: 1));
+
+        // Chuyển đến trang xác thực OTP
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OtpLoginPage(
+              email: _emailController.text.trim(),
+            ),
+          ),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Đăng ký thất bại'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -150,15 +190,15 @@ class _SignUpPageState extends State<SignUpPage> {
                     const SizedBox(height: 20),
                     TextField(
                       controller: _passwordController,
-                      obscureText: _obscurePassword,
+                      obscureText: _obscureText,
                       decoration: buildInputDecoration('Password').copyWith(
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                            _obscureText ? Icons.visibility : Icons.visibility_off,
                           ),
                           onPressed: () {
                             setState(() {
-                              _obscurePassword = !_obscurePassword;
+                              _obscureText = !_obscureText;
                             });
                           },
                         ),
@@ -167,15 +207,15 @@ class _SignUpPageState extends State<SignUpPage> {
                     const SizedBox(height: 20),
                     TextField(
                       controller: _confirmPasswordController,
-                      obscureText: _obscureConfirmPassword,
+                      obscureText: _obscureTextConfirm,
                       decoration: buildInputDecoration('Confirm Password').copyWith(
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                            _obscureTextConfirm ? Icons.visibility : Icons.visibility_off,
                           ),
                           onPressed: () {
                             setState(() {
-                              _obscureConfirmPassword = !_obscureConfirmPassword;
+                              _obscureTextConfirm = !_obscureTextConfirm;
                             });
                           },
                         ),

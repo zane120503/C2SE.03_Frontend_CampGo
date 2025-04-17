@@ -9,6 +9,13 @@ const String KEY_NAME = "login_key";
 // Assuming you have a global navigator key defined somewhere in your app
 
 class ShareService {
+  static const String _tokenKey = 'auth_token';
+  static const String _userIdKey = 'user_id';
+  static const String _userEmailKey = 'user_email';
+
+  // Cache token trong memory
+  static String? _cachedToken;
+
   static Future<bool> isLoggedIn() async {
     try {
       var isCacheKeyExist = await APICacheManager().isAPICacheKeyExist(KEY_NAME);
@@ -26,17 +33,14 @@ class ShareService {
   }
 
   static Future<String?> getToken() async {
-    try {
-      if (await isLoggedIn()) {
-        var cacheData = await APICacheManager().getCacheData(KEY_NAME);
-        var loginDetails = loginResponseJson(cacheData.syncData);
-        return loginDetails.accesstoken;
-      }
-      return null;
-    } catch (e) {
-      print("Error getting token: $e");
-      return null;
+    if (_cachedToken != null) {
+      print('Return cached token: $_cachedToken');
+      return _cachedToken;
     }
+    final prefs = await SharedPreferences.getInstance();
+    _cachedToken = prefs.getString(_tokenKey);
+    print('Token loaded from storage: $_cachedToken');
+    return _cachedToken;
   }
 
   static Future<void> setLoginDetails(LoginResponseModel model) async {
@@ -55,13 +59,42 @@ class ShareService {
   }
 
   static Future<void> clearLoginDetails() async {
-    try {
-      await APICacheManager().deleteCache(KEY_NAME);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear(); // Clear all stored preferences
-    } catch (e) {
-      print("Error clearing login details: $e");
-      rethrow;
-    }
+    _cachedToken = null; // Xóa token khỏi cache
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_userIdKey);
+    await prefs.remove(_userEmailKey);
+    print('All login details cleared');
+  }
+
+  // Lưu token
+  static Future<void> saveToken(String token) async {
+    _cachedToken = token; // Lưu vào cache
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, token);
+    print('Token saved to cache and storage: $token');
+  }
+
+  // Lấy ID người dùng
+  static Future<String?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_userIdKey);
+  }
+
+  // Lấy email người dùng
+  static Future<String?> getUserEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_userEmailKey);
+  }
+
+  // Lưu thông tin người dùng
+  static Future<void> saveUserInfo({
+    required String userId,
+    required String email,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userIdKey, userId);
+    await prefs.setString(_userEmailKey, email);
+    print('User info saved - userId: $userId, email: $email');
   }
 }
