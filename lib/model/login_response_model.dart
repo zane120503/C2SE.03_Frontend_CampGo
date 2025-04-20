@@ -10,6 +10,7 @@ class LoginResponseModel {
   String? email;
   String? phone_number;
   int? role;
+  bool? isProfileCompleted;
 
   LoginResponseModel({
     this.message,
@@ -19,6 +20,7 @@ class LoginResponseModel {
     this.email,
     this.phone_number,
     this.role,
+    this.isProfileCompleted,
   });
 
   LoginResponseModel.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class LoginResponseModel {
     email = json['email'] as String?;
     phone_number = json['phone_number'] as String?;
     role = json['role'] as int?;
+    isProfileCompleted = json['isProfileCompleted'] as bool?;
   }
 
   Map<String, dynamic> toJson() {
@@ -40,6 +43,7 @@ class LoginResponseModel {
     data['email'] = email;
     data['phone_number'] = phone_number;
     data['role'] = role;
+    data['isProfileCompleted'] = isProfileCompleted;
     return data;
   }
 }

@@ -1,7 +1,6 @@
 import 'package:CampGo/pages/Product/ProductPage.dart';
-import 'package:CampGo/services/MockDataService.dart';
 import 'package:flutter/material.dart';
-import 'package:CampGo/model/wishlist_model.dart';
+import 'package:CampGo/services/api_service.dart';
 
 class FavoriteItemSamples extends StatefulWidget {
   const FavoriteItemSamples({super.key});
@@ -11,8 +10,7 @@ class FavoriteItemSamples extends StatefulWidget {
 }
 
 class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
-  Wishlist? wishlist;
-  List<Review>? reviews; // Thêm biến để lưu danh sách review
+  List<dynamic> wishlistItems = [];
   bool isLoading = true;
 
   @override
@@ -23,54 +21,53 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
 
   Future<void> _loadWishlist() async {
     try {
-      // Sử dụng MockDataService thay vì DataService
-      final mockService = MockDataService();
+      setState(() => isLoading = true);
+      final response = await APIService.getWishlist();
       
-      // Tải wishlist từ file JSON
-      Wishlist? loadedWishlist = await mockService.getMockWishlist();
-      
-      // Tải reviews từ file JSON
-      List<Review> loadedReviews = await mockService.getMockReviews();
-      
-      setState(() {
-        wishlist = loadedWishlist;
-        reviews = loadedReviews;
-        isLoading = false;
-      });
+      if (response['success'] == true && response['data'] != null) {
+        setState(() {
+          wishlistItems = response['data'];
+          isLoading = false;
+        });
+        print('Loaded wishlist items: ${wishlistItems.length}');
+      } else {
+        throw Exception(response['message'] ?? 'Không thể tải danh sách yêu thích');
+      }
     } catch (e) {
-      print("Error loading wishlist data: $e");
+      print("Error loading wishlist: $e");
       setState(() {
         isLoading = false;
+        wishlistItems = [];
       });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lỗi: Không thể tải danh sách yêu thích')),
+        );
+      }
     }
   }
 
-  Future<void> _removeFromWishlist(String productId) async {
+  Future<void> removeFromWishlist(String productId) async {
     try {
-      // Giả lập việc xóa sản phẩm khỏi wishlist
-      setState(() {
-        wishlist?.product.removeWhere((item) => item.product?.id == productId);
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Removed from wishlist')),
-      );
+      final result = await APIService.removeFromWishlist(productId);
+      if (result['success'] == true) {
+        setState(() {
+          wishlistItems.removeWhere((item) => item['_id'] == productId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Đã xóa khỏi danh sách yêu thích')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Không thể xóa khỏi danh sách yêu thích')),
+        );
+      }
     } catch (e) {
-      print("Error removing from wishlist: $e");
+      print('Error removing from wishlist: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error removing from wishlist')),
+        const SnackBar(content: Text('Có lỗi xảy ra khi xóa khỏi danh sách yêu thích')),
       );
-    }
-  }
-
-  // Tìm review cho sản phẩm cụ thể
-  Review? _getReviewForProduct(String productId) {
-    if (reviews == null) return null;
-    try {
-      return reviews!.firstWhere((review) => review.id == productId);
-    } catch (e) {
-      print("No review found for product ID: $productId");
-      return null;
     }
   }
 
@@ -78,103 +75,176 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
-    } else if (wishlist == null || wishlist!.product.isEmpty) {
-      return const Center(child: Text("Your wishlist is empty"));
-    } else {
-      return Column(
-        children: wishlist!.product.map((item) {
-          // Lấy review cho sản phẩm này
-          Review? review = _getReviewForProduct(item.product?.id ?? "");
+    }
+
+    if (wishlistItems.isEmpty) {
+      return const Center(
+        child: Text(
+          "Danh sách yêu thích trống",
+          style: TextStyle(fontSize: 16),
+        ),
+      );
+    }
+
+    return Container(
+      color: const Color(0xFFEDECF2),
+      child: ListView.builder(
+        itemCount: wishlistItems.length,
+        shrinkWrap: true,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        itemBuilder: (context, index) {
+          final item = wishlistItems[index];
+          final price = item['price']?.toDouble() ?? 0.0;
+          final discountPrice = item['discount_price']?.toDouble() ?? price;
+          final discount = item['discount']?.toDouble() ?? 0.0;
           
           return Container(
-            height: 110,
             margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                SizedBox(
-                  height: 70,
-                  width: 70,
-                  child: item.product!.images != null &&
-                          item.product!.images!.isNotEmpty
-                      ? Image.network(item.product!.images![0])
-                      : const Placeholder(),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+              ],
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Hình ảnh sản phẩm
+                  Container(
+                    height: 70,
+                    width: 70,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.grey[200],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: item['imageURL'] != null && item['imageURL'].toString().isNotEmpty
+                          ? Image.network(
+                              item['imageURL'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                print('Error loading image: $error');
+                                return Icon(
+                                  Icons.image_not_supported,
+                                  size: 40,
+                                  color: Colors.grey[400],
+                                );
+                              },
+                            )
+                          : Icon(
+                              Icons.image_not_supported,
+                              size: 40,
+                              color: Colors.grey[400],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  
+                  // Thông tin sản phẩm
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.only(left: 10),
-                          child: Text(
-                            item.product?.name ?? 'Unknown product',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2B2321),
-                            ),
+                        Text(
+                          item['productName'] ?? 'Unknown product',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2B2321),
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 10),
-                          child: Text(
-                            "\$${item.product?.price?.toStringAsFixed(0) ?? 'N/A'}",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2B2321),
+                        const SizedBox(height: 5),
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              '\$${discountPrice.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
                             ),
-                          ),
+                            if (discount > 0) ...[
+                              const SizedBox(width: 8),
+                              Text(
+                                '\$${price.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  decoration: TextDecoration.lineThrough,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '-${discount.toStringAsFixed(0)}%',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
                   ),
-                ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    InkWell(
-                      onTap: () {
-                        _removeFromWishlist(item.product?.id ?? "");
-                      },
-                      child: const Icon(
-                        Icons.delete,
-                        color: Colors.red,
+                  
+                  // Nút xóa và chuyển trang
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => removeFromWishlist(item['_id']),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
-                    ),
-                    const SizedBox(height: 25),
-                    InkWell(
-                      onTap: () {
-                        if (item.product != null) {
+                      const SizedBox(height: 8),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward, color: Color(0xFF2B2321)),
+                        onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => ProductPage(
-                                productId: item.product!.id ?? '',
+                                productId: item['_id'],
                               ),
                             ),
-                          );
-                        }
-                      },
-                      child: const Icon(
-                        Icons.arrow_forward,
-                        color: Color(0xFF2B2321),
+                          ).then((_) => _loadWishlist());
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           );
-        }).toList(),
-      );
-    }
+        },
+      ),
+    );
   }
 }

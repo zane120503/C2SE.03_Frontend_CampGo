@@ -2,47 +2,61 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:CampGo/services/api_service.dart';
 
 class CartItem {
-  final int id;
+  final String id;
   final String name;
   final double price;
+  final double discountedPrice;
   final String image;
   int quantity;
   bool isSelected;
   final int discount;
+  final int stockQuantity;
 
   CartItem({
     required this.id,
     required this.name,
     required this.price,
+    required this.discountedPrice,
     required this.image,
     required this.quantity,
     required this.isSelected,
     required this.discount,
+    required this.stockQuantity,
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
     try {
+      final product = json['product'];
+      final price = (product['price'] ?? 0.0).toDouble();
+      final discount = product['discount'] ?? 0;
+      final discountedPrice = price * (1 - discount / 100);
+      
       return CartItem(
-        id: json['id'] ?? 0,
-        name: json['name'] ?? '',
-        price: (json['price'] ?? 0.0).toDouble(),
-        image: json['image'] ?? 'assets/images/placeholder.png',
+        id: product['_id'] ?? '',
+        name: product['productName'] ?? '',
+        price: price,
+        discountedPrice: discountedPrice,
+        image: product['imageURL'] ?? 'assets/images/placeholder.png',
         quantity: json['quantity'] ?? 1,
-        isSelected: json['isSelected'] ?? false,
-        discount: json['discount'] ?? 0,
+        isSelected: false,
+        discount: discount,
+        stockQuantity: product['stockQuantity'] ?? 0,
       );
     } catch (e) {
       print('Error parsing CartItem: $e');
       return CartItem(
-        id: 0,
+        id: '',
         name: 'Error Item',
         price: 0.0,
+        discountedPrice: 0.0,
         image: 'assets/images/placeholder.png',
         quantity: 1,
         isSelected: false,
         discount: 0,
+        stockQuantity: 0,
       );
     }
   }
@@ -76,25 +90,22 @@ class _CartItemSamplesState extends State<CartItemSamples> {
 
   Future<void> loadCartItems() async {
     try {
-      final String response = await rootBundle.loadString('assets/data/Cart.json');
-      if (response.isEmpty) {
-        throw Exception('Cart.json is empty');
+      setState(() => isLoading = true);
+      
+      final response = await APIService.getCart();
+      if (response == null) {
+        throw Exception('Failed to get cart data');
       }
 
-      final data = await json.decode(response);
-      if (data == null) {
-        throw Exception('Failed to parse Cart.json');
-      }
-
-      final itemsList = data['cartItems'];
-      if (itemsList == null || !(itemsList is List)) {
-        throw Exception('Invalid cartItems format in Cart.json');
+      final cartData = response['data'];
+      if (cartData == null || cartData['items'] == null) {
+        throw Exception('Invalid cart data format');
       }
 
       setState(() {
         cartItems = List<CartItem>.from(
-          itemsList.map((item) => CartItem.fromJson(item))
-        ).where((item) => item.id != 0).toList();
+          cartData['items'].map((item) => CartItem.fromJson(item))
+        );
         isLoading = false;
       });
       
@@ -126,13 +137,37 @@ class _CartItemSamplesState extends State<CartItemSamples> {
     }
   }
 
-  void _updateQuantity(int index, int change) {
+  void _updateQuantity(int index, int change) async {
     if (index < 0 || index >= cartItems.length) return;
     
-    setState(() {
-      cartItems[index].quantity = (cartItems[index].quantity + change).clamp(1, 99);
-      _updateTotalPrice();
-    });
+    final item = cartItems[index];
+    final newQuantity = (item.quantity + change).clamp(1, item.stockQuantity);
+    
+    if (newQuantity != item.quantity) {
+      setState(() {
+        item.quantity = newQuantity;
+        _updateTotalPrice();
+      });
+      
+      await _updateQuantityOnServer(item.id, newQuantity);
+    }
+  }
+
+  Future<void> _updateQuantityOnServer(String productId, int quantity) async {
+    try {
+      final success = await APIService.updateCartItem(productId, quantity);
+      if (!success) {
+        throw Exception('Failed to update quantity');
+      }
+    } catch (e) {
+      print('Error updating quantity: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể cập nhật số lượng: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _toggleSelection(int index, bool? value) {
@@ -142,9 +177,9 @@ class _CartItemSamplesState extends State<CartItemSamples> {
       cartItems[index].isSelected = value ?? false;
       
       if (cartItems[index].isSelected) {
-        selectedProductIds.add(cartItems[index].id.toString());
+        selectedProductIds.add(cartItems[index].id);
       } else {
-        selectedProductIds.remove(cartItems[index].id.toString());
+        selectedProductIds.remove(cartItems[index].id);
       }
       
       isAllSelected = cartItems.every((item) => item.isSelected);
@@ -162,7 +197,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
       }
       
       if (isAllSelected) {
-        selectedProductIds = cartItems.map((item) => item.id.toString()).toSet();
+        selectedProductIds = cartItems.map((item) => item.id).toSet();
       } else {
         selectedProductIds.clear();
       }
@@ -171,20 +206,72 @@ class _CartItemSamplesState extends State<CartItemSamples> {
     });
   }
 
-  void _removeItem(int index) {
+  void _removeItem(int index) async {
     if (index < 0 || index >= cartItems.length) return;
     
-    setState(() {
-      if (cartItems[index].isSelected) {
-        selectedProductIds.remove(cartItems[index].id.toString());
+    final item = cartItems[index];
+    
+    // Hiển thị dialog xác nhận xóa
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Xác nhận xóa'),
+          content: Text('Bạn có chắc chắn muốn xóa ${item.name} khỏi giỏ hàng?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Hủy'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: Text(
+                'Xóa',
+                style: TextStyle(color: Colors.red),
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final success = await APIService.removeFromCart(item.id);
+      
+      if (success) {
+        setState(() {
+          if (item.isSelected) {
+            selectedProductIds.remove(item.id);
+          }
+          cartItems.removeAt(index);
+          isAllSelected = cartItems.isNotEmpty ? cartItems.every((item) => item.isSelected) : false;
+          _updateTotalPrice();
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Đã xóa ${item.name} khỏi giỏ hàng'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        throw Exception('Không thể xóa sản phẩm');
       }
-      
-      cartItems.removeAt(index);
-      
-      isAllSelected = cartItems.isNotEmpty ? cartItems.every((item) => item.isSelected) : false;
-      
-      _updateTotalPrice();
-    });
+    } catch (e) {
+      print('Error removing item: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể xóa sản phẩm: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   double calculateTotalPrice() {
@@ -260,10 +347,6 @@ class _CartItemSamplesState extends State<CartItemSamples> {
   }
 
   Widget buildCartItem(CartItem item, int index) {
-    double originalPrice = item.price;
-    int discountPercentage = item.discount;
-    double finalPrice = originalPrice * (1 - discountPercentage / 100);
-
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
       padding: EdgeInsets.all(15),
@@ -280,7 +363,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
       ),
       child: Row(
         children: [
-          // Checkbox thẳng hàng với "Select All"
+          // Checkbox
           SizedBox(
             width: 24,
             height: 24,
@@ -298,11 +381,25 @@ class _CartItemSamplesState extends State<CartItemSamples> {
             height: 80,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              image: DecorationImage(
-                image: AssetImage(item.image),
-                fit: BoxFit.cover,
-              ),
+              color: Colors.grey[200],
             ),
+            child: item.image.startsWith('http') 
+              ? Image.network(
+                  item.image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      Icons.image_not_supported,
+                      size: 40,
+                      color: Colors.grey[400],
+                    );
+                  },
+                )
+              : Icon(
+                  Icons.image_not_supported,
+                  size: 40,
+                  color: Colors.grey[400],
+                ),
           ),
           SizedBox(width: 15),
           
@@ -318,44 +415,23 @@ class _CartItemSamplesState extends State<CartItemSamples> {
                     fontWeight: FontWeight.w500,
                     color: Color(0xFF2B2321),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: 5),
-                Row(
-                  children: [
-                    Text(
-                      '\$${finalPrice.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2B2321),
-                      ),
-                    ),
-                    if (discountPercentage > 0) ...[
-                      SizedBox(width: 8),
-                      Text(
-                        '-$discountPercentage%',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                if (discountPercentage > 0)
-                  Text(
-                    '\$${originalPrice.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      decoration: TextDecoration.lineThrough,
-                      color: Colors.grey,
-                    ),
+                Text(
+                  '\$${item.discountedPrice.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2B2321),
                   ),
+                ),
               ],
             ),
           ),
           
-          // Phần tăng giảm số lượng và icon delete (đẩy sang phải)
+          // Phần tăng giảm số lượng và icon delete
           Container(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,

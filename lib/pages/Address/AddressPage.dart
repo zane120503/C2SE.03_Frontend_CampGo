@@ -178,9 +178,24 @@ class _AddressPageState extends State<AddressPage> {
       bool success = await APIService.setDefaultAddress(addressId);
       if (success) {
         setState(() {
-          for (var address in addresses) {
-            address.isDefault = address.id == addressId;
-          }
+          addresses = addresses.map((address) {
+            return AddressUser(
+              id: address.id,
+              userId: address.userId,
+              fullName: address.fullName,
+              phoneNumber: address.phoneNumber,
+              street: address.street,
+              district: address.district,
+              city: address.city,
+              ward: address.ward,
+              country: address.country,
+              zipCode: address.zipCode,
+              isDefault: address.id == addressId,
+              createdAt: address.createdAt,
+              updatedAt: address.updatedAt,
+              v: address.v,
+            );
+          }).toList();
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

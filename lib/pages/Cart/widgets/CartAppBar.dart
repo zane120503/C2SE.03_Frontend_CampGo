@@ -1,5 +1,6 @@
+import 'package:CampGo/pages/Home/widgets/HomeMainNavigationBar.dart';
 import 'package:flutter/material.dart';
-import 'package:CampGo/pages/Home/HomePage.dart';
+
 
 class CartAppBar extends StatefulWidget {
   const CartAppBar({super.key});
@@ -23,7 +24,7 @@ class _CartAppBarState extends State<CartAppBar> {
               // Chuyển về trang chủ
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => HomePage()),
+                MaterialPageRoute(builder: (context) => HomeMainNavigationBar()),
               );
             },
             child: Icon(

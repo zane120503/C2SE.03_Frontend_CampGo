@@ -67,7 +67,8 @@ class _AddCreditCardPageState extends State<AddCreditCardPage> {
           return;
         }
 
-        String? token = await AuthService.getToken();
+        final authService = AuthService();
+        String? token = await authService.getToken();
         if (token == null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Token not found',

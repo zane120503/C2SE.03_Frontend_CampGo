@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:CampGo/pages/TaskBar/TaskBarPage.dart';
 
-class HomeAppBar extends StatefulWidget {
-  // final Function(String?, double?, double?) onFiltersApplied;
+class HomeAppBar extends StatefulWidget implements PreferredSizeWidget {
+  final Function(String?, double?, double?) onFiltersApplied;
 
   const HomeAppBar({
     super.key,
-    // required this.onFiltersApplied,
+    required this.onFiltersApplied,
   });
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   _HomeAppBarState createState() => _HomeAppBarState();
@@ -60,10 +64,10 @@ class _HomeAppBarState extends State<HomeAppBar> with SingleTickerProviderStateM
                       color: Colors.black.withOpacity(0.5),
                     ),
                   ),
-                  // TaskBar(
-                  //   onClose: _hideTaskbarOverlay,
-                  //   onFiltersApplied: widget.onFiltersApplied,
-                  // ),
+                  TaskBar(
+                    onClose: _hideTaskbarOverlay,
+                    onFiltersApplied: widget.onFiltersApplied,
+                  ),
                 ],
               ),
             ),
@@ -119,13 +123,6 @@ class _HomeAppBarState extends State<HomeAppBar> with SingleTickerProviderStateM
             if (_overlayEntry != null) {
               _hideTaskbarOverlay();
             }
-            
-            // Navigator.push(
-            //   context,
-            //   MaterialPageRoute(
-            //     builder: (context) => NotificationPage(),
-            //   ),
-            // );
           },
         ),
       ],

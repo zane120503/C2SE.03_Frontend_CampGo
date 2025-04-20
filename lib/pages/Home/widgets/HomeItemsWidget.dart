@@ -1,230 +1,411 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:flutter/services.dart';
+import 'package:CampGo/services/api_service.dart' as api;
 import 'package:CampGo/pages/Product/ProductPage.dart';
 
-class Product {
-  final int id;
-  final String name;
-  final String imageUrl;
-  final double price;
-  final int discountPercentage;
-  final double rating;
-  final int soldCount;
-  final String category; 
-
-  Product({
-    required this.id,
-    required this.name,
-    required this.imageUrl,
-    required this.price,
-    required this.discountPercentage,
-    required this.rating,
-    required this.soldCount,
-    required this.category, 
-  });
-
-  factory Product.fromJson(Map<String, dynamic> json) {
-    try {
-      return Product(
-        id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? '') ?? 0,
-        name: json['name']?.toString() ?? '',
-        imageUrl: json['imageUrl']?.toString() ?? '',
-        price: json['price'] is double ? json['price'] : double.tryParse(json['price']?.toString() ?? '') ?? 0.0,
-        discountPercentage: json['discountPercentage'] is int ? json['discountPercentage'] : int.tryParse(json['discountPercentage']?.toString() ?? '') ?? 0,
-        rating: json['rating'] is double ? json['rating'] : double.tryParse(json['rating']?.toString() ?? '') ?? 0.0,
-        soldCount: json['soldCount'] is int ? json['soldCount'] : int.tryParse(json['soldCount']?.toString() ?? '') ?? 0,
-        category: json['category']?.toString() ?? '',
-      );
-    } catch (e) {
-      print('Lỗi khi parse JSON: $e');
-      return Product(
-        id: 0,
-        name: '',
-        imageUrl: '',
-        price: 0.0,
-        discountPercentage: 0,
-        rating: 0.0,
-        soldCount: 0,
-        category: '',
-      );
-    }
-  }
-}
-
-class HomeItemWidget extends StatefulWidget {
-  const HomeItemWidget({super.key});
+class HomeItemsWidget extends StatefulWidget {
+  final String selectedCategory;
+  final double? minPrice;
+  final double? maxPrice;
+  
+  const HomeItemsWidget({
+    Key? key, 
+    required this.selectedCategory,
+    this.minPrice,
+    this.maxPrice,
+  }) : super(key: key);
 
   @override
-  State<HomeItemWidget> createState() => _HomeItemWidgetState();
+  State<HomeItemsWidget> createState() => _HomeItemsWidgetState();
 }
 
-class _HomeItemWidgetState extends State<HomeItemWidget> {
-  List<Product> products = [];
+class _HomeItemsWidgetState extends State<HomeItemsWidget> {
+  List<dynamic> products = [];
+  Set<String> favoriteProducts = {};
   bool isLoading = true;
+  String? selectedCategory;
+  double? minPrice;
+  double? maxPrice;
 
   @override
   void initState() {
     super.initState();
+    selectedCategory = widget.selectedCategory;
+    minPrice = widget.minPrice;
+    maxPrice = widget.maxPrice;
     loadProducts();
+    loadFavorites();
+  }
+
+  @override
+  void didUpdateWidget(HomeItemsWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedCategory != widget.selectedCategory ||
+        oldWidget.minPrice != widget.minPrice ||
+        oldWidget.maxPrice != widget.maxPrice) {
+      setState(() {
+        selectedCategory = widget.selectedCategory;
+        minPrice = widget.minPrice;
+        maxPrice = widget.maxPrice;
+      });
+      loadProducts();
+    }
   }
 
   Future<void> loadProducts() async {
     try {
-      final String response = await rootBundle.loadString('assets/data/Product.json');
-      final data = await json.decode(response);
-      
-      if (data['products'] != null) {
-        setState(() {
-          products = (data['products'] as List)
-              .map((product) => Product.fromJson(product))
-              .toList();
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('Lỗi khi tải sản phẩm: $e');
       setState(() {
+        isLoading = true;
+      });
+
+      final response = await api.APIService.getAllProducts();
+      print('API Response: $response');
+
+      if (response['success'] == true && response['data'] != null) {
+        List<dynamic> allProducts = response['data']['products'] as List<dynamic>;
+        
+        products = allProducts.where((product) {
+          // Kiểm tra category
+          bool matchesCategory = selectedCategory == null || selectedCategory!.isEmpty || 
+              product['categoryID'] == selectedCategory;
+
+          // Tính giá cuối cùng của sản phẩm
+          double originalPrice = double.tryParse(product['originalPrice']?.toString() ?? '0') ?? 0.0;
+          double discount = (product['discount'] ?? 0).toDouble();
+          double finalPrice = discount > 0 
+              ? originalPrice * (1 - discount / 100) 
+              : originalPrice;
+          
+          print('Product: ${product['name']}');
+          print('Original Price: \$${originalPrice.toStringAsFixed(2)}');
+          print('Discount: ${discount.toStringAsFixed(1)}%');
+          print('Final Price: \$${finalPrice.toStringAsFixed(2)}');
+          print('Min Price: \$${minPrice?.toStringAsFixed(2)}, Max Price: \$${maxPrice?.toStringAsFixed(2)}');
+
+          // Kiểm tra khoảng giá
+          bool matchesPrice = true;
+          if (minPrice != null || maxPrice != null) {
+            if (minPrice != null) {
+              matchesPrice = matchesPrice && finalPrice >= minPrice!;
+            }
+            if (maxPrice != null) {
+              matchesPrice = matchesPrice && finalPrice <= maxPrice!;
+            }
+          }
+
+          print('Matches Category: $matchesCategory');
+          print('Matches Price: $matchesPrice');
+          print('-------------------');
+
+          return matchesCategory && matchesPrice;
+        }).toList();
+
+        print('Filtered Products Count: ${products.length}');
+        print('Applied Filters - Category: $selectedCategory, Min Price: $minPrice, Max Price: $maxPrice');
+      } else {
+        products = [];
+      }
+
+      setState(() {
+        isLoading = false;
+      });
+
+    } catch (e) {
+      print('Error loading products: $e');
+      setState(() {
+        products = [];
         isLoading = false;
       });
     }
   }
 
+  Future<void> loadFavorites() async {
+    try {
+      final response = await api.APIService.getWishlist();
+      if (response['success'] == true && response['data'] != null) {
+        setState(() {
+          favoriteProducts = Set<String>.from(
+            (response['data'] as List<dynamic>)
+                .map((item) => item['_id'].toString())
+          );
+        });
+        print('Loaded favorites: $favoriteProducts'); // Debug log
+      }
+    } catch (e) {
+      print('Error loading favorites: $e');
+    }
+  }
+
+  void toggleFavorite(String productId) async {
+    try {
+      if (favoriteProducts.contains(productId)) {
+        // Xóa khỏi danh sách yêu thích
+        final result = await api.APIService.removeFromWishlist(productId);
+        if (result['success']) {
+          setState(() {
+            favoriteProducts.remove(productId);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Đã xóa khỏi danh sách yêu thích')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Không thể xóa khỏi danh sách yêu thích')),
+          );
+        }
+      } else {
+        // Thêm vào danh sách yêu thích
+        final result = await api.APIService.addToWishlist(productId);
+        if (result['success']) {
+          setState(() {
+            favoriteProducts.add(productId);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Đã thêm vào danh sách yêu thích')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Không thể thêm vào danh sách yêu thích')),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error toggling favorite: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Có lỗi xảy ra khi cập nhật danh sách yêu thích')),
+      );
+    }
+  }
+
+  Future<void> _navigateToProductPage(String productId) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProductPage(productId: productId),
+      ),
+    );
+    loadFavorites();
+  }
+
+  void applyFilters(String? category, double? min, double? max) {
+    print('Applying filters in HomeItemsWidget:');
+    print('Category: $category');
+    print('Min Price: $min');
+    print('Max Price: $max');
+
+    setState(() {
+      selectedCategory = category;
+      minPrice = min;
+      maxPrice = max;
+    });
+
+    loadProducts();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator());
+    }
+
+    if (products.isEmpty) {
+      return Center(child: Text('Không tìm thấy sản phẩm nào'));
     }
 
     return GridView.builder(
-      shrinkWrap: true,
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.68,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+        childAspectRatio: 0.85,
+        mainAxisSpacing: 15,
+        crossAxisSpacing: 15,
       ),
+      physics: BouncingScrollPhysics(),
+      shrinkWrap: true,
+      padding: EdgeInsets.all(15),
       itemCount: products.length,
       itemBuilder: (context, index) {
-        return _buildProductItem(products[index]);
-      },
-    );
-  }
+        final product = products[index];
+        final productId = product['_id']?.toString() ?? '';
+        final isFavorite = favoriteProducts.contains(productId);
+        
+        final originalPrice = double.tryParse(product['originalPrice']?.toString() ?? '0') ?? 0;
+        final discountedPrice = double.tryParse(product['discountedPrice']?.toString() ?? '0') ?? 0;
+        final discount = product['discount']?.toDouble() ?? 0;
+        
+        final name = product['name'] ?? '';
+        final soldCount = product['soldCount']?.toString() ?? '0';
+        final rating = product['rating']?.toString() ?? '5.0';
 
-  Widget _buildProductItem(Product product) {
-    return Container(
-      padding: const EdgeInsets.only(left: 15, right: 15, top: 10),
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              if (product.discountPercentage > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Text(
-                    "-${product.discountPercentage}%",
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+        final images = product['images'] as List<dynamic>?;
+        final imageUrl = (images != null && images.isNotEmpty) 
+            ? images[0].toString()
+            : product['imageURL']?.toString() ?? '';
+
+        print('Product $productId - Name: $name - Image URL: $imageUrl');
+
+        return GestureDetector(
+          onTap: () => _navigateToProductPage(productId),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  spreadRadius: 1,
+                  blurRadius: 5,
+                  offset: Offset(0, 2),
                 ),
-              const Icon(
-                Icons.favorite_border,
-                size: 20,
-                color: Colors.red,
-              ),
-            ],
-          ),
-          InkWell(
-            onTap: () {
-              Navigator.pushNamed(
-                context,
-                '/product',
-                arguments: {'productId': product.id.toString()},
-              );
-            },
-            child: Container(
-              margin: const EdgeInsets.all(10),
-              child: Image.asset(
-                product.imageUrl,
-                width: 120,
-                height: 120,
-                fit: BoxFit.contain,
-              ),
+              ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.only(bottom: 5),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              product.name,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.black87,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Container(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              "${product.price.toInt()}đ", // Chuyển sang số nguyên
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 5),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "${product.soldCount} đã bán",
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                  ),
-                ),
-                Row(
+                Stack(
                   children: [
-                    const Icon(
-                      Icons.star,
-                      color: Colors.amber,
-                      size: 16,
+                    ClipRRect(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      child: imageUrl.isNotEmpty
+                          ? Image.network(
+                              imageUrl,
+                              height: 140,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return _buildPlaceholder();
+                              },
+                            )
+                          : _buildPlaceholder(),
                     ),
-                    const SizedBox(width: 2),
-                    Text(
-                      product.rating.toString(),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                    if (discount > 0)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            "-$discount%",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.3),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            color: isFavorite ? Colors.red : Colors.white,
+                            size: 20,
+                          ),
+                          onPressed: () => toggleFavorite(productId),
+                          constraints: BoxConstraints.tightFor(width: 30, height: 30),
+                          padding: EdgeInsets.zero,
+                        ),
                       ),
                     ),
                   ],
                 ),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          name,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: 4),
+                        Row(
+                          children: [
+                            if (originalPrice > 0) ...[
+                              Text(
+                                "\$${originalPrice.toStringAsFixed(2)}",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                            ],
+                            Text(
+                              "\$${discountedPrice.toStringAsFixed(2)}",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Spacer(),
+                        Row(
+                          children: [
+                            Text(
+                              "$soldCount đã bán",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            Spacer(),
+                            Icon(
+                              Icons.star,
+                              color: Colors.amber,
+                              size: 14,
+                            ),
+                            Text(
+                              " $rating",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-        ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      height: 140,
+      color: Colors.grey[100],
+      child: Center(
+        child: Icon(
+          Icons.image_not_supported,
+          size: 40,
+          color: Colors.grey[400],
+        ),
       ),
     );
   }

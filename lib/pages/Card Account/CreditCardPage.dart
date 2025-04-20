@@ -1,4 +1,4 @@
-import 'package:CampGo/model/card_model.dart';
+import 'package:CampGo/models/card_model.dart';
 import 'package:CampGo/pages/Card%20Account/widgets/AddCreditCardPage.dart';
 import 'package:CampGo/pages/Card%20Account/widgets/UpdateCreditCardPage.dart';
 import 'package:CampGo/services/data_service.dart';
@@ -78,14 +78,18 @@ class _CreditCardPageState extends State<CreditCardPage> {
         setState(() {
           _cards = _cards.map((card) => CardModel(
             id: card.id,
-            cardType: card.cardType,
-            cardHolderName: card.cardHolderName,
+            userId: card.userId,
             cardNumber: card.cardNumber,
+            cardHolderName: card.cardHolderName,
+            cardType: card.cardType,
             lastFourDigits: card.lastFourDigits,
             expiryMonth: card.expiryMonth,
             expiryYear: card.expiryYear,
             cvv: card.cvv,
             isDefault: card.id == cardId,
+            createdAt: card.createdAt,
+            updatedAt: card.updatedAt,
+            v: card.v,
           )).toList();
         });
         ScaffoldMessenger.of(context).showSnackBar(

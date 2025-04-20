@@ -44,7 +44,7 @@ class CartBottomNavBar extends StatelessWidget {
                 ),
               ),
               Text(
-                "${total.toStringAsFixed(0)}\$",
+                "${total.toStringAsFixed(2)}\$",
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,

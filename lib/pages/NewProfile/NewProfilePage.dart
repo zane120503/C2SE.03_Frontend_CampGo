@@ -4,15 +4,16 @@ import 'package:CampGo/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:CampGo/services/share_service.dart';
 
 class NewProfilePage extends StatefulWidget {
   final String initialName;
-  final String email;
+  final String initialEmail;
 
   const NewProfilePage({
     super.key,
-    required this.initialName,
-    required this.email,
+    this.initialName = '',
+    this.initialEmail = '',
   });
 
   @override
@@ -22,7 +23,6 @@ class NewProfilePage extends StatefulWidget {
 class _NewProfilePageState extends State<NewProfilePage> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   String _selectedGender = 'male';
   File? _imageFile;
@@ -32,8 +32,16 @@ class _NewProfilePageState extends State<NewProfilePage> {
   @override
   void initState() {
     super.initState();
-    // Chỉ điền email từ signup
-    _emailController.text = widget.email;
+    // Khởi tạo giá trị cho các controller từ initialName
+    if (widget.initialName.isNotEmpty) {
+      final names = widget.initialName.split(' ');
+      if (names.length >= 2) {
+        _firstNameController.text = names[0];
+        _lastNameController.text = names.sublist(1).join(' ');
+      } else {
+        _firstNameController.text = widget.initialName;
+      }
+    }
   }
 
   Future<void> _pickImage() async {
@@ -55,13 +63,11 @@ class _NewProfilePageState extends State<NewProfilePage> {
   bool get isFormValid {
     return _firstNameController.text.isNotEmpty &&
            _lastNameController.text.isNotEmpty &&
-           _emailController.text.isNotEmpty &&
            _phoneController.text.isNotEmpty &&
            _selectedGender.isNotEmpty;
   }
 
   Future<void> _saveProfile() async {
-    // Kiểm tra form hợp lệ
     if (!isFormValid) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng điền đầy đủ thông tin')),
@@ -69,7 +75,6 @@ class _NewProfilePageState extends State<NewProfilePage> {
       return;
     }
 
-    // Kiểm tra số điện thoại hợp lệ
     if (!RegExp(r'^[0-9]{10}$').hasMatch(_phoneController.text.trim())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Số điện thoại phải có 10 chữ số')),
@@ -82,45 +87,22 @@ class _NewProfilePageState extends State<NewProfilePage> {
     });
 
     try {
-      // Hiển thị loading
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đang lưu thông tin...')),
-      );
-
       final firstName = _firstNameController.text.trim();
       final lastName = _lastNameController.text.trim();
       final fullName = "$firstName $lastName";
 
-      print('Sending profile data:');
-      print('First Name: $firstName');
-      print('Last Name: $lastName');
-      print('Full Name: $fullName');
-      print('Email: ${widget.email}');
-      print('Phone: ${_phoneController.text}');
-      print('Gender: $_selectedGender');
+      // Kiểm tra token trước khi gọi API
+      String? token = await ShareService.getToken();
+      print('Token before update profile: $token');
 
-      // Chuẩn bị dữ liệu để gửi lên API
-      final Map<String, dynamic> profileData = {
-        'first_name': firstName,
-        'last_name': lastName,
-        'user_name': fullName,
-        'email': widget.email.trim(),
-        'phone_number': _phoneController.text.trim(),
-        'gender': _selectedGender.toLowerCase(),
-        'isProfileCompleted': true,
-        'isAccountVerified': true,
-        'verifyOtp': '',
-        'verifyOtpExpireAt': 0,
-        'resetOtp': '',
-        'resetOtpExpireAt': '0',
-        '__v': 0
-      };
+      if (token == null || token.isEmpty) {
+        throw Exception('Vui lòng đăng nhập lại');
+      }
 
-      print('Profile data to send: $profileData');
-
+      // Cập nhật profile
       final response = await APIService.updateProfile(
         name: fullName,
-        email: widget.email.trim(),
+        email: widget.initialEmail,
         phone: _phoneController.text.trim(),
         gender: _selectedGender.toLowerCase(),
         profileImage: _imageFile,
@@ -131,14 +113,28 @@ class _NewProfilePageState extends State<NewProfilePage> {
 
       if (response['success'] == true) {
         if (!mounted) return;
-        
-        // Lưu thông tin vào local storage với đầy đủ dữ liệu
-        await AuthService.updateUserProfile(profileData);
+
+        // Kiểm tra và lưu thông tin từ response
+        final userData = response['data'];
+        if (userData == null) {
+          throw Exception('Không nhận được dữ liệu từ server');
+        }
+
+        // Lưu thông tin vào local storage
+        await ShareService.saveUserInfo(
+          userId: userData['_id'] ?? '',
+          email: userData['email'] ?? widget.initialEmail,
+          userName: userData['user_name'] ?? fullName,
+          isProfileCompleted: userData['isProfileCompleted'] ?? true,
+        );
 
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cập nhật thông tin thành công')),
+          const SnackBar(
+            content: Text('Cập nhật thông tin thành công'),
+            backgroundColor: Colors.green,
+          ),
         );
         
         // Chuyển đến trang HomePage
@@ -148,16 +144,16 @@ class _NewProfilePageState extends State<NewProfilePage> {
           (route) => false,
         );
       } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response['message'] ?? 'Cập nhật thông tin thất bại')),
-        );
+        throw Exception(response['message'] ?? 'Cập nhật thông tin thất bại');
       }
     } catch (e) {
       print('Error saving profile: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: ${e.toString()}')),
+          SnackBar(
+            content: Text('Lỗi: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -273,13 +269,6 @@ class _NewProfilePageState extends State<NewProfilePage> {
                             showDivider: true,
                           ),
                           _buildTextField(
-                            label: 'Email',
-                            controller: _emailController,
-                            showDivider: true,
-                            keyboardType: TextInputType.emailAddress,
-                            enabled: false,
-                          ),
-                          _buildTextField(
                             label: 'Phone Number',
                             controller: _phoneController,
                             showDivider: true,
@@ -301,7 +290,6 @@ class _NewProfilePageState extends State<NewProfilePage> {
     required TextEditingController controller,
     bool showDivider = false,
     TextInputType? keyboardType,
-    bool enabled = true,
   }) {
     return Column(
       children: [
@@ -318,7 +306,6 @@ class _NewProfilePageState extends State<NewProfilePage> {
                 fontSize: 16,
               ),
             ),
-            enabled: enabled,
           ),
         ),
         if (showDivider)
@@ -393,7 +380,6 @@ class _NewProfilePageState extends State<NewProfilePage> {
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
-    _emailController.dispose();
     _phoneController.dispose();
     super.dispose();
   }

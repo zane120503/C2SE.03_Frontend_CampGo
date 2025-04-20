@@ -7,6 +7,7 @@ import 'package:CampGo/pages/Search/SearchPage.dart';
 import 'package:CampGo/pages/SignUp/SignUpPage.dart';
 import 'package:CampGo/pages/StartNow/StartNowPage.dart';
 import 'package:CampGo/pages/Checkout/CheckOutPage.dart';
+import 'package:CampGo/pages/Cart/CartPage.dart';
 import 'package:flutter/material.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -32,6 +33,7 @@ class MyApp extends StatelessWidget {
         "/register": (context) => const SignUpPage(),
         "/home": (context) => const HomePage(),
         "/main": (context) => const HomeMainNavigationBar(),
+        "/cart": (context) => const CartPage(),
         
         // "/search": (context) => SearchPage(), 
         "/product": (context) {

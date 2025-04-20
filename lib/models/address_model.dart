@@ -4,8 +4,8 @@ class AddressUser {
   final String fullName;
   final String phoneNumber;
   final String street;
-  final String city;
   final String district;
+  final String city;
   final String ward;
   final String country;
   final String zipCode;
@@ -20,8 +20,8 @@ class AddressUser {
     required this.fullName,
     required this.phoneNumber,
     required this.street,
-    required this.city,
     required this.district,
+    required this.city,
     required this.ward,
     required this.country,
     required this.zipCode,
@@ -38,8 +38,8 @@ class AddressUser {
       fullName: json['fullName'] ?? '',
       phoneNumber: json['phoneNumber'] ?? '',
       street: json['street'] ?? '',
-      city: json['city'] ?? '',
       district: json['district'] ?? '',
+      city: json['city'] ?? '',
       ward: json['ward'] ?? '',
       country: json['country'] ?? '',
       zipCode: json['zipCode'] ?? '',
@@ -49,4 +49,23 @@ class AddressUser {
       v: json['__v'] ?? 0,
     );
   }
-}
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'user_id': userId,
+      'fullName': fullName,
+      'phoneNumber': phoneNumber,
+      'street': street,
+      'district': district,
+      'city': city,
+      'ward': ward,
+      'country': country,
+      'zipCode': zipCode,
+      'isDefault': isDefault,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      '__v': v,
+    };
+  }
+} 

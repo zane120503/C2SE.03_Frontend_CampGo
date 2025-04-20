@@ -1,4 +1,4 @@
-import 'package:CampGo/model/card_model.dart';
+import 'package:CampGo/models/card_model.dart';
 import 'package:CampGo/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -32,12 +32,12 @@ class _UpdateCreditCardPageState extends State<UpdateCreditCardPage> {
   void initState() {
     super.initState();
     // Điền thông tin thẻ hiện tại vào form
-    _cardNumberController.text = widget.card.cardNumber ?? '';
+    _cardNumberController.text = widget.card.cardNumber;
     _expiryMonthController.text = widget.card.expiryMonth ?? '';
     _expiryYearController.text = widget.card.expiryYear ?? '';
-    _cvvController.text = widget.card.cvv ?? '';
-    _cardHolderController.text = widget.card.cardHolderName ?? '';
-    _isDefaultCard = widget.card.isDefault; // Khởi tạo giá trị default từ thẻ hiện tại
+    _cvvController.text = widget.card.cvv;
+    _cardHolderController.text = widget.card.cardHolderName;
+    _isDefaultCard = widget.card.isDefault;
   }
 
   @override
@@ -65,7 +65,7 @@ class _UpdateCreditCardPageState extends State<UpdateCreditCardPage> {
           'card_exp_year': _expiryYearController.text,
           'card_cvc': _cvvController.text,
           'card_type': widget.card.cardType ?? 'VISA',
-          'is_default': _isDefaultCard // Sử dụng giá trị từ switch
+          'is_default': _isDefaultCard
         };
 
         print('Updating card data: ${json.encode(cardData)}');
@@ -83,7 +83,8 @@ class _UpdateCreditCardPageState extends State<UpdateCreditCardPage> {
           return;
         }
 
-        String? token = await AuthService.getToken();
+        final authService = AuthService();
+        String? token = await authService.getToken();
         if (token == null) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Token not found',

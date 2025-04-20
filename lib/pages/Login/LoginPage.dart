@@ -2,6 +2,8 @@ import 'package:CampGo/services/auth_service.dart';
 import 'package:CampGo/pages/ForgotPassword/ForgotPasswordPage.dart';
 import 'package:flutter/material.dart';
 import 'package:CampGo/pages/SignUp/SignUpPage.dart';
+import 'package:CampGo/pages/NewProfile/NewProfilePage.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -55,7 +57,24 @@ class _LoginPageState extends State<LoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đăng nhập thành công!')),
         );
-        Navigator.pushReplacementNamed(context, '/main');
+
+        // Kiểm tra isProfileCompleted để điều hướng
+        bool isProfileCompleted = response['isProfileCompleted'] ?? false;
+        if (isProfileCompleted) {
+          // Nếu đã có profile, chuyển đến trang chính
+          Navigator.pushReplacementNamed(context, '/main');
+        } else {
+          // Nếu chưa có profile, chuyển đến trang tạo profile mới
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => NewProfilePage(
+                initialName: response['userName'] ?? '',
+                initialEmail: response['userEmail'] ?? '',
+              ),
+            ),
+          );
+        }
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

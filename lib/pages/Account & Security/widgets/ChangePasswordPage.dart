@@ -78,7 +78,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     });
 
     try {
-      final result = await AuthService.changePassword(
+      final result = await AuthService().changePassword(
         currentPassword: _oldPasswordController.text,
         newPassword: _newPasswordController.text,
         confirmPassword: _confirmPasswordController.text,

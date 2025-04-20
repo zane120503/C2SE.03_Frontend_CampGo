@@ -1,16 +1,18 @@
 import 'package:CampGo/services/share_service.dart';
 import 'package:CampGo/config/config.dart';
-import 'package:CampGo/models/login_response.dart';
+import 'package:CampGo/model/login_response_model.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   static String? _lastProductRoute;
   static Map<String, dynamic>? _lastProductData;
   static Dio _dio = Dio();
   static String get baseUrl => Config.baseUrl;
+  static const String _tokenKey = 'auth_token';
 
   // Lưu thông tin sản phẩm trước khi yêu cầu đăng nhập
   static void saveLastProductInfo(String route, Map<String, dynamic> data) {
@@ -139,15 +141,16 @@ class AuthService {
 
       print('Register response: ${response.data}');
 
-      // Kiểm tra response.data có phải là Map không
       if (response.data is Map) {
         final data = response.data as Map<String, dynamic>;
         
-        // Nếu có token và success là true
         if (data['success'] == true && data['token'] != null) {
           final token = data['token'];
           print('Register success, saving token: $token');
+          
+          // Lưu token vào ShareService
           await ShareService.saveToken(token);
+          
           return {
             'success': true,
             'message': data['message'] ?? 'Đăng ký thành công',
@@ -155,7 +158,6 @@ class AuthService {
           };
         }
         
-        // Nếu không có token nhưng có message
         return {
           'success': data['success'] ?? false,
           'message': data['message'] ?? 'Đăng ký thất bại'
@@ -191,19 +193,41 @@ class AuthService {
         },
       );
 
+      print('Login response: ${response.data}');
+
       if (response.statusCode == 200) {
-        final token = response.data['token'];
-        print('Login success, saving token: $token');
-        await ShareService.saveToken(token);
-        return {
-          'success': true,
-          'message': 'Đăng nhập thành công',
-          'data': response.data
-        };
+        final data = response.data;
+        if (data['success'] == true && data['token'] != null) {
+          final token = data['token'];
+          print('Login success, saving token: $token');
+          
+          // Lưu token vào ShareService
+          await ShareService.saveToken(token);
+          
+          // Lưu thông tin user
+          final user = data['user'] ?? {};
+          await ShareService.saveUserInfo(
+            userId: user['_id'] ?? '',
+            email: user['email'] ?? '',
+            userName: user['user_name'] ?? '',
+            isProfileCompleted: user['isProfileCompleted'] ?? false,
+          );
+
+          return {
+            'success': true,
+            'message': data['message'] ?? 'Đăng nhập thành công',
+            'data': data,
+            'isProfileCompleted': true,
+            'userName': user['user_name'] ?? '',
+            'userEmail': user['email'] ?? ''
+          };
+        }
       }
+      
+      final message = response.data['message'] as String?;
       return {
         'success': false,
-        'message': response.data['message'] ?? 'Đăng nhập thất bại'
+        'message': message ?? 'Đăng nhập thất bại'
       };
     } catch (e) {
       print('Login error: $e');
@@ -333,14 +357,27 @@ class AuthService {
   }
 
   Future<String?> getToken() async {
-    return ShareService.getToken();
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_tokenKey);
+  }
+
+  Future<void> setToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, token);
+  }
+
+  Future<void> clearToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
   }
 
   Future<void> setLoginDetails(LoginResponseModel loginResponse) async {
-    await ShareService.saveToken(loginResponse.accesstoken);
+    if (loginResponse.accesstoken != null) {
+      await setToken(loginResponse.accesstoken!);
+    }
     await ShareService.saveUserInfo(
-      userId: loginResponse.userId,
-      email: loginResponse.email,
+      userId: loginResponse.id ?? '',
+      email: loginResponse.email ?? '',
     );
   }
 
@@ -462,6 +499,70 @@ class AuthService {
         'success': false,
         'message': 'Lỗi kết nối: $e'
       };
+    }
+  }
+
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      String? token = await getToken();
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'Không tìm thấy token xác thực'
+        };
+      }
+
+      final response = await _dio.post(
+        '${Config.baseUrl}/api/auth/change-password',
+        data: {
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+          'confirmPassword': confirmPassword,
+        },
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
+      );
+
+      print('Change password response: ${response.data}');
+      return response.data;
+    } catch (e) {
+      print('Change password error: $e');
+      if (e is DioException && e.response?.data != null) {
+        return {
+          'success': false,
+          'message': e.response?.data['message'] ?? 'Lỗi đổi mật khẩu'
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Lỗi kết nối: $e'
+      };
+    }
+  }
+
+  Future<void> updateUserProfile(Map<String, dynamic> profileData) async {
+    try {
+      await ShareService.saveUserInfo(
+        userId: profileData['_id'] ?? '',
+        email: profileData['email'] ?? '',
+        userName: profileData['user_name'] ?? '',
+        isProfileCompleted: profileData['isProfileCompleted'] ?? false,
+      );
+    } catch (e) {
+      print('Error updating user profile: $e');
+      throw Exception('Lỗi cập nhật thông tin người dùng');
     }
   }
 }
