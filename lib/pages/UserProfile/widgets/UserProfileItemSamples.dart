@@ -47,16 +47,7 @@ class _UserProfileItemSamplesState extends State<UserProfileItemSamples> {
               ),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white,
-                    backgroundImage: _userProfileScreen?.profileImage?.isNotEmpty == true
-                        ? NetworkImage(_userProfileScreen?.profileImage ?? '')
-                        : null,
-                    child: _userProfileScreen?.profileImage?.isEmpty == true
-                        ? Icon(Icons.person, size: 40, color: Colors.black)
-                        : null,
-                  ),
+                  _buildProfileImage(),
                   SizedBox(width: 16),
                   Text(
                     _userProfileScreen?.fullName ?? 'User',
@@ -101,6 +92,20 @@ class _UserProfileItemSamplesState extends State<UserProfileItemSamples> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildProfileImage() {
+    if (_userProfileScreen?.profileImage != null && 
+        _userProfileScreen!.profileImage!['url'] != null) {
+      return CircleAvatar(
+        radius: 50,
+        backgroundImage: NetworkImage(_userProfileScreen!.profileImage!['url']),
+      );
+    }
+    return const CircleAvatar(
+      radius: 50,
+      child: Icon(Icons.person, size: 50),
     );
   }
 

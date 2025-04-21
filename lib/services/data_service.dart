@@ -10,6 +10,7 @@ import 'package:CampGo/services/auth_service.dart';
 import 'package:CampGo/services/api_service.dart';
 import 'package:CampGo/services/share_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart';
 
 
 class DataService {
@@ -18,6 +19,7 @@ class DataService {
   static const String userIdKey = 'user_id';
   final AuthService _authService = AuthService();
   final APIService _apiService = APIService();
+  final Dio _dio = Dio();
 
   // API thật
   Future<UserProfile?> getUserProfile() async {
@@ -36,16 +38,7 @@ class DataService {
           isProfileCompleted: userData['isProfileCompleted'] ?? false,
         );
 
-        return UserProfile(
-          id: userData['_id'] ?? '',
-          firstName: userData['first_name'] ?? '',
-          lastName: userData['last_name'] ?? '',
-          email: userData['email'] ?? '',
-          phone: userData['phone_number'] ?? '',
-          address: userData['address'] ?? '',
-          profileImage: userData['profileImage'],
-          isProfileCompleted: userData['isProfileCompleted'] ?? false,
-        );
+        return createUserProfile(userData);
       }
 
       print('Failed to get user profile: ${response['message']}');
@@ -54,6 +47,19 @@ class DataService {
       print('Error getting user profile: $e');
       return null;
     }
+  }
+
+  static UserProfile createUserProfile(Map<String, dynamic> userData) {
+    return UserProfile(
+      id: userData['_id'] ?? '',
+      firstName: userData['first_name'] ?? '',
+      lastName: userData['last_name'] ?? '',
+      email: userData['email'] ?? '',
+      phoneNumber: userData['phone_number'] ?? '',
+      profileImage: userData['profileImage'],
+      isProfileCompleted: userData['isProfileCompleted'] ?? false,
+      gender: userData['gender'] ?? 'male',
+    );
   }
 
   Future<bool> updateUserProfile(Map<String, dynamic> data) async {
@@ -71,15 +77,58 @@ class DataService {
         return false;
       }
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/api/update-profile'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token'
-        },
-        body: json.encode(data),
+      // Tạo FormData
+      final formData = FormData.fromMap({
+        'first_name': data['first_name'] ?? '',
+        'last_name': data['last_name'] ?? '',
+        'phone_number': data['phone_number'] ?? '',
+        'gender': data['gender'] ?? 'male',
+      });
+
+      // Thêm ảnh nếu có
+      if (data['profileImage'] != null) {
+        formData.files.add(
+          MapEntry(
+            'profileImage',
+            await MultipartFile.fromFile(data['profileImage']),
+          ),
+        );
+      }
+
+      // Gọi API
+      final response = await _dio.put(
+        '${Config.baseUrl}/api/update-profile',
+        data: formData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
       );
-      return response.statusCode == 200;
+
+      if (response.statusCode == 200) {
+        // Cập nhật thông tin user trong ShareService
+        final userData = response.data['data'];
+        await ShareService.saveUserInfo(
+          userId: userData['_id'] ?? '',
+          email: userData['email'] ?? '',
+          userName: userData['user_name'] ?? '',
+          isProfileCompleted: userData['isProfileCompleted'] ?? false,
+        );
+
+        // Lưu thêm thông tin chi tiết
+        await ShareService.saveUserDetails({
+          'first_name': userData['first_name'] ?? '',
+          'last_name': userData['last_name'] ?? '',
+          'phone_number': userData['phone_number'] ?? '',
+          'gender': userData['gender'] ?? 'male',
+        });
+
+        return true;
+      }
+
+      return false;
     } catch (e) {
       print('Error updating profile: $e');
       return false;

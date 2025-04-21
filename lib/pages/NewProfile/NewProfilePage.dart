@@ -24,6 +24,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
   String _selectedGender = 'male';
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
@@ -32,16 +33,8 @@ class _NewProfilePageState extends State<NewProfilePage> {
   @override
   void initState() {
     super.initState();
-    // Khởi tạo giá trị cho các controller từ initialName
-    if (widget.initialName.isNotEmpty) {
-      final names = widget.initialName.split(' ');
-      if (names.length >= 2) {
-        _firstNameController.text = names[0];
-        _lastNameController.text = names.sublist(1).join(' ');
-      } else {
-        _firstNameController.text = widget.initialName;
-      }
-    }
+    // Khởi tạo email từ initialEmail
+    _emailController.text = widget.initialEmail;
   }
 
   Future<void> _pickImage() async {
@@ -96,17 +89,25 @@ class _NewProfilePageState extends State<NewProfilePage> {
       print('Token before update profile: $token');
 
       if (token == null || token.isEmpty) {
-        throw Exception('Vui lòng đăng nhập lại');
+        // Thử lấy token từ AuthService
+        token = await AuthService().getToken();
+        print('Token from AuthService: $token');
+        
+        if (token == null || token.isEmpty) {
+          throw Exception('Vui lòng đăng nhập lại');
+        }
+        
+        // Lưu token vào ShareService nếu chưa có
+        await ShareService.saveToken(token);
       }
 
-      // Cập nhật profile
+      // Cập nhật profile với isProfileCompleted = true
       final response = await APIService.updateProfile(
-        name: fullName,
-        email: widget.initialEmail,
-        phone: _phoneController.text.trim(),
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: _phoneController.text.trim(),
         gender: _selectedGender.toLowerCase(),
         profileImage: _imageFile,
-        isProfileCompleted: true,
       );
 
       print('Update profile response: $response');
@@ -120,13 +121,22 @@ class _NewProfilePageState extends State<NewProfilePage> {
           throw Exception('Không nhận được dữ liệu từ server');
         }
 
-        // Lưu thông tin vào local storage
+        // Lưu thông tin vào local storage với isProfileCompleted = true
         await ShareService.saveUserInfo(
-          userId: userData['_id'] ?? '',
-          email: userData['email'] ?? widget.initialEmail,
-          userName: userData['user_name'] ?? fullName,
-          isProfileCompleted: userData['isProfileCompleted'] ?? true,
+          userId: userData['_id']?.toString() ?? '',
+          email: userData['email']?.toString() ?? _emailController.text.trim(),
+          userName: fullName,
+          isProfileCompleted: true,
         );
+
+        // Lưu thêm thông tin chi tiết vào local storage
+        await ShareService.saveUserDetails({
+          'firstName': firstName,
+          'lastName': lastName,
+          'phoneNumber': _phoneController.text.trim(),
+          'gender': _selectedGender.toLowerCase(),
+          'isProfileCompleted': true,
+        });
 
         if (!mounted) return;
 
@@ -269,6 +279,13 @@ class _NewProfilePageState extends State<NewProfilePage> {
                             showDivider: true,
                           ),
                           _buildTextField(
+                            label: 'Email',
+                            controller: _emailController,
+                            showDivider: true,
+                            keyboardType: TextInputType.emailAddress,
+                            enabled: false,
+                          ),
+                          _buildTextField(
                             label: 'Phone Number',
                             controller: _phoneController,
                             showDivider: true,
@@ -290,6 +307,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
     required TextEditingController controller,
     bool showDivider = false,
     TextInputType? keyboardType,
+    bool enabled = true,
   }) {
     return Column(
       children: [
@@ -306,6 +324,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
                 fontSize: 16,
               ),
             ),
+            enabled: enabled,
           ),
         ),
         if (showDivider)
@@ -381,6 +400,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
     _firstNameController.dispose();
     _lastNameController.dispose();
     _phoneController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 }

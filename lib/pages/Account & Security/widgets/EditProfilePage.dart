@@ -35,38 +35,93 @@ class _EditProfilePageState extends State<EditProfilePage> {
     });
 
     try {
-      bool isLoggedIn = await AuthService.isLoggedIn();
-      if (!isLoggedIn) {
-        throw Exception('Please login to view information');
+      // Kiểm tra token trước
+      String? token = await ShareService.getToken();
+      print('Token for loading profile: $token');
+
+      if (token == null || token.isEmpty) {
+        // Thử lấy token từ AuthService
+        token = await AuthService().getToken();
+        print('Token from AuthService: $token');
+        
+        if (token == null || token.isEmpty) {
+          throw Exception('Vui lòng đăng nhập lại');
+        }
+        
+        // Lưu token vào ShareService nếu chưa có
+        await ShareService.saveToken(token);
       }
 
+      bool isLoggedIn = await AuthService.isLoggedIn();
+      if (!isLoggedIn) {
+        throw Exception('Vui lòng đăng nhập để xem thông tin');
+      }
+
+      // Lấy thông tin từ local storage trước
+      final userDetails = await ShareService.getUserDetails();
+      final userInfo = await ShareService.getUserInfo();
+      
+      if (userDetails != null) {
+        print('Loading user details from local storage: $userDetails');
+        setState(() {
+          _firstNameController.text = userDetails['first_name'] ?? '';
+          _lastNameController.text = userDetails['last_name'] ?? '';
+          _phoneController.text = userDetails['phone_number'] ?? '';
+          _selectedGender = userDetails['gender'] ?? 'male';
+          _emailController.text = userInfo?['email'] ?? '';
+        });
+      }
+
+      // Gọi API để lấy thông tin mới nhất
       final response = await APIService.getUserProfile();
-      print('User Profile Response: $response'); // Debug log
+      print('User Profile Response: $response');
 
       if (response['success'] == true && response['userData'] != null) {
         final userData = response['userData'];
+        
+        // Cập nhật UI với dữ liệu mới nhất
         setState(() {
-          // Lấy thông tin từ userData
-          _firstNameController.text = userData['first_name'] ?? '';
-          _lastNameController.text = userData['last_name'] ?? '';
-          _emailController.text = userData['email'] ?? '';
-          _phoneController.text = userData['phone_number'] ?? '';
-          _selectedGender = (userData['gender'] ?? 'male').toLowerCase();
+          _firstNameController.text = userData['first_name'] ?? _firstNameController.text;
+          _lastNameController.text = userData['last_name'] ?? _lastNameController.text;
+          _phoneController.text = userData['phone_number'] ?? _phoneController.text;
+          _selectedGender = (userData['gender'] ?? _selectedGender).toLowerCase();
+          _emailController.text = userData['email'] ?? _emailController.text;
           
           // Xử lý hiển thị ảnh profile nếu có
-          if (userData['profileImage'] != null && userData['profileImage'].toString().isNotEmpty) {
-            print('Profile image URL: ${userData['profileImage']}');
+          if (userData['profileImage'] != null && 
+              userData['profileImage'] is Map && 
+              userData['profileImage']['url'] != null) {
+            print('Profile image URL: ${userData['profileImage']['url']}');
             // TODO: Hiển thị ảnh từ URL
           }
         });
+
+        // Lưu thông tin mới vào local storage
+        await ShareService.saveUserDetails({
+          'first_name': _firstNameController.text,
+          'last_name': _lastNameController.text,
+          'phone_number': _phoneController.text,
+          'gender': _selectedGender,
+        });
+
+        // Cập nhật thông tin user
+        await ShareService.saveUserInfo(
+          userId: userData['_id'] ?? userInfo?['userId'] ?? '',
+          email: userData['email'] ?? userInfo?['email'] ?? '',
+          userName: '${_firstNameController.text} ${_lastNameController.text}',
+          isProfileCompleted: true
+        );
       } else {
-        throw Exception('Cannot get user information');
+        throw Exception('Không thể lấy thông tin người dùng');
       }
     } catch (e) {
       print('Error loading profile: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text('Lỗi: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -120,12 +175,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       // Cập nhật profile
       final response = await APIService.updateProfile(
-        name: fullName,
-        email: _emailController.text.trim(),
-        phone: _phoneController.text.trim(),
+        firstName: firstName,
+        lastName: lastName,
+        phoneNumber: _phoneController.text.trim(),
         gender: _selectedGender.toLowerCase(),
         profileImage: _imageFile,
-        isProfileCompleted: true,
       );
 
       print('Update profile response: $response');
@@ -141,11 +195,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         // Lưu thông tin vào local storage
         await ShareService.saveUserInfo(
-          userId: userData['_id'] ?? '',
-          email: userData['email'] ?? _emailController.text.trim(),
-          userName: userData['user_name'] ?? fullName,
-          isProfileCompleted: userData['isProfileCompleted'] ?? true,
+          userId: userData['_id']?.toString() ?? '',
+          email: userData['email']?.toString() ?? _emailController.text.trim(),
+          userName: fullName,
+          isProfileCompleted: true
         );
+
+        // Lưu thêm thông tin chi tiết
+        await ShareService.saveUserDetails({
+          'first_name': userData['first_name']?.toString() ?? '',
+          'last_name': userData['last_name']?.toString() ?? '',
+          'phone_number': userData['phone_number']?.toString() ?? '',
+          'gender': userData['gender']?.toString() ?? 'male',
+        });
 
         if (!mounted) return;
 

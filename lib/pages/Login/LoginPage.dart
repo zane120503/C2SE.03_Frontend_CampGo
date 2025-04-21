@@ -54,23 +54,41 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response['success'] == true) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đăng nhập thành công!')),
-        );
-
+        
         // Kiểm tra isProfileCompleted để điều hướng
         bool isProfileCompleted = response['isProfileCompleted'] ?? false;
+        print('isProfileCompleted: $isProfileCompleted');
+
+        // Lấy thông tin user từ response
+        final userData = response['data']?['user'] ?? {};
+        final userName = userData['user_name'] ?? '';
+        final userEmail = userData['email'] ?? '';
+
+        print('User data from login: $userData');
+
         if (isProfileCompleted) {
           // Nếu đã có profile, chuyển đến trang chính
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đăng nhập thành công!'),
+              backgroundColor: Colors.green,
+            ),
+          );
           Navigator.pushReplacementNamed(context, '/main');
         } else {
           // Nếu chưa có profile, chuyển đến trang tạo profile mới
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Vui lòng cập nhật thông tin cá nhân'),
+              backgroundColor: Colors.blue,
+            ),
+          );
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => NewProfilePage(
-                initialName: response['userName'] ?? '',
-                initialEmail: response['userEmail'] ?? '',
+                initialName: userName,
+                initialEmail: userEmail,
               ),
             ),
           );
@@ -78,13 +96,19 @@ class _LoginPageState extends State<LoginPage> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response['message'] ?? 'Đăng nhập thất bại')),
+          SnackBar(
+            content: Text(response['message'] ?? 'Đăng nhập thất bại'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: ${e.toString()}')),
+        SnackBar(
+          content: Text('Lỗi: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) {

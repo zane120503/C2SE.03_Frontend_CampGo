@@ -110,10 +110,10 @@ class _OtpPageState extends State<OtpPage> {
       if (response['success'] == true) {
         if (!mounted) return;
         
-        // Lưu resetToken vào ShareService
-        if (response['resetToken'] != null) {
-          await ShareService.saveResetToken(response['resetToken']);
-          print('Reset token saved: ${response['resetToken']}');
+        // Lưu token vào ShareService
+        if (response['token'] != null) {
+          await ShareService.saveToken(response['token']);
+          print('Token saved: ${response['token']}');
         }
         
         // Hiển thị thông báo thành công

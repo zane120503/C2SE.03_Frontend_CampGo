@@ -6,12 +6,14 @@ import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:CampGo/services/share_service.dart';
 
 class APIService {
   static String? _authToken;
   static Dio? _dio;
   static String get baseUrl => Config.baseUrl;
   static Map<String, dynamic> _cache = {};
+  static const String _tokenKey = 'auth_token';
 
   static void _initDio() {
     if (_dio == null) {
@@ -153,143 +155,119 @@ class APIService {
     }
   }
 
+  static Future<String?> _getAuthToken() async {
+    try {
+      // Thử lấy token từ ShareService
+      String? token = await ShareService.getToken();
+      if (token != null && token.isNotEmpty) {
+        return token;
+      }
+
+      // Nếu không có trong ShareService, thử lấy từ local storage
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString(_tokenKey);
+      if (token != null && token.isNotEmpty) {
+        // Nếu có token trong local storage, đồng bộ lại vào ShareService
+        await ShareService.saveToken(token);
+        return token;
+      }
+
+      return null;
+    } catch (e) {
+      print('Error getting auth token: $e');
+      return null;
+    }
+  }
+
   static Future<Map<String, dynamic>> updateProfile({
-    required String name,
-    required String email,
-    required String phone,
+    required String firstName,
+    required String lastName,
+    required String phoneNumber,
     required String gender,
-    required bool isProfileCompleted,
     File? profileImage,
   }) async {
     try {
-      _initDio();
-      if (_dio == null) {
-        throw Exception('Dio instance is null');
+      // Kiểm tra dữ liệu đầu vào
+      if (firstName.isEmpty || lastName.isEmpty || phoneNumber.isEmpty || gender.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Vui lòng điền đầy đủ thông tin'
+        };
       }
 
-      // Kiểm tra token
-      if (_authToken == null) {
-        throw Exception('Không có token xác thực. Vui lòng đăng nhập lại.');
+      final token = await _getAuthToken();
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'Vui lòng đăng nhập lại'
+        };
       }
 
-      // Tách tên thành first_name và last_name
-      final nameParts = name.split(' ');
-      final firstName = nameParts.first;
-      final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-
-      print('Preparing data for API:');
-      print('First Name: $firstName');
-      print('Last Name: $lastName');
-      print('Full Name: $name');
-      print('Email: $email');
-      print('Phone: $phone');
-      print('Gender: $gender');
-      print('Is Profile Completed: $isProfileCompleted');
-      print('Profile Image: ${profileImage?.path}');
-      print('Using Authorization Token: Bearer $_authToken');
-
-      // Chuẩn bị dữ liệu cơ bản
-      final Map<String, dynamic> data = {
+      // Tạo FormData
+      final formData = FormData.fromMap({
         'first_name': firstName,
         'last_name': lastName,
-        'user_name': name,
-        'email': email,
-        'phone_number': phone,
-        'gender': gender.toLowerCase(),
+        'phone_number': phoneNumber,
+        'gender': gender,
         'isProfileCompleted': true,
-        'isAccountVerified': true,
-        'verifyOtp': '',
-        'verifyOtpExpireAt': 0,
-        'resetOtp': '',
-        'resetOtpExpireAt': '0',
-        '__v': 0,
-        'password': '', // Thêm trường password rỗng
-      };
+      });
 
-      Response response;
-
+      // Thêm ảnh nếu có
       if (profileImage != null) {
-        // Nếu có ảnh, sử dụng FormData
-        final formData = FormData.fromMap(data);
-        
         String? mimeType = lookupMimeType(profileImage.path);
-        if (mimeType == null) {
-          throw Exception('Cannot determine file type');
-        }
-
-        formData.files.add(MapEntry(
-          'profileImage',
-          await MultipartFile.fromFile(
-            profileImage.path,
-            contentType: MediaType.parse(mimeType),
-          ),
-        ));
-
-        print('Sending request to API with FormData and image');
-        print('Request data: ${formData.fields}');
-        
-        response = await _dio!.put(
-          '/api/update-profile',
-          data: formData,
-          options: Options(
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $_authToken',
-            },
-            contentType: 'multipart/form-data',
-            validateStatus: (status) => true,
-          ),
-        );
-      } else {
-        // Nếu không có ảnh, gửi dữ liệu JSON
-        print('Sending request to API with JSON data');
-        print('Request data: $data');
-        
-        response = await _dio!.put(
-          '/api/update-profile',
-          data: data,
-          options: Options(
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_authToken',
-            },
-            validateStatus: (status) => true,
+        formData.files.add(
+          MapEntry(
+            'profileImage',
+            await MultipartFile.fromFile(
+              profileImage.path,
+              contentType: mimeType != null ? MediaType.parse(mimeType) : null,
+            ),
           ),
         );
       }
 
-      print('API Response status: ${response.statusCode}');
-      print('API Response data: ${response.data}');
+      // Gọi API
+      _initDio();
+      final response = await _dio!.put(
+        '/api/update-profile',
+        data: formData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (response.data['success'] == true) {
-          return {
-            'success': true,
-            'message': 'Profile updated successfully',
-            'userData': response.data['data'] ?? response.data['user'],
-          };
-        }
+      print('Update profile response: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final userData = response.data['data'] ?? {};
+        
+        // Lưu thông tin vào ShareService
+        await ShareService.saveUserInfo(
+          userId: userData['_id'] ?? '',
+          email: userData['email'] ?? '',
+          userName: '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}',
+          isProfileCompleted: true,
+        );
+
+        return {
+          'success': true,
+          'message': 'Cập nhật thông tin thành công',
+          'data': userData,
+        };
       }
 
       return {
         'success': false,
-        'message': response.data['message'] ?? 'Failed to update profile',
-      };
-
-    } on DioException catch (e) {
-      print('DioException: ${e.message}');
-      print('Response data: ${e.response?.data}');
-      print('Response status code: ${e.response?.statusCode}');
-      return {
-        'success': false,
-        'message': e.response?.data['message'] ?? 'Network error occurred',
+        'message': response.data['message'] ?? 'Cập nhật thông tin thất bại',
       };
     } catch (e) {
       print('Error updating profile: $e');
       return {
         'success': false,
-        'message': e.toString(),
+        'message': 'Lỗi cập nhật thông tin: $e',
       };
     }
   }

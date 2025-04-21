@@ -1,3 +1,4 @@
+import 'package:CampGo/models/user_model.dart';
 import 'package:CampGo/services/share_service.dart';
 import 'package:CampGo/config/config.dart';
 import 'package:CampGo/model/login_response_model.dart';
@@ -6,6 +7,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 
 class AuthService {
   static String? _lastProductRoute;
@@ -42,8 +44,26 @@ class AuthService {
 
   static Future<bool> isLoggedIn() async {
     try {
+      // Thử lấy token từ ShareService
       String? token = await ShareService.getToken();
-      return token != null && token.isNotEmpty;
+      print('Token from ShareService: $token');
+      
+      if (token != null && token.isNotEmpty) {
+        return true;
+      }
+
+      // Nếu không có trong ShareService, thử lấy từ local storage
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString(_tokenKey);
+      print('Token from local storage: $token');
+      
+      if (token != null && token.isNotEmpty) {
+        // Nếu có token trong local storage, đồng bộ lại vào ShareService
+        await ShareService.saveToken(token);
+        return true;
+      }
+
+      return false;
     } catch (e) {
       print("Error checking login status: $e");
       return false;
@@ -52,7 +72,7 @@ class AuthService {
 
   static Future<void> logout(BuildContext context) async {
     try {
-      await ShareService.clearLoginDetails();
+      await ShareService.clearUserData();
       // Navigate to login page and clear all routes
       Navigator.of(context).pushNamedAndRemoveUntil(
         '/login',
@@ -201,8 +221,9 @@ class AuthService {
           final token = data['token'];
           print('Login success, saving token: $token');
           
-          // Lưu token vào ShareService
+          // Lưu token vào cả ShareService và local storage
           await ShareService.saveToken(token);
+          await setToken(token);
           
           // Lưu thông tin user
           final user = data['user'] ?? {};
@@ -213,11 +234,16 @@ class AuthService {
             isProfileCompleted: user['isProfileCompleted'] ?? false,
           );
 
+          // Lưu chi tiết user
+          await ShareService.saveUserDetails(user);
+
+          print('User info saved successfully');
+
           return {
             'success': true,
             'message': data['message'] ?? 'Đăng nhập thành công',
             'data': data,
-            'isProfileCompleted': true,
+            'isProfileCompleted': user['isProfileCompleted'] ?? false,
             'userName': user['user_name'] ?? '',
             'userEmail': user['email'] ?? ''
           };
@@ -357,18 +383,70 @@ class AuthService {
   }
 
   Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    try {
+      // Thử lấy token từ ShareService trước
+      String? token = await ShareService.getToken();
+      print('Token from ShareService: $token');
+      
+      if (token != null && token.isNotEmpty) {
+        return token;
+      }
+
+      // Nếu không có trong ShareService, thử lấy từ local storage
+      final prefs = await SharedPreferences.getInstance();
+      token = prefs.getString(_tokenKey);
+      print('Token from local storage: $token');
+      
+      if (token != null && token.isNotEmpty) {
+        // Nếu có token trong local storage, đồng bộ lại vào ShareService
+        await ShareService.saveToken(token);
+        return token;
+      }
+
+      // Nếu vẫn không có token, thử lấy từ response của login
+      final userInfo = await ShareService.getUserInfo();
+      if (userInfo != null && userInfo['token'] != null) {
+        token = userInfo['token'];
+        await ShareService.saveToken(token!);
+        return token;
+      }
+
+      // Nếu vẫn không có token, thử lấy từ response của login trong data
+      final userDetails = await ShareService.getUserDetails();
+      if (userDetails != null && userDetails['token'] != null) {
+        token = userDetails['token'];
+        await ShareService.saveToken(token!);
+        return token;
+      }
+
+      print('No token found in any storage');
+      return null;
+    } catch (e) {
+      print('Error getting token: $e');
+      return null;
+    }
   }
 
   Future<void> setToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
+    try {
+      // Lưu token vào cả ShareService và local storage
+      await ShareService.saveToken(token);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_tokenKey, token);
+    } catch (e) {
+      print('Error setting token: $e');
+    }
   }
 
   Future<void> clearToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
+    try {
+      // Xóa token từ cả ShareService và local storage
+      await ShareService.clearUserData();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_tokenKey);
+    } catch (e) {
+      print('Error clearing token: $e');
+    }
   }
 
   Future<void> setLoginDetails(LoginResponseModel loginResponse) async {
@@ -378,6 +456,8 @@ class AuthService {
     await ShareService.saveUserInfo(
       userId: loginResponse.id ?? '',
       email: loginResponse.email ?? '',
+      userName: loginResponse.user_name ?? '',
+      isProfileCompleted: loginResponse.isProfileCompleted ?? false,
     );
   }
 
@@ -452,11 +532,11 @@ class AuthService {
 
   Future<Map<String, dynamic>> resetPassword(String email, String otp, String newPassword) async {
     try {
-      String? resetToken = await ShareService.getResetToken();
-      if (resetToken == null) {
+      String? token = await ShareService.getToken();
+      if (token == null) {
         return {
           'success': false,
-          'message': 'Không tìm thấy reset token'
+          'message': 'Không tìm thấy token xác thực'
         };
       }
 
@@ -471,7 +551,7 @@ class AuthService {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'Authorization': 'Bearer $resetToken',
+            'Authorization': 'Bearer $token',
           },
           validateStatus: (status) {
             return status! < 500;
@@ -481,9 +561,9 @@ class AuthService {
 
       print('Reset password response: ${response.data}'); // Debug log
       
-      // Xóa reset token sau khi đặt lại mật khẩu thành công
+      // Xóa token sau khi đặt lại mật khẩu thành công
       if (response.data['success'] == true) {
-        await ShareService.removeResetToken();
+        await ShareService.clearUserData();
       }
       
       return response.data;
@@ -576,6 +656,131 @@ class AuthService {
     } catch (e) {
       print('Error updating user profile: $e');
       throw Exception('Lỗi cập nhật thông tin người dùng');
+    }
+  }
+
+  Future<void> updateProfileCompletionStatus(bool isCompleted) async {
+    try {
+      String? token = await getToken();
+      if (token == null) {
+        throw Exception('Không có token xác thực. Vui lòng đăng nhập lại.');
+      }
+
+      final response = await _dio.put(
+        '${Config.baseUrl}/api/users/update-profile-completion',
+        data: {
+          'isProfileCompleted': isCompleted,
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        // Cập nhật thông tin user trong ShareService
+        final userInfo = await ShareService.getUserInfo();
+        if (userInfo != null) {
+          await ShareService.saveUserInfo(
+            userId: userInfo['userId'] ?? '',
+            email: userInfo['email'] ?? '',
+            userName: userInfo['userName'] ?? '',
+            isProfileCompleted: isCompleted,
+          );
+        }
+      } else {
+        throw Exception('Lỗi cập nhật trạng thái profile');
+      }
+    } catch (e) {
+      print('Error updating profile completion status: $e');
+      throw Exception('Lỗi cập nhật trạng thái profile: $e');
+    }
+  }
+
+  Future<UserProfile> updateProfile({
+    required String firstName,
+    required String lastName,
+    required String phoneNumber,
+    required String gender,
+    String? profileImagePath,
+  }) async {
+    try {
+      String? token = await ShareService.getToken();
+      
+      if (token == null) {
+        throw Exception('Không thể lấy token. Vui lòng đăng nhập lại.');
+      }
+
+      // Tạo FormData với tên trường khớp với MongoDB
+      final formData = FormData.fromMap({
+        'firstName': firstName,
+        'lastName': lastName,
+        'phoneNumber': phoneNumber,
+        'gender': gender,
+        'isProfileCompleted': true, // Thêm trường này để cập nhật trạng thái
+      });
+
+      // Thêm ảnh nếu có
+      if (profileImagePath != null && profileImagePath.isNotEmpty) {
+        formData.files.add(
+          MapEntry(
+            'profileImage',
+            await MultipartFile.fromFile(profileImagePath),
+          ),
+        );
+      }
+
+      // Gọi API với URL đúng
+      final response = await _dio.put(
+        '${Config.baseUrl}/api/update-profile',
+        data: formData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final userData = response.data['data'] ?? {};
+        
+        // Cập nhật thông tin user trong ShareService
+        await ShareService.saveUserInfo(
+          userId: userData['_id'] ?? '',
+          email: userData['email'] ?? '',
+          userName: userData['userName'] ?? '',
+          isProfileCompleted: true, // Đảm bảo cập nhật trạng thái
+        );
+
+        // Lưu thông tin chi tiết
+        await ShareService.saveUserDetails({
+          'firstName': userData['firstName'] ?? '',
+          'lastName': userData['lastName'] ?? '',
+          'phoneNumber': userData['phoneNumber'] ?? '',
+          'gender': userData['gender'] ?? 'male',
+          'isProfileCompleted': true,
+        });
+
+        // Tạo và trả về UserProfile
+        return UserProfile(
+          id: userData['_id'] ?? '',
+          firstName: userData['firstName'] ?? '',
+          lastName: userData['lastName'] ?? '',
+          email: userData['email'] ?? '',
+          phoneNumber: userData['phoneNumber'] ?? '',
+          profileImage: userData['profileImage'],
+          isProfileCompleted: true,
+          gender: userData['gender'] ?? 'male',
+        );
+      } else {
+        throw Exception('Cập nhật thông tin thất bại: ${response.data['message'] ?? 'Không có thông báo lỗi'}');
+      }
+    } catch (e) {
+      print('Lỗi khi cập nhật profile: $e');
+      throw Exception('Cập nhật thông tin thất bại: $e');
     }
   }
 }

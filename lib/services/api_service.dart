@@ -244,7 +244,17 @@ class APIService {
       final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
       // Chuẩn bị dữ liệu
-      Map<String, String> fields = {
+      var dio = Dio();
+      
+      // Cấu hình Dio instance
+      dio.options.baseUrl = baseUrl;
+      dio.options.headers = {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      };
+
+      // Tạo form data
+      var formData = FormData.fromMap({
         'first_name': firstName,
         'last_name': lastName,
         'user_name': name,
@@ -252,50 +262,36 @@ class APIService {
         'phone_number': phone,
         'gender': gender,
         'isProfileCompleted': isProfileCompleted.toString()
-      };
-
-      // Tạo request
-      final uri = Uri.parse('$baseUrl/api/update-profile');
-      var request = http.MultipartRequest('PUT', uri);
-      
-      // Thêm headers
-      request.headers.addAll({
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json'
-      });
-
-      // Thêm các trường dữ liệu
-      fields.forEach((key, value) {
-        request.fields[key] = value;
       });
 
       // Thêm file ảnh nếu có
       if (profileImage != null) {
         String fileName = profileImage.path.split('/').last;
-        String mimeType = lookupMimeType(profileImage.path) ?? 'image/jpeg';
-        
-        var multipartFile = await http.MultipartFile.fromPath(
-          'profileImage',
-          profileImage.path,
-          contentType: MediaType.parse(mimeType)
+        formData.files.add(
+          MapEntry(
+            'profileImage',
+            await MultipartFile.fromFile(
+              profileImage.path,
+              filename: fileName,
+              contentType: MediaType.parse(lookupMimeType(profileImage.path) ?? 'image/jpeg'),
+            ),
+          ),
         );
-        request.files.add(multipartFile);
       }
 
       print('Sending update profile request...');
-      print('URL: $uri');
-      print('Headers: ${request.headers}');
-      print('Fields: ${request.fields}');
+      print('URL: $baseUrl/api/update-profile');
+      print('Headers: ${dio.options.headers}');
+      print('FormData fields: ${formData.fields}');
 
-      // Gửi request và đợi response
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
+      // Gửi request
+      final response = await dio.put('/api/update-profile', data: formData);
 
       print('Update profile response status: ${response.statusCode}');
-      print('Update profile response body: ${response.body}');
+      print('Update profile response data: ${response.data}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        var data = json.decode(response.body);
+        var data = response.data;
         
         if (data['success'] == true) {
           // Lưu thông tin user mới vào ShareService
@@ -314,12 +310,18 @@ class APIService {
         }
       }
 
-      var errorData = json.decode(response.body);
       return {
         'success': false,
-        'message': errorData['message'] ?? 'Cập nhật thông tin thất bại'
+        'message': response.data['message'] ?? 'Cập nhật thông tin thất bại'
       };
 
+    } on DioException catch (e) {
+      print('Dio error: ${e.message}');
+      print('Dio error response: ${e.response?.data}');
+      return {
+        'success': false,
+        'message': e.response?.data['message'] ?? 'Lỗi kết nối: ${e.message}'
+      };
     } catch (e) {
       print('Error updating profile: $e');
       return {
