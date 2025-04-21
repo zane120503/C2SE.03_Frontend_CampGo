@@ -131,11 +131,10 @@ class _NewProfilePageState extends State<NewProfilePage> {
 
         // Lưu thêm thông tin chi tiết vào local storage
         await ShareService.saveUserDetails({
-          'firstName': firstName,
-          'lastName': lastName,
-          'phoneNumber': _phoneController.text.trim(),
+          'first_name': firstName,
+          'last_name': lastName,
+          'phone_number': _phoneController.text.trim(),
           'gender': _selectedGender.toLowerCase(),
-          'isProfileCompleted': true,
         });
 
         if (!mounted) return;

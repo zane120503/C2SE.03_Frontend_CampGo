@@ -102,6 +102,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           'last_name': _lastNameController.text,
           'phone_number': _phoneController.text,
           'gender': _selectedGender,
+          'isProfileCompleted': true,
         });
 
         // Cập nhật thông tin user

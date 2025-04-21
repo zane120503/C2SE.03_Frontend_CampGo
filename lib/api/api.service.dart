@@ -139,13 +139,51 @@ class APIService {
   // USER PROFILE METHODS
   static Future<Map<String, dynamic>> getUserProfile() async {
     try {
-      _initDio(); // Đảm bảo _dio đã được khởi tạo với token
+      _initDio(); // Đảm bảo _dio đã được khởi tạo
       print('Đang lấy thông tin user profile...'); // Debug log
       
-      final response = await _dio!.get('/api/data-users');
+      // Lấy token từ ShareService
+      final token = await ShareService.getToken();
+      if (token == null) {
+        throw Exception('Vui lòng đăng nhập lại');
+      }
+
+      // Gọi API với token trong header
+      final response = await _dio!.get(
+        '/api/data-users',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      
       print('Response từ API user profile: ${response.data}'); // Debug log
       
       if (response.statusCode == 200) {
+        // Lưu thông tin vào ShareService
+        if (response.data['success'] == true && response.data['userData'] != null) {
+          final userData = response.data['userData'];
+          
+          // Lưu thông tin user
+          await ShareService.saveUserInfo(
+            userId: userData['_id'] ?? '',
+            email: userData['email'] ?? '',
+            userName: '${userData['first_name'] ?? ''} ${userData['last_name'] ?? ''}',
+            isProfileCompleted: userData['isProfileCompleted'] ?? false,
+          );
+
+          // Lưu thông tin chi tiết
+          await ShareService.saveUserDetails({
+            'firstName': userData['first_name'] ?? '',
+            'lastName': userData['last_name'] ?? '',
+            'phoneNumber': userData['phone_number'] ?? '',
+            'gender': userData['gender'] ?? 'male',
+            'isProfileCompleted': userData['isProfileCompleted'] ?? false,
+          });
+        }
         return response.data;
       }
       throw Exception('Không thể lấy thông tin người dùng');
@@ -203,7 +241,7 @@ class APIService {
         };
       }
 
-      // Tạo FormData
+      // Tạo FormData với tên trường khớp với NewProfile
       final formData = FormData.fromMap({
         'first_name': firstName,
         'last_name': lastName,
@@ -244,13 +282,22 @@ class APIService {
       if (response.statusCode == 200) {
         final userData = response.data['data'] ?? {};
         
-        // Lưu thông tin vào ShareService
+        // Lưu thông tin vào ShareService với tên trường khớp với NewProfile
         await ShareService.saveUserInfo(
           userId: userData['_id'] ?? '',
           email: userData['email'] ?? '',
-          userName: '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}',
+          userName: '${userData['first_name'] ?? ''} ${userData['last_name'] ?? ''}',
           isProfileCompleted: true,
         );
+
+        // Lưu thông tin chi tiết với tên trường khớp với NewProfile
+        await ShareService.saveUserDetails({
+          'first_name': userData['first_name'] ?? '',
+          'last_name': userData['last_name'] ?? '',
+          'phone_number': userData['phone_number'] ?? '',
+          'gender': userData['gender'] ?? 'male',
+          'isProfileCompleted': true,
+        });
 
         return {
           'success': true,
