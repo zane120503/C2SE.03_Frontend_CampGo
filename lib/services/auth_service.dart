@@ -505,49 +505,62 @@ class AuthService {
   Future<Map<String, dynamic>> changePassword({
     required String currentPassword,
     required String newPassword,
-    required String confirmPassword,
   }) async {
     try {
-      String? token = await getToken();
+      final token = await ShareService.getToken();
       if (token == null) {
         return {
           'success': false,
-          'message': 'Không tìm thấy token xác thực'
+          'message': 'Vui lòng đăng nhập lại',
         };
       }
 
-      final response = await _dio.post(
+      final response = await _dio.put(
         '${Config.baseUrl}/api/auth/change-password',
         data: {
           'currentPassword': currentPassword,
           'newPassword': newPassword,
-          'confirmPassword': confirmPassword,
+          'confirmPassword': newPassword,
         },
         options: Options(
           headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
             'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
           },
-          validateStatus: (status) {
-            return status! < 500;
-          },
+          validateStatus: (status) => status! < 500,
         ),
       );
 
+      print('Change password request data: ${{
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+        'confirmPassword': newPassword,
+      }}');
       print('Change password response: ${response.data}');
-      return response.data;
-    } catch (e) {
-      print('Change password error: $e');
-      if (e is DioException && e.response?.data != null) {
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': response.data['message'] ?? 'Đổi mật khẩu thành công',
+        };
+      } else {
         return {
           'success': false,
-          'message': e.response?.data['message'] ?? 'Lỗi đổi mật khẩu'
+          'message': response.data['message'] ?? 'Đổi mật khẩu thất bại',
         };
       }
+    } on DioException catch (e) {
+      print('Error changing password: ${e.message}');
+      print('Error response: ${e.response?.data}');
       return {
         'success': false,
-        'message': 'Lỗi kết nối: $e'
+        'message': e.response?.data['message'] ?? 'Có lỗi xảy ra khi đổi mật khẩu',
+      };
+    } catch (e) {
+      print('Unexpected error: $e');
+      return {
+        'success': false,
+        'message': 'Có lỗi xảy ra khi đổi mật khẩu',
       };
     }
   }

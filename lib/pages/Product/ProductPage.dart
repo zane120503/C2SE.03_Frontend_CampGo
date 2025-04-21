@@ -38,16 +38,26 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
         if (reviewResponse['success'] == true && reviewResponse['data'] != null) {
           averageRating = (reviewResponse['data']['summary']?['averageRating'] ?? 0.0).toDouble();
         }
+
+        // Xử lý URL hình ảnh
+        String imageUrl = '';
+        if (productData['images'] != null && productData['images'] is List && productData['images'].isNotEmpty) {
+          var firstImage = productData['images'][0];
+          if (firstImage is Map && firstImage.containsKey('url')) {
+            imageUrl = firstImage['url'].toString();
+          }
+        }
+
         setState(() {
           product = {
             'id': productData['_id'],
             'name': productData['productName'],
             'description': productData['description'],
             'price': productData['price'],
-            'originalPrice': productData['originalPrice'],
-            'discountedPrice': productData['discountedPrice'],
+            'originalPrice': productData['price'],
+            'discountedPrice': productData['price'] * (1 - (productData['discount'] ?? 0) / 100),
             'discountPercentage': productData['discount'],
-            'imageURL': productData['imageURL'],
+            'imageURL': imageUrl,
             'stockQuantity': productData['stockQuantity'],
             'soldCount': productData['sold'],
             'brand': productData['brand'],
@@ -58,6 +68,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
           isLoading = false;
         });
         print('Product loaded: ${product?['name']}');
+        print('Image URL: ${product?['imageURL']}');
       } else {
         print('Error loading product: ${response['message']}');
         setState(() {
@@ -187,6 +198,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
 
       // Gọi API thêm vào giỏ hàng
       final response = await APIService.addToCart(widget.productId, quantity);
+      print('Add to cart response: $response'); // Debug log
       
       if (response['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -197,41 +209,50 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
         );
 
         // Chuyển đến trang giỏ hàng nếu người dùng muốn
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text('Thêm vào giỏ hàng thành công'),
-              content: Text('Bạn có muốn xem giỏ hàng không?'),
-              actions: <Widget>[
-                TextButton(
-                  child: Text('Tiếp tục mua sắm'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-                TextButton(
-                  child: Text('Xem giỏ hàng'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    Navigator.pushNamed(context, '/cart');
-                  },
-                ),
-              ],
-            );
-          },
-        );
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: Text('Thêm vào giỏ hàng thành công'),
+                content: Text('Bạn có muốn xem giỏ hàng không?'),
+                actions: <Widget>[
+                  TextButton(
+                    child: Text('Tiếp tục mua sắm'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  TextButton(
+                    child: Text('Xem giỏ hàng'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.pushNamed(context, '/cart').then((_) {
+                        // Refresh cart data when returning from cart page
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      });
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        }
       } else {
         throw Exception(response['message'] ?? 'Không thể thêm vào giỏ hàng');
       }
     } catch (e) {
       print('Error adding to cart: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

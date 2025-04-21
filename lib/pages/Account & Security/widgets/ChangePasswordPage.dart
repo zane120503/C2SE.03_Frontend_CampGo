@@ -44,23 +44,23 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
       // Validate old password
       if (oldPassword.isEmpty) {
-        _oldPasswordError = 'Please enter your old password';
+        _oldPasswordError = 'Vui lòng nhập mật khẩu cũ';
       } else if (oldPassword.length < 6) {
-        _oldPasswordError = 'Old password must be at least 6 characters';
+        _oldPasswordError = 'Mật khẩu cũ phải có ít nhất 6 ký tự';
       }
 
       // Validate new password
       if (newPassword.isEmpty) {
-        _newPasswordError = 'Please enter your new password';
+        _newPasswordError = 'Vui lòng nhập mật khẩu mới';
       } else if (newPassword.length < 6) {
-        _newPasswordError = 'New password must be at least 6 characters';
+        _newPasswordError = 'Mật khẩu mới phải có ít nhất 6 ký tự';
       }
 
       // Validate confirm password
       if (confirmPassword.isEmpty) {
-        _confirmPasswordError = 'Please confirm your new password';
+        _confirmPasswordError = 'Vui lòng xác nhận mật khẩu mới';
       } else if (confirmPassword != newPassword) {
-        _confirmPasswordError = 'Confirm password does not match';
+        _confirmPasswordError = 'Mật khẩu xác nhận không khớp';
       }
 
       _isFormValid = oldPassword.length >= 6 &&
@@ -81,7 +81,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       final result = await AuthService().changePassword(
         currentPassword: _oldPasswordController.text,
         newPassword: _newPasswordController.text,
-        confirmPassword: _confirmPasswordController.text,
       );
 
       if (!mounted) return;
@@ -90,8 +89,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'Password changed successfully',
+            content: Text(
+              result['message'] ?? 'Đổi mật khẩu thành công',
               textAlign: TextAlign.center,
             ),
             backgroundColor: Colors.green,
@@ -101,14 +100,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         setState(() {
           _errorMessage = result['message'];
           if (result['message'].toString().toLowerCase().contains('current password')) {
-            _oldPasswordError = 'Old password is incorrect';
+            _oldPasswordError = 'Mật khẩu cũ không chính xác';
           }
         });
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Error: $e';
+        _errorMessage = 'Lỗi: $e';
       });
     } finally {
       if (mounted) {

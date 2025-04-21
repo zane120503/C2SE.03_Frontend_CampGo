@@ -76,7 +76,7 @@ class ReviewService {
         images ?? [],
       );
       
-      return response;
+      return response['success'] ?? false;
     } catch (e) {
       print('Error adding review: $e');
       return false;

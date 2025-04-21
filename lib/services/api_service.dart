@@ -498,6 +498,7 @@ class APIService {
       );
 
       print('API Response Status: ${response.statusCode}');
+      print('API Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -512,8 +513,6 @@ class APIService {
             final discount = (product['discount'] ?? 0).toDouble();
             final finalPrice = price * (1 - discount / 100);
             
-            print('Product: ${product['productName']} - Original: $price - Discount: $discount% - Final: $finalPrice');
-            
             // Kiểm tra khoảng giá
             bool isInPriceRange = true;
             if (minPrice != null) {
@@ -525,25 +524,45 @@ class APIService {
             
             return isInPriceRange;
           }).map((product) {
-            final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0.0;
-            final discount = (product['discount'] ?? 0).toDouble();
-            final finalPrice = price * (1 - discount / 100);
+            // Xử lý hình ảnh từ backend
+            String imageUrl = '';
+            if (product['images'] != null && product['images'] is List && product['images'].isNotEmpty) {
+              var firstImage = product['images'][0];
+              if (firstImage is Map && firstImage.containsKey('url')) {
+                imageUrl = firstImage['url'].toString();
+              } else if (firstImage is String) {
+                imageUrl = firstImage;
+              }
+            } else if (product['imageURL'] != null) {
+              imageUrl = product['imageURL'];
+            }
+
+            // Thêm base URL nếu imageUrl là đường dẫn tương đối
+            if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
+              imageUrl = '${Config.baseUrl}$imageUrl';
+            }
+
+            print('Product ID: ${product['_id']}');
+            print('Product Name: ${product['productName']}');
+            print('Original Price: ${product['price']}');
+            print('Discount: ${product['discount']}%');
+            print('Discounted Price: ${product['price'] * (1 - product['discount'] / 100)}');
+            print('Image URL: $imageUrl');
             
             return {
               '_id': product['_id'] ?? '',
               'name': product['productName'] ?? '',
               'description': product['description'] ?? '',
-              'originalPrice': price,
-              'discountedPrice': finalPrice,
-              'price': price,
-              'images': product['images'] ?? [],
-              'imageURL': product['imageURL'] ?? '',
+              'originalPrice': product['price'] ?? 0.0,
+              'price': product['price'] ?? 0.0,
+              'discountedPrice': product['price'] * (1 - product['discount'] / 100),
+              'imageURL': imageUrl,
               'rating': product['rating']?.toDouble() ?? 5.0,
               'soldCount': product['sold'] ?? 0,
               'stockQuantity': product['stockQuantity'] ?? 0,
               'categoryID': product['categoryID'] ?? '',
               'brand': product['brand'] ?? '',
-              'discount': discount,
+              'discount': product['discount']?.toDouble() ?? 0.0,
             };
           }).toList();
 
@@ -605,9 +624,77 @@ class APIService {
     }
   }
 
+  static Future<Map<String, dynamic>> getCart() async {
+    try {
+      final token = await ShareService.getToken();
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'Vui lòng đăng nhập để xem giỏ hàng',
+          'data': {'items': [], 'cartTotal': 0.0}
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/cart'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('Get cart response status: ${response.statusCode}');
+      print('Get cart response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          final items = data['data']['items'] as List<dynamic>? ?? [];
+          final cartTotal = (data['data']['cartTotal'] ?? 0.0).toDouble();
+          
+          // Kiểm tra và xử lý các sản phẩm null
+          final validItems = items.where((item) => 
+            item['product'] != null && 
+            item['quantity'] != null && 
+            item['price'] != null
+          ).toList();
+          
+          return {
+            'success': true,
+            'data': {
+              'items': validItems,
+              'cartTotal': cartTotal
+            },
+            'message': 'Lấy giỏ hàng thành công'
+          };
+        }
+      }
+      
+      return {
+        'success': false,
+        'message': 'Không thể lấy thông tin giỏ hàng',
+        'data': {'items': [], 'cartTotal': 0.0}
+      };
+    } catch (e) {
+      print('Error getting cart: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi khi lấy thông tin giỏ hàng: $e',
+        'data': {'items': [], 'cartTotal': 0.0}
+      };
+    }
+  }
+
   static Future<Map<String, dynamic>> addToCart(String productId, int quantity) async {
     try {
       final token = await ShareService.getToken();
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'Vui lòng đăng nhập để thêm vào giỏ hàng'
+        };
+      }
+
       final response = await http.post(
         Uri.parse('$baseUrl/api/cart/add'),
         headers: {
@@ -620,101 +707,43 @@ class APIService {
         }),
       );
 
-      print('Add to cart response: ${response.body}');
+      print('Add to cart response status: ${response.statusCode}');
+      print('Add to cart response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return {
-          'success': true,
-          'message': data['message'] ?? 'Đã thêm vào giỏ hàng',
-        };
-      } else {
-        return {
-          'success': false,
-          'message': 'Không thể thêm vào giỏ hàng',
-        };
+        if (data['success'] == true) {
+          return {
+            'success': true,
+            'message': 'Thêm vào giỏ hàng thành công',
+            'data': data['data']
+          };
+        }
       }
+      
+      return {
+        'success': false,
+        'message': 'Không thể thêm vào giỏ hàng'
+      };
     } catch (e) {
       print('Error adding to cart: $e');
       return {
         'success': false,
-        'message': 'Lỗi khi thêm vào giỏ hàng: $e',
+        'message': 'Lỗi khi thêm vào giỏ hàng: $e'
       };
     }
   }
 
-  static Future<bool> createProductReview(
-    String productId,
-    double rating,
-    String comment,
-    List<String> images,
-  ) async {
+  static Future<Map<String, dynamic>> updateCartItem(String productId, int quantity) async {
     try {
       final token = await ShareService.getToken();
       if (token == null) {
-        throw Exception('Vui lòng đăng nhập để đánh giá sản phẩm');
-      }
-
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/reviews/create'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: json.encode({
-          'productId': productId,
-          'rating': rating,
-          'comment': comment,
-          'images': images,
-        }),
-      );
-
-      print('Create review response: ${response.body}');
-
-      if (response.statusCode == 201) {
-        final data = json.decode(response.body);
-        return data['success'] ?? false;
-      }
-      return false;
-    } catch (e) {
-      print('Error creating review: $e');
-      return false;
-    }
-  }
-
-  static Future<Map<String, dynamic>> getCart() async {
-    try {
-      final token = await ShareService.getToken();
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/cart'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      print('Get cart response: ${response.body}');
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
         return {
           'success': false,
-          'message': 'Không thể lấy thông tin giỏ hàng',
+          'message': 'Vui lòng đăng nhập để cập nhật giỏ hàng'
         };
       }
-    } catch (e) {
-      print('Error getting cart: $e');
-      return {
-        'success': false,
-        'message': 'Lỗi khi lấy thông tin giỏ hàng: $e',
-      };
-    }
-  }
 
-  static Future<bool> updateCartItem(String productId, int quantity) async {
-    try {
-      final token = await ShareService.getToken();
       final response = await http.put(
         Uri.parse('$baseUrl/api/cart/update'),
         headers: {
@@ -728,16 +757,32 @@ class APIService {
       );
 
       print('Update cart item response: ${response.body}');
-      return response.statusCode == 200;
+      
+      final data = json.decode(response.body);
+      return {
+        'success': data['success'] ?? false,
+        'message': data['message'] ?? 'Cập nhật giỏ hàng thành công',
+        'data': data['data']
+      };
     } catch (e) {
       print('Error updating cart item: $e');
-      return false;
+      return {
+        'success': false,
+        'message': 'Lỗi khi cập nhật giỏ hàng: $e'
+      };
     }
   }
 
-  static Future<bool> removeFromCart(String productId) async {
+  static Future<Map<String, dynamic>> removeFromCart(String productId) async {
     try {
       final token = await ShareService.getToken();
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'Vui lòng đăng nhập để xóa sản phẩm khỏi giỏ hàng'
+        };
+      }
+
       final response = await http.delete(
         Uri.parse('$baseUrl/api/cart/$productId'),
         headers: {
@@ -747,10 +792,54 @@ class APIService {
       );
 
       print('Remove from cart response: ${response.statusCode} - ${response.body}');
-      return response.statusCode == 200;
+      
+      final data = json.decode(response.body);
+      return {
+        'success': data['success'] ?? false,
+        'message': data['message'] ?? 'Xóa sản phẩm khỏi giỏ hàng thành công',
+        'data': data['data']
+      };
     } catch (e) {
       print('Error removing item from cart: $e');
-      return false;
+      return {
+        'success': false,
+        'message': 'Lỗi khi xóa sản phẩm khỏi giỏ hàng: $e'
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> clearCart() async {
+    try {
+      final token = await ShareService.getToken();
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'Vui lòng đăng nhập để xóa giỏ hàng'
+        };
+      }
+
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/cart/clear'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('Clear cart response: ${response.statusCode} - ${response.body}');
+      
+      final data = json.decode(response.body);
+      return {
+        'success': data['success'] ?? false,
+        'message': data['message'] ?? 'Xóa giỏ hàng thành công',
+        'data': data['data']
+      };
+    } catch (e) {
+      print('Error clearing cart: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi khi xóa giỏ hàng: $e'
+      };
     }
   }
 
@@ -899,6 +988,51 @@ class APIService {
       return {
         'success': false,
         'message': 'Lỗi khi xóa khỏi danh sách yêu thích'
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> createProductReview(
+    String productId,
+    double rating,
+    String comment,
+    List<String> images,
+  ) async {
+    try {
+      final token = await ShareService.getToken();
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'Vui lòng đăng nhập để đánh giá sản phẩm'
+        };
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/products/$productId/reviews'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'rating': rating,
+          'comment': comment,
+          'images': images,
+        }),
+      );
+
+      print('Create review response: ${response.body}');
+      
+      final data = json.decode(response.body);
+      return {
+        'success': data['success'] ?? false,
+        'message': data['message'] ?? 'Đánh giá sản phẩm thành công',
+        'data': data['data']
+      };
+    } catch (e) {
+      print('Error creating review: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi khi đánh giá sản phẩm: $e'
       };
     }
   }

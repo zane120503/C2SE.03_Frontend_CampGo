@@ -12,6 +12,7 @@ class Product {
   final int discount;
   final DateTime createdAt;
   final double rating;
+  final List<dynamic> images;  // Thêm trường images
 
   // Getters để tương thích với UI
   String get name => productName;
@@ -33,10 +34,26 @@ class Product {
     required this.discount,
     required this.createdAt,
     this.rating = 0.0,
+    this.images = const [],  // Khởi tạo mảng images rỗng
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
     try {
+      // Xử lý hình ảnh
+      String imageUrl = '';
+      if (json['images'] != null && json['images'].isNotEmpty) {
+        if (json['images'][0] is Map) {
+          imageUrl = json['images'][0]['url'] ?? '';
+        } else {
+          imageUrl = json['images'][0].toString();
+        }
+      }
+
+      // Nếu không có hình ảnh từ mảng images, thử lấy từ imageURL
+      if (imageUrl.isEmpty) {
+        imageUrl = json['imageURL']?.toString() ?? '';
+      }
+
       // Đọc giá gốc từ originalPrice
       final double originalPrice = json['originalPrice'] is int 
           ? (json['originalPrice'] as int).toDouble()
@@ -59,7 +76,7 @@ class Product {
         discountedPrice: finalPrice,    // giá đã giảm
         stockQuantity: (json['stockQuantity'] ?? 0).toInt(),
         categoryID: json['categoryID']?.toString() ?? '',
-        imageURL: json['imageURL']?.toString() ?? '',
+        imageURL: imageUrl,
         brand: json['brand']?.toString() ?? '',
         sold: (json['sold'] ?? 0).toInt(),
         discount: (json['discount'] ?? 0).toInt(),
@@ -67,6 +84,7 @@ class Product {
             ? DateTime.parse(json['createdAt'].toString())
             : DateTime.now(),
         rating: (json['rating'] ?? 0.0).toDouble(),
+        images: json['images'] ?? [],  // Lưu trữ mảng images
       );
     } catch (e) {
       print('Lỗi khi parse JSON Product: $e');
@@ -84,6 +102,7 @@ class Product {
         discount: 0,
         createdAt: DateTime.now(),
         rating: 0.0,
+        images: [],
       );
     }
   }
@@ -103,6 +122,7 @@ class Product {
       'discount': discount,
       'createdAt': createdAt.toIso8601String(),
       'rating': rating,
+      'images': images,
     };
   }
 } 

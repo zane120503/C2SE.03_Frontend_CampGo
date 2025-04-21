@@ -93,23 +93,74 @@ class _CartItemSamplesState extends State<CartItemSamples> {
       setState(() => isLoading = true);
       
       final response = await APIService.getCart();
-      if (response == null) {
-        throw Exception('Failed to get cart data');
-      }
+      print('Get cart response: $response');
 
-      final cartData = response['data'];
-      if (cartData == null || cartData['items'] == null) {
-        throw Exception('Invalid cart data format');
-      }
+      if (response['success'] == true && response['data'] != null) {
+        final cartData = response['data'];
+        final items = cartData['items'] as List<dynamic>? ?? [];
+        
+        setState(() {
+          cartItems = items.map((item) {
+            try {
+              final product = item['product'];
+              if (product == null) {
+                print('Warning: Product is null in cart item');
+                return null;
+              }
 
-      setState(() {
-        cartItems = List<CartItem>.from(
-          cartData['items'].map((item) => CartItem.fromJson(item))
-        );
-        isLoading = false;
-      });
-      
-      _updateTotalPrice();
+              final price = (item['price'] ?? 0.0).toDouble();
+              final quantity = (item['quantity'] ?? 1).toInt();
+              final discount = (product['discount'] ?? 0).toInt();
+              final discountedPrice = price * (1 - discount / 100);
+
+              // Xử lý URL hình ảnh
+              String imageUrl = '';
+              if (product['images'] != null && product['images'] is List && product['images'].isNotEmpty) {
+                var firstImage = product['images'][0];
+                if (firstImage is Map && firstImage.containsKey('url')) {
+                  imageUrl = firstImage['url'].toString();
+                }
+              }
+
+              print('Cart item image URL: $imageUrl');
+
+              return CartItem(
+                id: product['_id'] ?? '',
+                name: product['productName'] ?? '',
+                price: price,
+                discountedPrice: discountedPrice,
+                image: imageUrl.isNotEmpty ? imageUrl : 'assets/images/placeholder.png',
+                quantity: quantity,
+                isSelected: false,
+                discount: discount,
+                stockQuantity: product['stockQuantity'] ?? 0,
+              );
+            } catch (e) {
+              print('Error parsing cart item: $e');
+              return null;
+            }
+          }).where((item) => item != null).cast<CartItem>().toList();
+          
+          isLoading = false;
+        });
+        
+        _updateTotalPrice();
+        print('Loaded ${cartItems.length} items');
+      } else {
+        setState(() {
+          cartItems = [];
+          isLoading = false;
+        });
+        
+        if (mounted && response['message'] != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message']),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     } catch (e) {
       print('Error loading cart items: $e');
       setState(() {
@@ -120,7 +171,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Không thể tải giỏ hàng: $e'),
+            content: Text('Không thể tải giỏ hàng: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -155,18 +206,32 @@ class _CartItemSamplesState extends State<CartItemSamples> {
 
   Future<void> _updateQuantityOnServer(String productId, int quantity) async {
     try {
-      final success = await APIService.updateCartItem(productId, quantity);
-      if (!success) {
-        throw Exception('Failed to update quantity');
+      final response = await APIService.updateCartItem(productId, quantity);
+      if (!response['success']) {
+        throw Exception(response['message'] ?? 'Không thể cập nhật số lượng');
+      }
+      
+      // Refresh cart data after successful update
+      await loadCartItems();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Cập nhật số lượng thành công'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e) {
       print('Error updating quantity: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Không thể cập nhật số lượng: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể cập nhật số lượng: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -238,9 +303,9 @@ class _CartItemSamplesState extends State<CartItemSamples> {
     if (confirm != true) return;
 
     try {
-      final success = await APIService.removeFromCart(item.id);
+      final response = await APIService.removeFromCart(item.id);
       
-      if (success) {
+      if (response['success']) {
         setState(() {
           if (item.isSelected) {
             selectedProductIds.remove(item.id);
@@ -253,13 +318,13 @@ class _CartItemSamplesState extends State<CartItemSamples> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Đã xóa ${item.name} khỏi giỏ hàng'),
+              content: Text(response['message'] ?? 'Đã xóa sản phẩm khỏi giỏ hàng'),
               backgroundColor: Colors.green,
             ),
           );
         }
       } else {
-        throw Exception('Không thể xóa sản phẩm');
+        throw Exception(response['message'] ?? 'Không thể xóa sản phẩm');
       }
     } catch (e) {
       print('Error removing item: $e');

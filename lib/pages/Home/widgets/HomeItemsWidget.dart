@@ -65,8 +65,14 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
         
         products = allProducts.where((product) {
           // Kiểm tra category
-          bool matchesCategory = selectedCategory == null || selectedCategory!.isEmpty || 
-              product['categoryID'] == selectedCategory;
+          final productCategoryId = product['categoryID'] is Map 
+              ? product['categoryID']['_id']?.toString()
+              : product['categoryID']?.toString();
+              
+          bool matchesCategory = selectedCategory == null || 
+              selectedCategory!.isEmpty || 
+              selectedCategory == 'all' ||
+              productCategoryId == selectedCategory;
 
           // Tính giá cuối cùng của sản phẩm
           double originalPrice = double.tryParse(product['originalPrice']?.toString() ?? '0') ?? 0.0;
@@ -76,10 +82,11 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
               : originalPrice;
           
           print('Product: ${product['name']}');
-          print('Original Price: \$${originalPrice.toStringAsFixed(2)}');
-          print('Discount: ${discount.toStringAsFixed(1)}%');
-          print('Final Price: \$${finalPrice.toStringAsFixed(2)}');
-          print('Min Price: \$${minPrice?.toStringAsFixed(2)}, Max Price: \$${maxPrice?.toStringAsFixed(2)}');
+          print('Category ID: $productCategoryId');
+          print('Selected Category: $selectedCategory');
+          print('Matches Category: $matchesCategory');
+          print('Final Price: $finalPrice');
+          print('-------------------');
 
           // Kiểm tra khoảng giá
           bool matchesPrice = true;
@@ -91,10 +98,6 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
               matchesPrice = matchesPrice && finalPrice <= maxPrice!;
             }
           }
-
-          print('Matches Category: $matchesCategory');
-          print('Matches Price: $matchesPrice');
-          print('-------------------');
 
           return matchesCategory && matchesPrice;
         }).toList();
@@ -406,6 +409,83 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
           size: 40,
           color: Colors.grey[400],
         ),
+      ),
+    );
+  }
+
+  Widget _buildProductImage(dynamic product) {
+    final List<dynamic> images = product['images'] ?? [];
+    String imageUrl = '';
+    
+    if (images.isNotEmpty) {
+      // Kiểm tra nếu images[0] là một Map
+      if (images[0] is Map) {
+        imageUrl = images[0]['url'] ?? '';
+      } else {
+        // Nếu images[0] là một String
+        imageUrl = images[0].toString();
+      }
+    }
+
+    // Nếu không có imageUrl từ images, thử lấy từ imageURL
+    if (imageUrl.isEmpty) {
+      imageUrl = product['imageURL']?.toString() ?? '';
+    }
+
+    print('Building product image - Product ID: ${product['_id']}');
+    print('Image URL: $imageUrl');
+    print('Images array: $images');
+
+    if (imageUrl.isEmpty) {
+      return Container(
+        height: 140,
+        color: Colors.grey[100],
+        child: Center(
+          child: Icon(
+            Icons.image_not_supported,
+            size: 40,
+            color: Colors.grey[400],
+          ),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      child: Image.network(
+        imageUrl,
+        height: 140,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          print('Error loading image: $error');
+          return Container(
+            height: 140,
+            color: Colors.grey[100],
+            child: Center(
+              child: Icon(
+                Icons.image_not_supported,
+                size: 40,
+                color: Colors.grey[400],
+              ),
+            ),
+          );
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            height: 140,
+            color: Colors.grey[100],
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

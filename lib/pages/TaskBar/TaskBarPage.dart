@@ -189,6 +189,7 @@ class _TaskBarState extends State<TaskBar> {
           selectedCategory = category['_id'];
           _isDropdownOpen = false;
         });
+        print('TaskBar - Selected category: ${category['categoryName']} (ID: ${category['_id']})');
       },
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
@@ -309,7 +310,9 @@ class _TaskBarState extends State<TaskBar> {
           print('Min Price: $minPrice');
           print('Max Price: $maxPrice');
 
-          widget.onFiltersApplied(selectedCategory, minPrice, maxPrice);
+          // Gửi category ID hoặc 'all' nếu không có category được chọn
+          final categoryToSend = selectedCategory ?? 'all';
+          widget.onFiltersApplied(categoryToSend, minPrice, maxPrice);
           widget.onClose();
         }
       },

@@ -25,11 +25,62 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
       final response = await APIService.getWishlist();
       
       if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> wishlistProducts = response['data'];
+        print('Raw wishlist data: $wishlistProducts');
+
+        // Lấy thông tin chi tiết cho từng sản phẩm
+        final List<Map<String, dynamic>> detailedProducts = [];
+        for (var product in wishlistProducts) {
+          try {
+            final productId = product['_id'];
+            final detailResponse = await APIService.getProductDetails(productId);
+            
+            if (detailResponse['success'] == true && detailResponse['data'] != null) {
+              final productData = detailResponse['data'];
+              print('Product detail data for $productId: $productData');
+
+              // Xử lý URL hình ảnh
+              String imageUrl = '';
+              if (productData['images'] != null && productData['images'] is List && productData['images'].isNotEmpty) {
+                var firstImage = productData['images'][0];
+                if (firstImage is Map && firstImage.containsKey('url')) {
+                  imageUrl = firstImage['url'].toString();
+                }
+              }
+              print('Extracted image URL for $productId: $imageUrl');
+
+              // Tính toán giá sau giảm giá
+              final price = (productData['price'] ?? 0.0).toDouble();
+              final discount = (productData['discount'] ?? 0).toDouble();
+              final discountedPrice = price * (1 - discount / 100);
+
+              detailedProducts.add({
+                '_id': productId,
+                'productName': productData['productName'],
+                'price': price,
+                'discount': discount,
+                'discount_price': discountedPrice,
+                'imageURL': imageUrl,
+                'stockQuantity': productData['stockQuantity'],
+                'description': productData['description'],
+                'brand': productData['brand'],
+                'sold': productData['sold'],
+              });
+            }
+          } catch (e) {
+            print('Error loading details for product ${product['_id']}: $e');
+          }
+        }
+
         setState(() {
-          wishlistItems = response['data'];
+          wishlistItems = detailedProducts;
           isLoading = false;
         });
-        print('Loaded wishlist items: ${wishlistItems.length}');
+        
+        print('Loaded ${wishlistItems.length} detailed wishlist items');
+        for (var item in wishlistItems) {
+          print('Product ${item['_id']} - Image URL: ${item['imageURL']}');
+        }
       } else {
         throw Exception(response['message'] ?? 'Không thể tải danh sách yêu thích');
       }
@@ -98,6 +149,9 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
           final price = item['price']?.toDouble() ?? 0.0;
           final discountPrice = item['discount_price']?.toDouble() ?? price;
           final discount = item['discount']?.toDouble() ?? 0.0;
+          final imageUrl = item['imageURL'] ?? '';
+          
+          print('Item ${index + 1} image URL: $imageUrl'); // Debug log
           
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
@@ -128,9 +182,9 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: item['imageURL'] != null && item['imageURL'].toString().isNotEmpty
+                      child: imageUrl.isNotEmpty
                           ? Image.network(
-                              item['imageURL'],
+                              imageUrl,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 print('Error loading image: $error');
@@ -138,6 +192,17 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
                                   Icons.image_not_supported,
                                   size: 40,
                                   color: Colors.grey[400],
+                                );
+                              },
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
                                 );
                               },
                             )
