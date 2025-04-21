@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import 'package:CampGo/config/config.dart';
+import 'package:CampGo/services/api_service.dart';
 
 class AddCreditCardPage extends StatefulWidget {
   const AddCreditCardPage({super.key});
@@ -50,97 +51,43 @@ class _AddCreditCardPageState extends State<AddCreditCardPage> {
           'card_exp_year': _expiryYearController.text,
           'card_cvc': _cvvController.text,
           'card_type': 'VISA', // Mặc định là VISA
-          'is_default': _isDefaultCard // Sử dụng giá trị từ switch
+          'is_default': _isDefaultCard
         };
 
         print('Submitting card data: ${json.encode(cardData)}');
 
-        // Kiểm tra đăng nhập và token
-        bool isLoggedIn = await AuthService.isLoggedIn();
-        if (!isLoggedIn) {
+        final apiService = APIService();
+        final response = await apiService.addCard(cardData);
+        
+        if (response['success'] == true) {
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please log in',
-            textAlign: TextAlign.center,
-            ),
-            ),  
-          );
-          return;
-        }
-
-        final authService = AuthService();
-        String? token = await authService.getToken();
-        if (token == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Token not found',
-            textAlign: TextAlign.center,
-            ),
-            backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-
-        // Gọi API trực tiếp thay vì qua APIService
-        final response = await http.post(
-          Uri.parse('$baseUrl/api/AddCards'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-          body: json.encode(cardData),
-        );
-
-        print('Add card response status: ${response.statusCode}');
-        print('Add card response body: ${response.body}');
-
-        if (response.statusCode == 201 || response.statusCode == 200) {
-          final responseData = json.decode(response.body);
-          if (responseData['success'] == true) {
-            // Show success message
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Add card successfully',
+            const SnackBar(
+              content: Text('Add card successfully',
               textAlign: TextAlign.center,
               ),
               backgroundColor: Colors.green,
-              ),
-            );
-            Navigator.pop(context, true); // Return true to indicate success
-          } else {
-            // Show error message from response
-            final errorMessage = responseData['message'] ?? 'Add card failed';
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(errorMessage,
+            ),
+          );
+          Navigator.pop(context, true); // Return true to indicate success
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message'] ?? 'Add card failed',
               textAlign: TextAlign.center,
               ),
               backgroundColor: Colors.red,
-              ),
-            );
-          }
-        } else {
-          // Show error message
-          String errorMessage;
-          try {
-            final responseData = json.decode(response.body);
-            errorMessage = responseData['message'] ?? 'Add card failed';
-          } catch (e) {
-            errorMessage = 'Add card failed';
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage,
-            textAlign: TextAlign.center,
-            ),
-            backgroundColor: Colors.red,
             ),
           );
         }
       } catch (e) {
-        // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e',
+          SnackBar(
+            content: Text('Error: $e',
             textAlign: TextAlign.center,
             ),
             backgroundColor: Colors.red,
-            ),
+          ),
         );
       } finally {
         setState(() {

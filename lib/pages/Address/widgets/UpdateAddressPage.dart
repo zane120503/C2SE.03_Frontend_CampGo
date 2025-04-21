@@ -1,7 +1,7 @@
-import 'package:CampGo/api/api.service.dart';
-import 'package:CampGo/model/address_model.dart';
 import 'package:flutter/material.dart';
 import 'package:dropdown_search/dropdown_search.dart';
+import 'package:CampGo/services/api_service.dart';
+import 'package:CampGo/models/address_model.dart';
 
 class UpdateAddressPage extends StatefulWidget {
   final AddressUser address;
@@ -16,6 +16,7 @@ class UpdateAddressPage extends StatefulWidget {
 }
 
 class _UpdateAddressPageState extends State<UpdateAddressPage> {
+  final APIService _apiService = APIService();
   late TextEditingController _fullNameController;
   late TextEditingController _phoneController;
   late TextEditingController _streetController;
@@ -188,15 +189,15 @@ class _UpdateAddressPageState extends State<UpdateAddressPage> {
         'fullName': _fullNameController.text,
         'phoneNumber': _phoneController.text,
         'street': _streetController.text,
-        'city': selectedState, // Tỉnh/Thành phố
-        'district': selectedCity, // Quận/Huyện
-        'ward': selectedWard, // Phường/Xã
+        'city': selectedState,
+        'district': selectedCity,
+        'ward': selectedWard,
         'country': _countryController.text,
         'zipCode': _zipCodeController.text,
         'isDefault': isDefaultAddress,
       };
 
-      final response = await APIService.updateAddress(widget.address.id, addressData);
+      final response = await _apiService.updateAddress(widget.address.id, addressData);
       
       if (response) {
         if (!mounted) return;

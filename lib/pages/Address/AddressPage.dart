@@ -1,5 +1,5 @@
-import 'package:CampGo/api/api.service.dart';
-import 'package:CampGo/model/address_model.dart';
+import 'package:CampGo/services/api_service.dart';
+import 'package:CampGo/models/address_model.dart';
 import 'package:CampGo/pages/Address/widgets/AddNewAddressPage.dart';
 import 'package:CampGo/pages/Address/widgets/UpdateAddressPage.dart'; 
 import 'package:CampGo/services/data_service.dart';
@@ -17,6 +17,7 @@ class AddressPage extends StatefulWidget {
 class _AddressPageState extends State<AddressPage> {
   List<AddressUser> addresses = [];
   final DataService dataService = DataService();
+  final APIService apiService = APIService();
   bool _isLoading = true;
 
   @override
@@ -60,7 +61,7 @@ class _AddressPageState extends State<AddressPage> {
       final token = await dataService.getToken();
       print('Current token: $token'); // Debug log
 
-      final response = await APIService.getAddresses();
+      final response = await apiService.getAddresses();
       print('Response from getAddresses: $response'); // Debug log
       
       if (response['success'] == true) {
@@ -120,7 +121,7 @@ class _AddressPageState extends State<AddressPage> {
 
   void _deleteAddress(String addressId) async {
     try {
-      bool success = await APIService.deleteAddress(addressId);
+      bool success = await apiService.deleteAddress(addressId);
       if (success) {
         setState(() {
           addresses.removeWhere((address) => address.id == addressId);
@@ -175,7 +176,7 @@ class _AddressPageState extends State<AddressPage> {
 
   void _setDefaultAddress(String addressId) async {
     try {
-      bool success = await APIService.setDefaultAddress(addressId);
+      bool success = await apiService.setDefaultAddress(addressId);
       if (success) {
         setState(() {
           addresses = addresses.map((address) {
@@ -292,7 +293,7 @@ class _AddressPageState extends State<AddressPage> {
           'isDefault': result['isDefault'] ?? false,
         };
 
-        bool success = await APIService.updateAddress(address.id, addressData);
+        bool success = await apiService.updateAddress(address.id, addressData);
 
         if (success) {
           setState(() {
@@ -656,7 +657,7 @@ class _AddressPageState extends State<AddressPage> {
                                 return;
                               }
 
-                              final response = await APIService.addAddress(result);
+                              final response = await apiService.addAddress(result);
                               if (response['success']) {
                                 setState(() {
                                   addresses = [];

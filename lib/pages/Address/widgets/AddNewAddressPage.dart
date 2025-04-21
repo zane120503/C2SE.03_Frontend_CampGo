@@ -1,9 +1,8 @@
 import 'dart:convert';
-import 'package:CampGo/api/api.service.dart';
-import 'package:CampGo/model/address_model.dart';
+import 'package:CampGo/services/api_service.dart';
+import 'package:CampGo/models/address_model.dart';
 import 'package:flutter/material.dart';
 import 'package:dropdown_search/dropdown_search.dart';
-import 'package:http/http.dart' as http;
 
 class AddNewAddressPage extends StatefulWidget {
   final List<AddressUser> existingAddresses;
@@ -87,6 +86,8 @@ class _AddNewAddressPageState extends State<AddNewAddressPage> {
     // Thêm các phường/xã khác cho các quận/huyện khác
   };
 
+  final APIService apiService = APIService();
+
   @override
   void initState() {
     super.initState();
@@ -95,32 +96,24 @@ class _AddNewAddressPageState extends State<AddNewAddressPage> {
 
   Future<void> _loadAddressData() async {
     try {
-      final response = await http.get(
-        Uri.parse('${APIService.baseUrl}/api/address-data'),
-        headers: APIService.getHeaders(),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-    setState(() {
-            if (data['provinces'] != null) {
-              _states = List<String>.from(data['provinces']);
-            }
-            if (data['districts'] != null) {
-              _citiesByState = Map<String, List<String>>.from(
-                data['districts'].map((key, value) => MapEntry(
-                  key,
-                  List<String>.from(value),
-                )),
-              );
-            }
-          });
-        }
+      final response = await apiService.getAddresses();
+      if (response['success'] == true) {
+        setState(() {
+          if (response['data']['provinces'] != null) {
+            _states = List<String>.from(response['data']['provinces']);
+          }
+          if (response['data']['districts'] != null) {
+            _citiesByState = Map<String, List<String>>.from(
+              response['data']['districts'].map((key, value) => MapEntry(
+                key,
+                List<String>.from(value),
+              )),
+            );
+          }
+        });
       }
     } catch (e) {
       print('Error loading address data: $e');
-      // Giữ lại dữ liệu mặc định nếu API thất bại
     }
   }
 

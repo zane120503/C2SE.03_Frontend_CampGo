@@ -2,6 +2,7 @@ import 'package:CampGo/models/card_model.dart';
 import 'package:CampGo/pages/Card%20Account/widgets/AddCreditCardPage.dart';
 import 'package:CampGo/pages/Card%20Account/widgets/UpdateCreditCardPage.dart';
 import 'package:CampGo/services/data_service.dart';
+import 'package:CampGo/services/api_service.dart';
 import 'package:flutter/material.dart';
 
 class CreditCardPage extends StatefulWidget {
@@ -13,6 +14,7 @@ class CreditCardPage extends StatefulWidget {
 
 class _CreditCardPageState extends State<CreditCardPage> {
   final DataService _dataService = DataService();
+  final APIService _apiService = APIService();
   List<CardModel> _cards = [];
   bool _isLoading = true;
 
@@ -24,16 +26,55 @@ class _CreditCardPageState extends State<CreditCardPage> {
 
   Future<void> _loadCards() async {
     try {
-      final cards = await _dataService.loadCards();
-      setState(() {
-        _cards = cards;
-        _isLoading = false;
-      });
+      final apiService = APIService();
+      final response = await apiService.getAllCards();
+      
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> cardsData = response['data'];
+        setState(() {
+          _cards = cardsData.map((card) => CardModel(
+            id: card['_id'] ?? '',
+            userId: card['user_id'] ?? '',
+            cardNumber: card['card_number'] ?? '',
+            cardHolderName: card['card_name'] ?? '',
+            cardType: card['card_type'] ?? 'VISA',
+            lastFourDigits: card['card_number']?.substring(card['card_number'].length - 4) ?? '',
+            expiryMonth: card['card_exp_month']?.toString() ?? '',
+            expiryYear: card['card_exp_year']?.toString() ?? '',
+            cvv: card['card_cvc'] ?? '',
+            isDefault: card['is_default'] ?? false,
+            createdAt: card['createdAt'] != null ? DateTime.parse(card['createdAt']) : null,
+            updatedAt: card['updatedAt'] != null ? DateTime.parse(card['updatedAt']) : null,
+            v: card['__v'] ?? 0,
+          )).toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Failed to load cards',
+            textAlign: TextAlign.center,
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       print('Error loading cards: $e');
       setState(() {
         _isLoading = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -288,7 +329,7 @@ class _CreditCardPageState extends State<CreditCardPage> {
                                               ),
                                               child: Center(
                                                 child: Text(
-                                                  card.cardType ?? 'CARD',
+                                                  card.cardType ?? 'VISA',
                                                   style: const TextStyle(
                                                     color: Colors.white,
                                                     fontSize: 12,

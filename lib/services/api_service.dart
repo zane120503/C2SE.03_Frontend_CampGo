@@ -6,11 +6,12 @@ import 'package:mime/mime.dart';
 import 'package:CampGo/config/config.dart';
 import 'package:CampGo/services/auth_service.dart';
 import 'package:CampGo/services/share_service.dart';
-
+import 'package:dio/dio.dart';
 
 class APIService {
   static final String baseUrl = Config.baseUrl;
   final AuthService _authService = AuthService();
+  final Dio _dio = Dio();
   
   static Future<String?> _getAuthToken() async {
     try {
@@ -364,54 +365,238 @@ class APIService {
     }
   }
 
-  // Phương thức lấy danh sách địa chỉ
-  static Future<Map<String, dynamic>> getAddresses() async {
+  // Address APIs
+  Future<Map<String, dynamic>> getAddresses() async {
     try {
       final token = await _getAuthToken();
-      print('Token for get addresses: $token');
-      
-      if (token == null || token.isEmpty) {
-        print('No token found for get addresses');
-        return {
-          'success': false,
-          'message': 'Không có token xác thực. Vui lòng đăng nhập lại.'
-        };
+      if (token == null) {
+        return {'success': false, 'message': 'Token not found'};
       }
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/AllAddresses'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+      final response = await _dio.get(
+        '${Config.baseUrl}/api/AllAddresses',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
       );
-
-      print('Get addresses API response status: ${response.statusCode}');
-      print('Get addresses API response body: ${response.body}');
-
-      final responseData = json.decode(response.body);
-      return responseData;
+      return response.data;
     } catch (e) {
-      print('Error in getAddresses: $e');
-      return {
-        'success': false,
-        'message': 'Lỗi lấy danh sách địa chỉ: ${e.toString()}'
-      };
+      print('Error getting addresses: $e');
+      return {'success': false, 'message': e.toString()};
     }
   }
 
-  Future<void> addCard(Map<String, dynamic> card, String token) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/cards'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(card),
-    );
+  Future<Map<String, dynamic>> addAddress(Map<String, dynamic> addressData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return {'success': false, 'message': 'Token not found'};
+      }
 
-    if (response.statusCode != 201) {
-      throw Exception('Failed to add card: ${response.body}');
+      final response = await _dio.post(
+        '${Config.baseUrl}/api/addresses',
+        data: addressData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      return response.data;
+    } catch (e) {
+      print('Error adding address: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<bool> updateAddress(String addressId, Map<String, dynamic> addressData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return false;
+      }
+
+      final response = await _dio.put(
+        '${Config.baseUrl}/api/addresses/$addressId',
+        data: addressData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      return response.data['success'] == true;
+    } catch (e) {
+      print('Error updating address: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteAddress(String addressId) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return false;
+      }
+
+      final response = await _dio.delete(
+        '${Config.baseUrl}/api/addresses/$addressId',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      return response.data['success'] == true;
+    } catch (e) {
+      print('Error deleting address: $e');
+      return false;
+    }
+  }
+
+  Future<bool> setDefaultAddress(String addressId) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return false;
+      }
+
+      final response = await _dio.put(
+        '${Config.baseUrl}/api/addresses/$addressId/set-default',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      return response.data['success'] == true;
+    } catch (e) {
+      print('Error setting default address: $e');
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> addCard(Map<String, dynamic> cardData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return {'success': false, 'message': 'Token not found'};
+      }
+
+      final response = await _dio.post(
+        '${Config.baseUrl}/api/AddCards',
+        data: cardData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      return response.data;
+    } catch (e) {
+      print('Error adding card: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> getAllCards() async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return {'success': false, 'message': 'Token not found'};
+      }
+
+      final response = await _dio.get(
+        '${Config.baseUrl}/api/AllCards',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      return response.data;
+    } catch (e) {
+      print('Error getting cards: $e');
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<bool> updateCard(String cardId, Map<String, dynamic> cardData) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return false;
+      }
+
+      final response = await _dio.put(
+        '${Config.baseUrl}/api/UpdateCards/$cardId',
+        data: cardData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      return response.data['success'] == true;
+    } catch (e) {
+      print('Error updating card: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteCard(String cardId) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return false;
+      }
+
+      final response = await _dio.delete(
+        '${Config.baseUrl}/api/DeleteCards/$cardId',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      return response.data['success'] == true;
+    } catch (e) {
+      print('Error deleting card: $e');
+      return false;
+    }
+  }
+
+  Future<bool> setDefaultCard(String cardId) async {
+    try {
+      final token = await _getAuthToken();
+      if (token == null) {
+        return false;
+      }
+
+      final response = await _dio.put(
+        '${Config.baseUrl}/api/cards/$cardId/set-default',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+      return response.data['success'] == true;
+    } catch (e) {
+      print('Error setting default card: $e');
+      return false;
     }
   }
 

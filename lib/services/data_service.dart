@@ -17,6 +17,7 @@ class DataService {
   static const String tokenKey = 'auth_token';
   static const String userIdKey = 'user_id';
   final AuthService _authService = AuthService();
+  final APIService _apiService = APIService();
 
   // API thật
   Future<UserProfile?> getUserProfile() async {
@@ -88,7 +89,7 @@ class DataService {
   // Đọc dữ liệu từ JSON local
   Future<List<AddressUser>> loadAddresses() async {
     try {
-      final response = await APIService.getAddresses();
+      final response = await _apiService.getAddresses();
       print('Load addresses response: $response');
 
       if (response['success'] == true && response['data'] != null) {
@@ -409,9 +410,9 @@ class DataService {
     print('Token cleared');
   }
 
-  static Future<AddressUser?> getDefaultAddress() async {
+  Future<AddressUser?> getDefaultAddress() async {
     try {
-      final response = await APIService.getAddresses();
+      final response = await _apiService.getAddresses();
       print('Address API response: $response'); // Debug log
       
       if (response['success'] == true && response['data'] != null) {
