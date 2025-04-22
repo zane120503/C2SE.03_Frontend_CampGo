@@ -23,10 +23,10 @@ class CardModel {
     required this.expiryMonth,
     required this.expiryYear,
     required this.cvv,
-    required this.isDefault,
+    this.isDefault = false,
     this.createdAt,
     this.updatedAt,
-    required this.v,
+    this.v = 0,
   });
 
   factory CardModel.fromJson(Map<String, dynamic> json) {
@@ -49,7 +49,7 @@ class CardModel {
 
   Map<String, dynamic> toJson() {
     return {
-      '_id': id,
+      'id': id,
       'user_id': userId,
       'card_number': cardNumber,
       'card_name': cardHolderName,

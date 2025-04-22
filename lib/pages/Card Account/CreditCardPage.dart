@@ -6,7 +6,14 @@ import 'package:CampGo/services/api_service.dart';
 import 'package:flutter/material.dart';
 
 class CreditCardPage extends StatefulWidget {
-  const CreditCardPage({super.key});
+  final Function(CardModel)? onCardSelected;
+  final bool isSelectionMode;
+
+  const CreditCardPage({
+    Key? key, 
+    this.onCardSelected,
+    this.isSelectionMode = false,
+  }) : super(key: key);
 
   @override
   _CreditCardPageState createState() => _CreditCardPageState();
@@ -25,6 +32,7 @@ class _CreditCardPageState extends State<CreditCardPage> {
   }
 
   Future<void> _loadCards() async {
+    setState(() => _isLoading = true);
     try {
       final apiService = APIService();
       final response = await apiService.getAllCards();
@@ -193,6 +201,22 @@ class _CreditCardPageState extends State<CreditCardPage> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          if (!widget.isSelectionMode)
+            IconButton(
+              icon: Icon(Icons.add),
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const AddCreditCardPage()),
+                );
+                if (result == true) {
+                  _loadCards();
+                }
+              },
+            ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -422,26 +446,6 @@ class _CreditCardPageState extends State<CreditCardPage> {
                               );
                             },
                           ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const AddCreditCardPage()),
-                        );
-                        if (result == true) {
-                          _loadCards();
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                      ),
-                      icon: Icon(Icons.add_card, color: Colors.white),
-                      label: Text('Add new card', style: TextStyle(color: Colors.white)),
-                    ),
                   ),
                 ],
               ),

@@ -3,36 +3,72 @@ import 'package:CampGo/pages/Cart/widgets/CartAppBar.dart';
 import 'package:CampGo/pages/Cart/widgets/CartBottomNavBar.dart';
 import 'package:CampGo/pages/Cart/widgets/CartItemSamples.dart';
 import 'package:CampGo/services/auth_service.dart';
-import 'package:CampGo/pages/Checkout/CheckOutPage.dart';
+import 'package:CampGo/pages/CheckOut/CheckoutPage.dart';
 
 class CartPage extends StatefulWidget {
-  const CartPage({super.key});
-  
+  const CartPage({Key? key}) : super(key: key);
+
   @override
-  _CartPageState createState() => _CartPageState();
+  State<CartPage> createState() => _CartPageState();
 }
 
 class _CartPageState extends State<CartPage> {
-  double _totalAmount = 0.0;
-  Set<String> _selectedProductIds = {};
+  Set<String> selectedProducts = {};
+  double totalPrice = 0.0;
+  final CartItemSamplesController _cartController = CartItemSamplesController();
 
-  void _handleCheckout() {
-    if (_totalAmount > 0) {
+  void _handleSelectedProductsChanged(Set<String> products) {
+    setState(() {
+      selectedProducts = products;
+    });
+  }
+
+  void _handleTotalPriceChanged(double price) {
+    setState(() {
+      totalPrice = price;
+    });
+  }
+
+  void _handleCheckout() async {
+    final selectedItemsData = _cartController.getSelectedItemsData();
+    if (selectedItemsData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Vui lòng chọn sản phẩm để thanh toán')),
+      );
+      return;
+    }
+
+    final selectedItems = selectedItemsData['selectedItems'];
+    final totalPrice = selectedItemsData['totalPrice'];
+    
+    if (selectedItems == null || totalPrice == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Có lỗi xảy ra khi lấy thông tin sản phẩm')),
+      );
+      return;
+    }
+
+    if ((selectedItems as List).isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Vui lòng chọn ít nhất một sản phẩm')),
+      );
+      return;
+    }
+
+    try {
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => CheckoutPage(
-            selectedProductIds: _selectedProductIds,
-            totalAmount: _totalAmount,
+            selectedProductIds: (selectedItems as List).map((item) => item['id'].toString()).toSet(),
+            totalAmount: (totalPrice as num).toDouble(),
+            selectedItemsData: selectedItemsData,
           ),
         ),
       );
-    } else {
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng chọn sản phẩm trước khi thanh toán'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Có lỗi xảy ra: ${e.toString()}')),
       );
     }
   }
@@ -71,20 +107,17 @@ class _CartPageState extends State<CartPage> {
                   ),
                 ),
                 child: ClipRRect(
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
                   child: ListView(
                     padding: EdgeInsets.only(top: 10),
                     children: [
                       CartItemSamples(
-                        onTotalPriceChanged: (double totalPrice) {
-                          setState(() {
-                            _totalAmount = totalPrice;
-                          });
-                        },
-                        onSelectedItemsChanged: (Set<String> selectedIds) {
-                          setState(() {
-                            _selectedProductIds = selectedIds;
-                          });
-                        },
+                        controller: _cartController,
+                        onSelectedProductsChanged: _handleSelectedProductsChanged,
+                        onTotalPriceChanged: _handleTotalPriceChanged,
                       ),
                       SizedBox(height: 20),
                     ],
@@ -96,7 +129,8 @@ class _CartPageState extends State<CartPage> {
         ),
       ),
       bottomNavigationBar: CartBottomNavBar(
-        total: _totalAmount,
+        total: totalPrice,
+        selectedProductIds: selectedProducts,
         onCheckout: _handleCheckout,
       ),
     );

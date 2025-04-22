@@ -60,16 +60,42 @@ class CartItem {
       );
     }
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'price': price,
+      'discountedPrice': discountedPrice,
+      'quantity': quantity,
+      'image': image,
+      'discount': discount,
+    };
+  }
+}
+
+class CartItemSamplesController {
+  _CartItemSamplesState? _state;
+
+  void _setState(_CartItemSamplesState state) {
+    _state = state;
+  }
+
+  Map<String, dynamic>? getSelectedItemsData() {
+    return _state?.getSelectedItemsData();
+  }
 }
 
 class CartItemSamples extends StatefulWidget {
+  final Function(Set<String>) onSelectedProductsChanged;
   final Function(double) onTotalPriceChanged;
-  final Function(Set<String>)? onSelectedItemsChanged;
-  
+  final CartItemSamplesController? controller;
+
   const CartItemSamples({
     Key? key, 
+    required this.onSelectedProductsChanged,
     required this.onTotalPriceChanged,
-    this.onSelectedItemsChanged,
+    this.controller,
   }) : super(key: key);
 
   @override
@@ -85,6 +111,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
   @override
   void initState() {
     super.initState();
+    widget.controller?._setState(this);
     loadCartItems();
   }
 
@@ -113,7 +140,6 @@ class _CartItemSamplesState extends State<CartItemSamples> {
               final discount = (product['discount'] ?? 0).toInt();
               final discountedPrice = price * (1 - discount / 100);
 
-              // Xử lý URL hình ảnh
               String imageUrl = '';
               if (product['images'] != null && product['images'] is List && product['images'].isNotEmpty) {
                 var firstImage = product['images'][0];
@@ -121,8 +147,6 @@ class _CartItemSamplesState extends State<CartItemSamples> {
                   imageUrl = firstImage['url'].toString();
                 }
               }
-
-              print('Cart item image URL: $imageUrl');
 
               return CartItem(
                 id: product['_id'] ?? '',
@@ -145,7 +169,6 @@ class _CartItemSamplesState extends State<CartItemSamples> {
         });
         
         _updateTotalPrice();
-        print('Loaded ${cartItems.length} items');
       } else {
         setState(() {
           cartItems = [];
@@ -182,10 +205,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
   void _updateTotalPrice() {
     double totalPrice = calculateTotalPrice();
     widget.onTotalPriceChanged(totalPrice);
-    
-    if (widget.onSelectedItemsChanged != null) {
-      widget.onSelectedItemsChanged!(selectedProductIds);
-    }
+    widget.onSelectedProductsChanged(selectedProductIds);
   }
 
   void _updateQuantity(int index, int change) async {
@@ -211,7 +231,6 @@ class _CartItemSamplesState extends State<CartItemSamples> {
         throw Exception(response['message'] ?? 'Không thể cập nhật số lượng');
       }
       
-      // Refresh cart data after successful update
       await loadCartItems();
       
       if (mounted) {
@@ -276,7 +295,6 @@ class _CartItemSamplesState extends State<CartItemSamples> {
     
     final item = cartItems[index];
     
-    // Hiển thị dialog xác nhận xóa
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -349,6 +367,26 @@ class _CartItemSamplesState extends State<CartItemSamples> {
     });
   }
 
+  List<CartItem> getSelectedItems() {
+    return cartItems.where((item) => item.isSelected).toList();
+  }
+
+  Map<String, dynamic> getSelectedItemsData() {
+    final selectedItems = getSelectedItems();
+    return {
+      'selectedItems': selectedItems.map((item) => {
+        'id': item.id,
+        'name': item.name,
+        'price': item.price,
+        'discountedPrice': item.discountedPrice,
+        'quantity': item.quantity,
+        'image': item.image,
+        'discount': item.discount,
+      }).toList(),
+      'totalPrice': calculateTotalPrice(),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -375,24 +413,20 @@ class _CartItemSamplesState extends State<CartItemSamples> {
       children: [
         // Select All row
         Padding(
-          padding: const EdgeInsets.only(left: 15, right: 15, top: 10, bottom: 10),
+          padding: const EdgeInsets.only(left: 20, right: 15),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              SizedBox(
-                width: 50,
-                height: 20,
-                child: Checkbox(
-                  value: isAllSelected,
-                  activeColor: const Color(0xFF2B2321),
-                  onChanged: _toggleSelectAll,
-                ),
+              Checkbox(
+                value: isAllSelected,
+                activeColor: const Color(0xFF2B2321),
+                onChanged: _toggleSelectAll,
               ),
-              SizedBox(width: 10),
               Text(
                 "Select All",
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                   color: Color(0xFF2B2321),
                 ),
               ),
@@ -413,127 +447,160 @@ class _CartItemSamplesState extends State<CartItemSamples> {
 
   Widget buildCartItem(CartItem item, int index) {
     return Container(
+      height: 120,
       margin: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-      padding: EdgeInsets.all(15),
+      padding: EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withOpacity(0.1),
             spreadRadius: 1,
-            blurRadius: 5,
+            blurRadius: 3,
           ),
         ],
       ),
       child: Row(
         children: [
-          // Checkbox
-          SizedBox(
-            width: 24,
-            height: 24,
+          Transform.translate(
+            offset: Offset(-5, 0),
             child: Checkbox(
               value: item.isSelected,
-              activeColor: const Color(0xFF2B2321),
+              activeColor: Color(0xFF2B2321),
               onChanged: (value) => _toggleSelection(index, value),
             ),
           ),
-          SizedBox(width: 10),
-          
-          // Hình ảnh sản phẩm
           Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              color: Colors.grey[200],
-            ),
-            child: item.image.startsWith('http') 
-              ? Image.network(
-                  item.image,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Icon(
-                      Icons.image_not_supported,
-                      size: 40,
-                      color: Colors.grey[400],
-                    );
+            height: 70,
+            width: 70,
+            margin: EdgeInsets.only(right: 15),
+            child: item.image.startsWith('http')
+              ? FadeInImage.assetNetwork(
+                  placeholder: "assets/images/placeholder.png",
+                  image: item.image,
+                  imageErrorBuilder: (context, error, stackTrace) {
+                    return Image.asset("assets/images/placeholder.png");
                   },
+                  fit: BoxFit.cover,
                 )
-              : Icon(
-                  Icons.image_not_supported,
-                  size: 40,
-                  color: Colors.grey[400],
-                ),
+              : Image.asset("assets/images/placeholder.png"),
           ),
-          SizedBox(width: 15),
-          
-          // Thông tin sản phẩm
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.name,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF2B2321),
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 5),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF2B2321),
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 5),
-                Text(
-                  '\$${item.discountedPrice.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2B2321),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        "${item.discountedPrice.toStringAsFixed(2)}đ",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2B2321),
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      if (item.discount > 0)
+                        Text(
+                          "-${item.discount}%",
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.red,
+                          ),
+                        ),
+                    ],
                   ),
-                ),
-              ],
+                  if (item.discount > 0)
+                    Text(
+                      "${item.price.toStringAsFixed(2)}đ",
+                      style: TextStyle(
+                        fontSize: 13,
+                        decoration: TextDecoration.lineThrough,
+                        color: Colors.grey,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
-          
-          // Phần tăng giảm số lượng và icon delete
-          Container(
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 9),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Icon delete
-                IconButton(
-                  icon: Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _removeItem(index),
-                  padding: EdgeInsets.only(left: 20),
-                  constraints: BoxConstraints(),
+                InkWell(
+                  onTap: () => _removeItem(index),
+                  child: Icon(
+                    Icons.delete,
+                    color: Colors.red,
+                  ),
                 ),
-                SizedBox(width: 40),
-                // Điều khiển số lượng
                 Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    InkWell(
-                      onTap: () => _updateQuantity(index, -1),
-                      child: Container(
-                        padding: EdgeInsets.all(4),
-                        child: Icon(Icons.remove_circle_outline, size: 22),
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      '${item.quantity}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(width: 8),
                     InkWell(
                       onTap: () => _updateQuantity(index, 1),
                       child: Container(
                         padding: EdgeInsets.all(4),
-                        child: Icon(Icons.add_circle_outline, size: 22),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.5),
+                              spreadRadius: 1,
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          CupertinoIcons.plus,
+                          size: 15,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      margin: EdgeInsets.symmetric(horizontal: 10),
+                      child: Text(
+                        "${item.quantity}",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2B2321),
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => _updateQuantity(index, -1),
+                      child: Container(
+                        padding: EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.5),
+                              spreadRadius: 1,
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          CupertinoIcons.minus,
+                          size: 15,
+                        ),
                       ),
                     ),
                   ],

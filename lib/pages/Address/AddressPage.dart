@@ -174,6 +174,14 @@ class _AddressPageState extends State<AddressPage> {
     }
   }
 
+  AddressUser? getDefaultAddress() {
+    try {
+      return addresses.firstWhere((address) => address.isDefault);
+    } catch (e) {
+      return addresses.isNotEmpty ? addresses.first : null;
+    }
+  }
+
   void _setDefaultAddress(String addressId) async {
     try {
       bool success = await apiService.setDefaultAddress(addressId);
@@ -198,6 +206,10 @@ class _AddressPageState extends State<AddressPage> {
             );
           }).toList();
         });
+
+        // Trả về địa chỉ mặc định khi pop
+        Navigator.pop(context, getDefaultAddress());
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Center(

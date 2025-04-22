@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:CampGo/pages/Address/AddressPage.dart';
+import 'package:CampGo/services/api_service.dart';
+import 'package:CampGo/models/card_model.dart';
+import 'package:CampGo/pages/Card%20Account/CreditCardPage.dart';
 
 class AddressUser {
   final String id;
@@ -64,24 +68,30 @@ class CartItem {
   final String id;
   final String name;
   final double price;
+  final double discountedPrice;
   final int quantity;
-  final Product? product;
+  final String image;
+  final int discount;
 
   CartItem({
     required this.id,
     required this.name,
     required this.price,
+    required this.discountedPrice,
     required this.quantity,
-    this.product,
+    required this.image,
+    required this.discount,
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
     return CartItem(
       id: json['id'],
       name: json['name'],
-      price: json['price'].toDouble(),
-      quantity: json['quantity'],
-      product: json['product'] != null ? Product.fromJson(json['product']) : null,
+      price: (json['price'] ?? 0.0).toDouble(),
+      discountedPrice: (json['discountedPrice'] ?? 0.0).toDouble(),
+      quantity: json['quantity'] ?? 1,
+      image: json['image'] ?? '',
+      discount: json['discount'] ?? 0,
     );
   }
 
@@ -91,12 +101,8 @@ class CartItem {
       'name': name,
       'price': price,
       'quantity': quantity,
-      'product': product != null ? {
-        'id': product!.id,
-        'name': product!.name,
-        'price': product!.price,
-        'images': product!.images,
-      } : null,
+      'image': image,
+      'discount': discount,
     };
   }
 }
@@ -137,11 +143,13 @@ class DataService {
 class CheckoutPage extends StatefulWidget {
   final Set<String> selectedProductIds;
   final double totalAmount;
+  final Map<String, dynamic>? selectedItemsData;
 
   const CheckoutPage({
     Key? key,
     required this.selectedProductIds,
     required this.totalAmount,
+    this.selectedItemsData,
   }) : super(key: key);
 
   @override
@@ -149,7 +157,9 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
+  final APIService apiService = APIService();
   AddressUser? _defaultAddress;
+  CardModel? _defaultCard;
   Cart? _cart;
   String _selectedPaymentMethod = 'Payment Upon Receipt';
   bool _isLoading = true;
@@ -166,37 +176,102 @@ class _CheckoutPageState extends State<CheckoutPage> {
   void initState() {
     super.initState();
     _loadData();
+
+    // Thêm listener để reload dữ liệu khi widget được focus lại
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final focusNode = FocusNode();
+        focusNode.addListener(() {
+          if (focusNode.hasFocus && mounted) {
+            _loadData();
+          }
+        });
+        FocusScope.of(context).requestFocus(focusNode);
+      }
+    });
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      // Load địa chỉ từ AddressUser.json
-      final addressesData = await DataService.getAllAddresses();
-      final addresses = addressesData
-          .map((addressData) => AddressUser.fromJson(addressData))
-          .toList();
-      _defaultAddress = addresses.firstWhere(
-        (address) => address.isDefault,
-        orElse: () => addresses.first
-      );
+      // Nếu có dữ liệu từ CartItemSamples, sử dụng nó
+      if (widget.selectedItemsData != null) {
+        final items = widget.selectedItemsData!['selectedItems'] as List;
+        _cart = Cart(items: items.map((item) => CartItem.fromJson(item)).toList());
+        subTotal = widget.selectedItemsData!['totalPrice'] as double;
+        total = subTotal + shippingFee;
+      } else {
+        // Nếu không có dữ liệu, gọi API
+        final checkoutData = await DataService.getCheckoutData();
+        final itemsList = checkoutData['items'] as List;
+        final allItems = itemsList
+            .map((item) => CartItem.fromJson(item))
+            .where((item) => widget.selectedProductIds.contains(item.id.toString()))
+            .toList();
+        _cart = Cart(items: allItems);
+        shippingFee = (checkoutData['shippingFee'] ?? 30.0).toDouble();
+        subTotal = (checkoutData['subTotal'] ?? widget.totalAmount).toDouble();
+        total = (checkoutData['total'] ?? (subTotal + shippingFee)).toDouble();
+      }
 
-      // Load dữ liệu từ Checkout.json
-      final checkoutData = await DataService.getCheckoutData();
-      
-      // Parse items và lọc theo selectedProductIds
-      final itemsList = checkoutData['items'] as List;
-      final allItems = itemsList
-          .map((item) => CartItem.fromJson(item))
-          .where((item) => widget.selectedProductIds.contains(item.id.toString()))
-          .toList();
+      // Lấy địa chỉ mặc định từ API
+      try {
+        final addressResponse = await apiService.getAddresses();
+        if (addressResponse['success'] == true) {
+          final List<dynamic> addressData = addressResponse['data'] ?? [];
+          if (addressData.isNotEmpty) {
+            final defaultAddress = addressData.firstWhere(
+              (address) => address['isDefault'] == true,
+              orElse: () => addressData.first,
+            );
 
-      _cart = Cart(items: allItems);
+            _defaultAddress = AddressUser(
+              id: defaultAddress['_id'] ?? '',
+              fullName: defaultAddress['fullName'] ?? '',
+              phoneNumber: defaultAddress['phoneNumber'] ?? '',
+              streetAddress: defaultAddress['street'] ?? '',
+              ward: defaultAddress['ward'] ?? '',
+              district: defaultAddress['district'] ?? '',
+              province: defaultAddress['city'] ?? '',
+              isDefault: defaultAddress['isDefault'] ?? false,
+            );
+          }
+        }
+      } catch (e) {
+        print('Error loading default address: $e');
+      }
 
-      // Lấy các giá trị từ Checkout.json
-      shippingFee = (checkoutData['shippingFee'] ?? 30.0).toDouble();
-      subTotal = (checkoutData['subTotal'] ?? widget.totalAmount).toDouble();
-      total = (checkoutData['total'] ?? (subTotal + shippingFee)).toDouble();
+      // Load default card
+      try {
+        final cardResponse = await apiService.getAllCards();
+        if (cardResponse['success'] == true) {
+          final List<dynamic> cardsData = cardResponse['data'] ?? [];
+          if (cardsData.isNotEmpty) {
+            final defaultCard = cardsData.firstWhere(
+              (card) => card['is_default'] == true,
+              orElse: () => cardsData.first,
+            );
+
+            _defaultCard = CardModel(
+              id: defaultCard['_id'] ?? '',
+              userId: defaultCard['user_id'] ?? '',
+              cardNumber: defaultCard['card_number'] ?? '',
+              cardHolderName: defaultCard['card_name'] ?? '',
+              cardType: defaultCard['card_type'] ?? 'VISA',
+              lastFourDigits: defaultCard['card_number']?.substring(defaultCard['card_number'].length - 4) ?? '',
+              expiryMonth: defaultCard['card_exp_month']?.toString() ?? '',
+              expiryYear: defaultCard['card_exp_year']?.toString() ?? '',
+              cvv: defaultCard['card_cvc'] ?? '',
+              isDefault: defaultCard['is_default'] ?? false,
+              createdAt: defaultCard['createdAt'] != null ? DateTime.parse(defaultCard['createdAt']) : null,
+              updatedAt: defaultCard['updatedAt'] != null ? DateTime.parse(defaultCard['updatedAt']) : null,
+              v: defaultCard['__v'] ?? 0,
+            );
+          }
+        }
+      } catch (e) {
+        print('Error loading default card: $e');
+      }
 
       setState(() {
         _isLoading = false;
@@ -386,20 +461,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              item.product?.images[0] ?? 'assets/images/img1.png',
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: 80,
-                  height: 80,
-                  color: Colors.grey[300],
-                  child: Icon(Icons.image_not_supported),
-                );
-              },
-            ),
+            child: item.image.startsWith('http')
+                ? Image.network(
+                    item.image,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[300],
+                        child: Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey[500],
+                        ),
+                      );
+                    },
+                  )
+                : Container(
+                    width: 80,
+                    height: 80,
+                    color: Colors.grey[300],
+                    child: Icon(
+                      Icons.image_not_supported,
+                      color: Colors.grey[500],
+                    ),
+                  ),
           ),
           SizedBox(width: 16),
           Expanded(
@@ -422,13 +510,29 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     color: Colors.grey[600],
                   ),
                 ),
-                Text(
-                  '\$${(item.price * item.quantity).toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[600],
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      '${(item.discountedPrice * item.quantity).toStringAsFixed(2)}đ',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2B2321),
+                      ),
+                    ),
+                    if (item.discount > 0)
+                      Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: Text(
+                          '${(item.price * item.quantity).toStringAsFixed(2)}đ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            decoration: TextDecoration.lineThrough,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
@@ -444,13 +548,39 @@ class _CheckoutPageState extends State<CheckoutPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Shipping To',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2B2321),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Shipping To',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2B2321),
+                ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => AddressPage()),
+                  );
+                  
+                  // Reload dữ liệu khi quay về từ AddressPage
+                  if (mounted) {
+                    setState(() => _isLoading = true);
+                    await _loadData();
+                  }
+                },
+                child: Text(
+                  'Change',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 8),
           if (_defaultAddress != null)
@@ -467,48 +597,79 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                 ],
               ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        color: const Color(0xFF2B2321),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _defaultAddress!.fullName,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF2B2321),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              _defaultAddress!.phoneNumber,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    _defaultAddress!.streetAddress,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  Text(
+                    '${_defaultAddress!.ward}, ${_defaultAddress!.district}, ${_defaultAddress!.province}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
               child: Row(
                 children: [
                   Icon(
-                    Icons.radio_button_checked,
-                    color: const Color(0xFF2B2321),
+                    Icons.add_location_alt,
+                    color: Colors.red,
                   ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _defaultAddress!.fullName,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF2B2321),
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          _defaultAddress!.phoneNumber,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        Text(
-                          _defaultAddress!.streetAddress,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        Text(
-                          '${_defaultAddress!.ward}, ${_defaultAddress!.district}, ${_defaultAddress!.province}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
+                  SizedBox(width: 8),
+                  Text(
+                    'Add shipping address',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
@@ -529,7 +690,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
             'Payment Method',
             style: TextStyle(
               fontSize: 18, 
-              fontWeight: FontWeight.bold
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2B2321),
             )
           ),
           RadioListTile(
@@ -541,51 +703,85 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 setState(() => _selectedPaymentMethod = value.toString()),
           ),
           RadioListTile(
-            title: Text('Credit Card'),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Credit Card'),
+                if (_defaultCard != null)
+                  Text(
+                    '**** ${_defaultCard!.lastFourDigits}',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+              ],
+            ),
             value: 'Credit Card',
             groupValue: _selectedPaymentMethod,
             activeColor: Color(0xFF2B2321),
-            onChanged: (value) =>
-                setState(() => _selectedPaymentMethod = value.toString()),
+            onChanged: (value) async {
+              setState(() => _selectedPaymentMethod = value.toString());
+              if (_defaultCard == null) {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => CreditCardPage()),
+                );
+                if (result == true) {
+                  await _loadData();
+                }
+              }
+            },
           ),
           if (_selectedPaymentMethod == 'Credit Card')
             Padding(
-              padding: const EdgeInsets.only(left: 32.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(
-                    controller: _cardHolderNameController,
-                    decoration: InputDecoration(labelText: 'Card Holder Name'),
-                  ),
-                  TextField(
-                    controller: _cardNumberController,
-                    decoration: InputDecoration(labelText: 'Card Number'),
-                    keyboardType: TextInputType.number,
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _cardExpMonthController,
-                          decoration: InputDecoration(labelText: 'Exp Month'), 
-                          keyboardType: TextInputType.number,
+                  if (_defaultCard != null)
+                    Card(
+                      margin: EdgeInsets.only(bottom: 16),
+                      child: ListTile(
+                        leading: Icon(Icons.credit_card),
+                        title: Text(_defaultCard!.cardHolderName ?? ''),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('**** **** **** ${_defaultCard!.lastFourDigits}'),
+                            Text('Expires: ${_defaultCard!.expiryMonth}/${_defaultCard!.expiryYear}'),
+                          ],
+                        ),
+                        trailing: TextButton(
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => CreditCardPage()),
+                            );
+                            if (result == true) {
+                              await _loadData();
+                            }
+                          },
+                          child: Text(
+                            'Change',
+                            style: TextStyle(color: Colors.red),
+                          ),
                         ),
                       ),
-                      SizedBox(width: 16),
-                      Expanded(
-                        child: TextField(
-                          controller: _cardExpYearController,
-                          decoration: InputDecoration(labelText: 'Exp Year'),
-                          keyboardType: TextInputType.number,
-                        ),
+                    )
+                  else
+                    ElevatedButton(
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => CreditCardPage()),
+                        );
+                        if (result == true) {
+                          await _loadData();
+                        }
+                      },
+                      child: Text('Add Credit Card'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
                       ),
-                    ],
-                  ),
-                  TextField(
-                    controller: _cardCVCController,
-                    decoration: InputDecoration(labelText: 'CVC'),
-                    keyboardType: TextInputType.number,
-                  ),
+                    ),
                 ],
               ),
             ),

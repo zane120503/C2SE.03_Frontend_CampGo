@@ -1,32 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:CampGo/pages/CheckOut/CheckOutPage.dart';
 
 class CartBottomNavBar extends StatelessWidget {
   final double total;
+  final Set<String> selectedProductIds;
   final VoidCallback? onCheckout;
   
   const CartBottomNavBar({
     Key? key, 
     required this.total,
+    required this.selectedProductIds,
     this.onCheckout,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-      height: 130,
+      padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color.fromARGB(255, 255, 255, 255).withOpacity(0.5),
-            spreadRadius: 3,
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
             blurRadius: 10,
-            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -36,40 +37,44 @@ class CartBottomNavBar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "Total:",
+              Text(
+                'Tổng tiền:',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
+                  color: Color(0xFF2B2321),
                 ),
               ),
               Text(
-                "${total.toStringAsFixed(2)}\$",
-                style: const TextStyle(
+                ' ${total.toStringAsFixed(2)}đ',
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: Color(0xFF2B2321),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          InkWell(
-            onTap: onCheckout,
-            child: Container(
-              alignment: Alignment.center,
-              height: 50,
-              width: double.infinity,
-              decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 215, 159, 54),
-                borderRadius: BorderRadius.circular(20),
+          SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: selectedProductIds.isEmpty ? null : onCheckout,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: selectedProductIds.isEmpty 
+                  ? Colors.grey 
+                  : Color(0xFF2B2321),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
-              child: const Text(
-                "Check Out",
+              child: Text(
+                'Thanh toán',
                 style: TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
                   color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
