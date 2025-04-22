@@ -29,7 +29,9 @@ class _OrderInformationState extends State<OrderInformation> {
         throw Exception('Order ID not found');    
       }
 
+      print('Cancelling order with ID: $orderId'); // Debug log
       final response = await APIService.cancelOrder(orderId.toString());
+      print('Cancel order response: $response'); // Debug log
       
       if (response != null && response['success'] == true) {
         if (mounted) {
@@ -45,7 +47,9 @@ class _OrderInformationState extends State<OrderInformation> {
           Navigator.of(context).pop(true);
         }
       } else {
-        throw Exception(response?['message'] ?? 'Cannot cancel order');
+        final errorMessage = response?['message'] ?? 'Cannot cancel order';
+        print('Cancel order error: $errorMessage'); // Debug log
+        throw Exception(errorMessage);
       }
     } catch (e) {
       print('Error cancelling order: $e'); // Debug log

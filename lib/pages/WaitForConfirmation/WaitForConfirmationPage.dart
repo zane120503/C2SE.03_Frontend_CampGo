@@ -31,34 +31,41 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
         _isLoading = true;
       });
       
+      print('Loading orders...');
       final response = await APIService.getOrders();
       print('Orders API response: $response');
       
       if (response != null && response['success'] == true) {
         final List<dynamic> ordersData = response['data'] ?? [];
+        print('Number of orders received: ${ordersData.length}');
+        
+        final filteredOrders = ordersData
+            .where((order) {
+              print('Processing order: ${order['_id']}');
+              print('Order status - Waiting Confirmation: ${order['waiting_confirmation']}');
+              print('Order status - Delivery Status: ${order['delivery_status']}');
+              
+              // Chỉ lấy những đơn hàng có waiting_confirmation = false và delivery_status = Pending
+              return order['waiting_confirmation'] == false && 
+                     order['delivery_status'] == 'Pending';
+            })
+            .map((e) => e as Map<String, dynamic>)
+            .toList();
+            
+        print('Number of filtered orders: ${filteredOrders.length}');
         
         setState(() {
-          _orders = ordersData
-              .where((order) {
-                // Chỉ lấy các đơn hàng chờ xác nhận
-                return !order['waiting_confirmation'] && 
-                       ((order['payment_method'] == 'Payment Upon Receipt' && 
-                         order['payment_status'] == 'Pending' && 
-                         order['delivery_status'] == 'Pending') ||
-                        (order['payment_method'] == 'Credit Card' && 
-                         order['payment_status'] == 'Completed' && 
-                         order['delivery_status'] == 'Pending'));
-              })
-              .map((e) => e as Map<String, dynamic>)
-              .toList();
+          _orders = filteredOrders;
         });
       } else {
+        print('Failed to load orders: ${response?['message']}');
         setState(() {
           _orders = [];
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error loading orders: $e');
+      print('Stack trace: $stackTrace');
       setState(() {
         _orders = [];
       });
@@ -225,9 +232,9 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
   }
 
   Widget _buildOrderSection(Map<String, dynamic> orderData) {
-    bool isExpanded = _expandedOrders[orderData['_id']] ?? false;
     List<dynamic> products = orderData['products'] ?? [];
     bool hasMultipleProducts = products.length > 1;
+    var firstProduct = products.first;
 
     return Padding(
       padding: const EdgeInsets.only(top: 8, right: 10, left: 10),
@@ -237,67 +244,17 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
         },
         child: Card(
           color: Colors.white,
-          child: Column(
-            children: [
-              if (products.isNotEmpty)
-                _buildProductContent(
-                  headerText: 'Order ID: ${orderData['_id']}',
-                  imageUrl: products.first['product']['imageURL'] ?? '',
-                  productName: products.first['product']['productName'] ?? '',
-                  productDetail: products.first['product']['description'] ?? '',
-                  totalAmountLabel: hasMultipleProducts && !isExpanded
-                      ? 'Total amount (${products.length} products):'
-                      : 'Amount:',
-                  totalAmount: hasMultipleProducts && !isExpanded
-                      ? _formatPrice(_calculateTotalAmount(orderData))
-                      : _formatPrice((products.first['amount'] ?? 0).toDouble()),
-                  quantity: products.first['quantity'].toString(),
-                  tags: ['Pending'],
-                  showExpandButton: hasMultipleProducts,
-                  isExpanded: isExpanded,
-                  onExpandPressed: () {
-                    setState(() {
-                      _expandedOrders[orderData['_id']] = !isExpanded;
-                    });
-                  },
-                ),
-              if (hasMultipleProducts && isExpanded)
-                ...products.skip(1).map((product) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 1.0),
-                    child: _buildProductContent(
-                      headerText: '',
-                      imageUrl: product['product']['imageURL'] ?? '',
-                      productName: product['product']['productName'] ?? '',
-                      productDetail: product['product']['description'] ?? '',
-                      totalAmountLabel: 'Amount:',
-                      totalAmount: _formatPrice((product['amount'] ?? 0).toDouble()),
-                      quantity: product['quantity'].toString(),
-                      tags: ['Pending'],
-                      showExpandButton: false,
-                      isExpanded: false,
-                      onExpandPressed: null,
-                    ),
-                  );
-                }),
-              if (hasMultipleProducts)
-                Center(
-                  child: IconButton(
-                    icon: Icon(
-                      isExpanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color: Colors.deepOrange,
-                      size: 30,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _expandedOrders[orderData['_id']] = !isExpanded;
-                      });
-                    },
-                  ),
-                ),
-            ],
+          child: _buildProductContent(
+            headerText: 'Order ID: ${orderData['_id']}',
+            imageUrl: firstProduct['product']['imageURL'] ?? '',
+            productName: firstProduct['product']['productName'] ?? '',
+            productDetail: 'Product details',
+            totalAmountLabel: hasMultipleProducts 
+                ? 'Total amount (${products.length} products):'
+                : 'Amount:',
+            totalAmount: _formatPrice(_calculateTotalAmount(orderData)),
+            quantity: firstProduct['quantity'].toString(),
+            tags: ['Pending'],
           ),
         ),
       ),
@@ -313,9 +270,6 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
     required String totalAmount,
     required String quantity,
     required List<String> tags,
-    required bool showExpandButton,
-    required bool isExpanded,
-    required Function()? onExpandPressed,
   }) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -343,21 +297,6 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
                         Icons.image_not_supported,
                         color: Colors.grey,
                         size: 40,
-                      ),
-                    );
-                  },
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      width: 100,
-                      height: 100,
-                      color: Colors.grey[300],
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                              : null,
-                        ),
                       ),
                     );
                   },

@@ -1322,18 +1322,25 @@ class APIService {
   static Future<Map<String, dynamic>?> getOrders() async {
     try {
       _initDio();
-      if (_authToken == null) {
-        print('Auth token is null');
-        return null;
+      
+      // Lấy token từ ShareService
+      String? token = await ShareService.getToken();
+      if (token == null || token.isEmpty) {
+        print('Token is null or empty');
+        return {
+          'success': false,
+          'message': 'Không tìm thấy token xác thực',
+          'data': []
+        };
       }
 
-      print('Calling getOrders API...'); 
+      print('Calling getOrders API with token: $token');
       final response = await _dio!.get(
         '/api/orders/my-orders',
         options: Options(
           headers: {
             'Accept': 'application/json',
-            'Authorization': 'Bearer $_authToken',
+            'Authorization': 'Bearer $token',
           },
         ),
       );
@@ -1342,7 +1349,11 @@ class APIService {
       return response.data;
     } catch (e) {
       print('Error getting orders: $e');
-      return null;
+      return {
+        'success': false,
+        'message': 'Lỗi khi lấy danh sách đơn hàng: $e',
+        'data': []
+      };
     }
   }
 
@@ -1402,16 +1413,44 @@ class APIService {
   static Future<Map<String, dynamic>> cancelOrder(String orderId) async {
     try {
       _initDio();
+      
+      // Lấy token từ ShareService
+      String? token = await ShareService.getToken();
+      if (token == null || token.isEmpty) {
+        print('Token is null or empty');
+        return {
+          'success': false,
+          'message': 'Không tìm thấy token xác thực',
+        };
+      }
+
+      print('Cancelling order with ID: $orderId');
+      print('Using token: $token');
+
       final response = await _dio!.delete(
         '/api/orders/$orderId',
-        options: Options(headers: getHeaders()),
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
       
-      return {
-        'success': response.statusCode == 200,
-        'message': response.data['message'] ?? 'Đã hủy đơn hàng thành công',
-        'data': response.data
-      };
+      print('Cancel order response: ${response.data}');
+      
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': response.data['message'] ?? 'Đã hủy đơn hàng thành công',
+          'data': response.data
+        };
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Không thể hủy đơn hàng',
+        };
+      }
     } catch (e) {
       print('Error cancelling order: $e');
       return {

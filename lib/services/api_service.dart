@@ -1223,4 +1223,94 @@ class APIService {
       };
     }
   }
+
+  // Phương thức lấy danh sách đơn hàng
+  static Future<Map<String, dynamic>> getOrders() async {
+    try {
+      print('Getting orders...');
+      
+      // Kiểm tra đăng nhập và token
+      bool isLoggedIn = await AuthService.isLoggedIn();
+      print('Is logged in: $isLoggedIn');
+      
+      if (!isLoggedIn) {
+        print('User is not logged in');
+        return {
+          'success': false,
+          'message': 'Vui lòng đăng nhập để xem đơn hàng',
+          'data': []
+        };
+      }
+
+      // Lấy token
+      String? token = await ShareService.getToken();
+      print('Token from ShareService: $token');
+      
+      if (token == null || token.isEmpty) {
+        print('Token is null or empty');
+        return {
+          'success': false,
+          'message': 'Không tìm thấy token xác thực',
+          'data': []
+        };
+      }
+
+      print('Making API request to: $baseUrl/api/orders/my-orders');
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/orders/my-orders'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('API response status: ${response.statusCode}');
+      print('API response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('Decoded response data: $data');
+        
+        if (data['success'] == true && data['data'] != null) {
+          // Xử lý hình ảnh sản phẩm
+          final List<dynamic> orders = data['data'];
+          print('Number of orders received: ${orders.length}');
+          
+          for (var order in orders) {
+            if (order['products'] != null) {
+              for (var product in order['products']) {
+                if (product['product'] != null && 
+                    product['product']['imageURL'] != null &&
+                    !product['product']['imageURL'].startsWith('http')) {
+                  product['product']['imageURL'] = '$baseUrl${product['product']['imageURL']}';
+                }
+              }
+            }
+          }
+          
+          return {
+            'success': true,
+            'data': orders,
+            'message': 'Lấy danh sách đơn hàng thành công'
+          };
+        }
+      }
+      
+      print('Failed to get orders. Status code: ${response.statusCode}');
+      return {
+        'success': false,
+        'message': 'Không thể lấy danh sách đơn hàng',
+        'data': []
+      };
+    } catch (e, stackTrace) {
+      print('Error getting orders: $e');
+      print('Stack trace: $stackTrace');
+      return {
+        'success': false,
+        'message': 'Lỗi khi lấy danh sách đơn hàng: $e',
+        'data': []
+      };
+    }
+  }
 } 

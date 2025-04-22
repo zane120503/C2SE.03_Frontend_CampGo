@@ -50,23 +50,34 @@ class _WaitingForDeliveryState extends State<WaitingForDeliveryPage> {
         _isLoading = true;
       });
       
+      print('Loading orders for delivery...');
       final response = await APIService.getOrders();
       print('Orders API response: $response');
       
       if (response != null && response['success'] == true) {
         final List<dynamic> ordersData = response['data'] ?? [];
+        print('Number of orders received: ${ordersData.length}');
+        
+        final filteredOrders = ordersData
+            .where((order) {
+              print('Processing order: ${order['_id']}');
+              print('Order status - Waiting Confirmation: ${order['waiting_confirmation']}');
+              print('Order status - Delivery Status: ${order['delivery_status']}');
+              
+              // Chỉ lấy các đơn hàng đã được xác nhận và đang giao
+              return order['waiting_confirmation'] == true && 
+                     order['delivery_status'] == 'Shipping';
+            })
+            .map((e) => e as Map<String, dynamic>)
+            .toList();
+            
+        print('Number of filtered orders for delivery: ${filteredOrders.length}');
         
         setState(() {
-          _orders = ordersData
-              .where((order) {
-                // Chỉ lấy các đơn hàng đang giao
-                return order['waiting_confirmation'] == true && 
-                       order['delivery_status'] == 'Shipping';
-              })
-              .map((e) => e as Map<String, dynamic>)
-              .toList();
+          _orders = filteredOrders;
         });
       } else {
+        print('Failed to load orders: ${response?['message']}');
         setState(() {
           _orders = [];
         });
@@ -178,8 +189,8 @@ class _WaitingForDeliveryState extends State<WaitingForDeliveryPage> {
     DateTime estimatedDeliveryDate = updatedDate.add(const Duration(days: 3));
     DateTime now = DateTime.now();
     
-    // Kiểm tra điều kiện payment_status, delivery_status và thời gian
-    bool canReceive = orderData['payment_status'] == 'Completed' && 
+    // Kiểm tra điều kiện để có thể nhận hàng
+    bool canReceive = orderData['waiting_confirmation'] == true && 
                      orderData['delivery_status'] == 'Shipping' &&
                      now.isAfter(estimatedDeliveryDate);
 
