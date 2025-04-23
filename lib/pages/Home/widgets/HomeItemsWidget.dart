@@ -231,7 +231,7 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
     return GridView.builder(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.75,
+        childAspectRatio: 0.73,
         mainAxisSpacing: 15,
         crossAxisSpacing: 15,
       ),
@@ -274,10 +274,10 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 5,
-                  offset: Offset(0, 2),
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 2,
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
                 ),
               ],
             ),
@@ -291,7 +291,7 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                       child: imageUrl.isNotEmpty
                           ? Image.network(
                               imageUrl,
-                              height: 120,
+                              height: 150,
                               width: double.infinity,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
@@ -302,42 +302,41 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                     ),
                     if (discount > 0)
                       Positioned(
-                        top: 8,
-                        left: 8,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            "-${discount.toStringAsFixed(1)}%",
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                        top: 10,
+                        left: 10,
+                        right: 45,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                "-${discount.toStringAsFixed(1)}%",
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
                     Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.3),
-                          shape: BoxShape.circle,
+                      right: 3,
+                      child: IconButton(
+                        icon: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: isFavorite ? Colors.red : Colors.white,
+                          size: 30,
                         ),
-                        child: IconButton(
-                          icon: Icon(
-                            isFavorite ? Icons.favorite : Icons.favorite_border,
-                            color: isFavorite ? Colors.red : Colors.white,
-                            size: 18,
-                          ),
-                          onPressed: () => toggleFavorite(productId),
-                          constraints: BoxConstraints.tightFor(width: 28, height: 28),
-                          padding: EdgeInsets.zero,
-                        ),
+                        onPressed: () => toggleFavorite(productId),
+                        constraints: BoxConstraints.tightFor(width: 32, height: 32),
+                        padding: EdgeInsets.zero,
                       ),
                     ),
                   ],
@@ -352,11 +351,11 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                         Text(
                           name,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 20,
                             fontWeight: FontWeight.w500,
                             color: Colors.black87,
                           ),
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         SizedBox(height: 4),
@@ -365,7 +364,7 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                             Text(
                               '\$${originalPrice.toStringAsFixed(2)}',
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 15,
                                 color: Colors.grey,
                                 decoration: TextDecoration.lineThrough,
                               ),
@@ -374,21 +373,20 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                             Text(
                               "\$${discountedPrice.toStringAsFixed(2)}",
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.red,
                               ),
                             ),
                           ],
                         ),
-                        Spacer(),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               "$soldCount sold",
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 15,
                                 color: Colors.grey[600],
                               ),
                             ),
@@ -397,12 +395,12 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                                 Icon(
                                   Icons.star,
                                   color: Colors.amber,
-                                  size: 12,
+                                  size: 20,
                                 ),
                                 Text(
                                   " $rating",
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 15,
                                     color: Colors.grey[600],
                                   ),
                                 ),
@@ -424,7 +422,7 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
 
   Widget _buildPlaceholder() {
     return Container(
-      height: 140,
+      height: 150,
       color: Colors.grey[100],
       child: Center(
         child: Icon(

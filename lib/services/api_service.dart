@@ -104,6 +104,8 @@ class APIService {
                 '_id': product['_id'],
                 'productName': product['productName'],
                 'price': product['price']?.toDouble() ?? 0.0,
+                'originalPrice': product['originalPrice'] ?? product['price'],
+                'images': product['images'] ?? [],
                 'imageURL': product['imageURL'],
                 'rating': product['rating']?.toDouble() ?? 0.0,
                 'discount': product['discount']?.toDouble() ?? 0.0,

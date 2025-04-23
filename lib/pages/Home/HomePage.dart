@@ -68,7 +68,7 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           const Expanded(
                             child: Text(
-                              'Tìm kiếm sản phẩm...',
+                              'Search Products...', 
                               style: TextStyle(
                                 color: Colors.grey,
                                 fontSize: 16,

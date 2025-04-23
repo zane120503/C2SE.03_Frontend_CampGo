@@ -103,14 +103,18 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
           setState(() => isFavorite = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Đã xóa khỏi danh sách yêu thích'),
+              content: Text('Removed from favorites list',
+              textAlign: TextAlign.center,
+              ),
               backgroundColor: Colors.green,
             )
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(response?['message'] ?? 'Không thể xóa khỏi danh sách yêu thích'),
+              content: Text(response?['message'] ?? 'Cannot remove from favorites list',
+              textAlign: TextAlign.center,
+              ),
               backgroundColor: Colors.red,
             )
           );
@@ -121,14 +125,18 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
           setState(() => isFavorite = true);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(response['message'] ?? 'Đã thêm vào danh sách yêu thích'),
+              content: Text(response['message'] ?? 'Added to favorites list',
+              textAlign: TextAlign.center,
+              ),
               backgroundColor: Colors.green,
             )
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(response?['message'] ?? 'Không thể thêm vào danh sách yêu thích'),
+              content: Text(response?['message'] ?? 'Cannot add to favorites list',
+              textAlign: TextAlign.center,
+              ),
               backgroundColor: Colors.red,
             )
           );
@@ -138,7 +146,9 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
       print('Error toggling favorite: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Lỗi: ${e.toString()}'),
+          content: Text('Error: ${e.toString()}',
+          textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
         )
       );
@@ -160,7 +170,9 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Không thể vượt quá số lượng trong kho (${product?['stockQuantity'] ?? 0} sản phẩm)'),
+          content: Text('Cannot exceed stock quantity (${product?['stockQuantity'] ?? 0} products)',
+          textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -185,7 +197,9 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
       if (quantity > product!['stockQuantity']) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Số lượng vượt quá hàng tồn kho (${product!['stockQuantity']} sản phẩm)'),
+            content: Text('Quantity exceeds stock quantity (${product!['stockQuantity']} products)',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -199,7 +213,9 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
       if (response['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Đã thêm vào giỏ hàng thành công!'),
+            content: Text('Added to cart successfully!',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -210,41 +226,119 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
             context: context,
             builder: (BuildContext context) {
               return AlertDialog(
-                title: Text('Thêm vào giỏ hàng thành công'),
-                content: Text('Bạn có muốn xem giỏ hàng không?'),
+                title: Column(
+                  children: [
+                    Text(
+                      'Added to cart successfully!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(height:5),
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                            color: const Color.fromARGB(255, 48, 67, 172).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.check_circle,
+                        size: 50,
+                        color: Colors.green,
+                      ),
+                    )
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Do you want to view the cart?',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                  ],
+                ),
+                contentPadding: EdgeInsets.fromLTRB(24, 10, 24, 0),
+                actionsPadding: EdgeInsets.fromLTRB(24, 0, 24, 24),
                 actions: <Widget>[
-                  TextButton(
-                    child: Text('Tiếp tục mua sắm'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  TextButton(
-                    child: Text('Xem giỏ hàng'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      Navigator.pushNamed(context, '/cart').then((_) {
-                        // Refresh cart data when returning from cart page
-                        if (mounted) {
-                          setState(() {});
-                        }
-                      });
-                    },
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[600],
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: const Text(
+                              'Stay Shop',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color.fromARGB(255, 215, 159, 54),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: const Text(
+                              'View cart',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              Navigator.pushNamed(context, '/cart').then((_) {
+                                if (mounted) {
+                                  setState(() {});
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
               );
             },
           );
         }
       } else {
-        throw Exception(response['message'] ?? 'Không thể thêm vào giỏ hàng');
+        throw Exception(response['message'] ?? 'Cannot add to cart');
       }
     } catch (e) {
       print('Error adding to cart: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi: ${e.toString()}'),
+            content: Text('Error: ${e.toString()}',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -271,7 +365,9 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
           ),
         ),
         body: const Center(
-          child: Text('Không tìm thấy sản phẩm'),
+          child: Text('Product not found',
+          textAlign: TextAlign.center,
+          ),
         ),
       );
     }
@@ -307,6 +403,8 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
           const SizedBox(width: 8),
         ],
         backgroundColor: Colors.white,
+        scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       backgroundColor: const Color(0xFFEDECF2),
@@ -405,7 +503,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
               ),
               const SizedBox(width: 15),
               Text(
-                '$soldCount đã bán',
+                '$soldCount sold',
                 style: const TextStyle(
                   fontSize: 16,
                   color: Color.fromARGB(255, 91, 90, 90),
@@ -471,8 +569,8 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
       unselectedLabelColor: Colors.grey,
       indicatorColor: Colors.blue,
       tabs: const [
-        Tab(text: 'Mô tả'),
-        Tab(text: 'Đánh giá'),
+        Tab(text: 'Description'),
+        Tab(text: 'Reviews'),
       ],
     );
   }
@@ -497,8 +595,8 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSpecItem('Thương hiệu:', product!['brand'] ?? 'N/A'),
-                      _buildSpecItem('Quantity in stock:', '${product!['stockQuantity'] ?? 0} sản phẩm'),
+                      _buildSpecItem('Brand:', product!['brand'] ?? 'N/A'),
+                      _buildSpecItem('Quantity in stock:', '${product!['stockQuantity'] ?? 0} products'),
                     ],
                   ),
                 ),
@@ -512,7 +610,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        product!['description'] ?? 'Không có mô tả',
+                        product!['description'] ?? 'No description',
                         style: const TextStyle(
                           fontSize: 16,
                           color: Color(0xFF2B2321),
@@ -622,7 +720,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
             onPressed: _addToCart,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              backgroundColor: Colors.black,
+              backgroundColor: const Color.fromARGB(255, 215, 159, 54),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30),
               ),
@@ -633,7 +731,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
               color: Colors.white,
             ),
             label: const Text(
-              'Thêm vào giỏ',
+              'Add To Cart',
               style: TextStyle(
                 fontSize: 18,
                 color: Colors.white,

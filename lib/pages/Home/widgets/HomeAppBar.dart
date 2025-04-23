@@ -96,6 +96,8 @@ class _HomeAppBarState extends State<HomeAppBar> with SingleTickerProviderStateM
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
       leading: IconButton(
         icon: const Icon(
           Icons.sort,

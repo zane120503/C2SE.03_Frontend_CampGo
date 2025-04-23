@@ -80,7 +80,7 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
           print('Product ${item['_id']} - Image URL: ${item['imageURL']}');
         }
       } else {
-        throw Exception(response['message'] ?? 'Không thể tải danh sách yêu thích');
+        throw Exception(response['message'] ?? 'Unable to load favorites list');    
       }
     } catch (e) {
       print("Error loading wishlist: $e");
@@ -91,7 +91,11 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lỗi: Không thể tải danh sách yêu thích')),
+            const SnackBar(content: Text('Error: Unable to load favorites list',
+            textAlign: TextAlign.center,
+            ),
+            backgroundColor: Colors.red,
+            ),
         );
       }
     }
@@ -105,17 +109,29 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
           wishlistItems.removeWhere((item) => item['_id'] == productId);
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Đã xóa khỏi danh sách yêu thích')),
+          SnackBar(content: Text(result['message'] ?? 'Removed from favorites list',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.green,
+          ),  
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Không thể xóa khỏi danh sách yêu thích')),
+            SnackBar(content: Text(result['message'] ?? 'Unable to remove from favorites list',
+            textAlign: TextAlign.center,
+            ),
+            backgroundColor: Colors.red,
+            ),
         );
       }
     } catch (e) {
       print('Error removing from wishlist: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Có lỗi xảy ra khi xóa khỏi danh sách yêu thích')),
+        const SnackBar(content: Text('An error occurred while removing from favorites list',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -129,142 +145,86 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
     if (wishlistItems.isEmpty) {
       return const Center(
         child: Text(
-          "Danh sách yêu thích trống",
+          "Your wishlist is empty",
           style: TextStyle(fontSize: 16),
         ),
       );
     }
 
-    return Container(
-      color: const Color(0xFFEDECF2),
-      child: ListView.builder(
-        itemCount: wishlistItems.length,
-        shrinkWrap: true,
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        itemBuilder: (context, index) {
-          final item = wishlistItems[index];
-          final price = item['price']?.toDouble() ?? 0.0;
-          final originalPrice = item['originalPrice']?.toDouble() ?? price;
-          final discount = item['discount']?.toDouble() ?? 0.0;
-          final imageUrl = item['imageURL'] ?? '';
-          
-          print('Item ${index + 1} image URL: $imageUrl'); // Debug log
-          
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: IntrinsicHeight(
+    return Column(
+      children: wishlistItems.map((item) {
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+              padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Hình ảnh sản phẩm
                   Container(
-                    height: 70,
-                    width: 70,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      color: Colors.grey[200],
-                    ),
+                    width: 120,
+                    height: 120,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: imageUrl.isNotEmpty
+                      child: item['imageURL'] != null && item['imageURL'].isNotEmpty
                           ? Image.network(
-                              imageUrl,
+                              item['imageURL'],
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                print('Error loading image: $error');
-                                return Icon(
-                                  Icons.image_not_supported,
-                                  size: 40,
-                                  color: Colors.grey[400],
-                                );
-                              },
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress.cumulativeBytesLoaded /
-                                            loadingProgress.expectedTotalBytes!
-                                        : null,
-                                  ),
-                                );
-                              },
                             )
-                          : Icon(
+                          : const Icon(
                               Icons.image_not_supported,
+                              color: Colors.grey,
                               size: 40,
-                              color: Colors.grey[400],
                             ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  
+                  const SizedBox(width: 15),
                   // Thông tin sản phẩm
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           item['productName'] ?? 'Unknown product',
                           style: const TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2B2321),
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
                           ),
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 5),
-                        Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
+                        const SizedBox(height: 8),
+                        Row(
                           children: [
                             Text(
-                              '\$${price.toStringAsFixed(2)}',
+                              '\$${item['price']?.toStringAsFixed(2) ?? '0.00'}',
                               style: const TextStyle(
-                                fontSize: 15,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.red,
                               ),
                             ),
-                            if (originalPrice > price) ...[
+                            if (item['originalPrice'] != null && item['originalPrice'] > (item['price'] ?? 0)) ...[
                               const SizedBox(width: 8),
                               Text(
-                                '\$${originalPrice.toStringAsFixed(2)}',
+                                '\$${item['originalPrice']?.toStringAsFixed(2)}',
                                 style: const TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 14,
                                   decoration: TextDecoration.lineThrough,
                                   color: Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  '-${discount.toStringAsFixed(0)}%',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                  ),
                                 ),
                               ),
                             ],
@@ -273,20 +233,27 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
                       ],
                     ),
                   ),
-                  
                   // Nút xóa và chuyển trang
                   Column(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
+                        icon: const Icon(
+                          Icons.delete,
+                          color: Colors.red,
+                          size: 25,
+                        ),
                         onPressed: () => removeFromWishlist(item['_id']),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 15),
                       IconButton(
-                        icon: const Icon(Icons.arrow_forward, color: Color(0xFF2B2321)),
+                        icon: const Icon(
+                          Icons.arrow_forward_ios,
+                          color: Colors.black54,
+                          size: 20,
+                        ),
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -305,9 +272,29 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
                 ],
               ),
             ),
-          );
-        },
-      ),
+            if (item['originalPrice'] != null && item['originalPrice'] > (item['price'] ?? 0))
+              Positioned(
+                top: 0,
+                left: 5,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '-${((item['originalPrice']! - (item['price'] ?? 0)) / item['originalPrice']! * 100).toStringAsFixed(0)}%',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      }).toList(),
     );
   }
 }

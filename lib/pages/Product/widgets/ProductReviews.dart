@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:CampGo/models/Review.dart';
-import 'package:CampGo/services/review_service.dart';
 import 'package:CampGo/services/api_service.dart';
 import 'package:CampGo/pages/Product/widgets/ProductReviewsItemSamples.dart';
 
@@ -100,10 +98,10 @@ class _ProductReviewsState extends State<ProductReviews> {
                     }),
                   ),
                   Text(
-                    '$totalReviews đánh giá',
+                    '$totalReviews reviews',
                     style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
+                      color: Color.fromARGB(255, 108, 108, 108),
+                      fontSize: 16,
                     ),
                   ),
                 ],
@@ -121,7 +119,7 @@ class _ProductReviewsState extends State<ProductReviews> {
               child: Row(
                 children: [
                   Text(
-                    '${5 - index} sao',
+                    '${5 - index} stars',
                     style: const TextStyle(fontSize: 14),
                   ),
                   const SizedBox(width: 8),
@@ -152,7 +150,7 @@ class _ProductReviewsState extends State<ProductReviews> {
     if (reviews.isEmpty) {
       return const Center(
         child: Text(
-          'Chưa có đánh giá nào cho sản phẩm này',
+          'No reviews yet',
           style: TextStyle(fontSize: 16, color: Colors.grey),
         ),
       );
@@ -225,39 +223,45 @@ class _ProductReviewsState extends State<ProductReviews> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              displayName.isNotEmpty ? displayName : 'Người dùng ẩn danh',
+                              displayName.isNotEmpty ? displayName : 'Anonymous User',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
                             ),
+                            const SizedBox(height: 4),
                             Row(
-                              children: List.generate(5, (index) {
-                                return Icon(
-                                  index < rating ? Icons.star : Icons.star_border,
-                                  color: Colors.amber,
-                                  size: 16,
-                                );
-                              }),
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: List.generate(5, (index) {
+                                    return Icon(
+                                      index < rating ? Icons.star : Icons.star_border,
+                                      color: Colors.amber,
+                                      size: 16,
+                                    );
+                                  }),
+                                ),
+                                if (createdAt.isNotEmpty)
+                                  Text(
+                                    _formatDate(createdAt),
+                                    style: const TextStyle(
+                                      color: Color.fromARGB(255, 108, 108, 108),
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ],
                         ),
                       ),
-                      if (createdAt.isNotEmpty)
-                        Text(
-                          _formatDate(createdAt),
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
-                        ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Text(
                     comment,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 16,
                       height: 1.5,
                     ),
                   ),
@@ -333,7 +337,7 @@ class _ProductReviewsState extends State<ProductReviews> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Xem tất cả đánh giá',
+                    'View All Reviews',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -369,7 +373,7 @@ class _ProductReviewsState extends State<ProductReviews> {
       child: Column(
         children: [
           _buildReviewSummary(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           _buildReviewList(),
         ],
       ),

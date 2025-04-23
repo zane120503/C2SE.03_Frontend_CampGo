@@ -35,7 +35,7 @@ class _TaskBarState extends State<TaskBar> {
       if (response['success'] == true && response['data'] != null) {
         setState(() {
           categories = [
-            {'_id': null, 'categoryName': 'Tất cả'},
+            {'_id': null, 'categoryName': 'All Products'},
             ...response['data']
           ];
           selectedCategory = categories[0]['_id'];
@@ -44,7 +44,11 @@ class _TaskBarState extends State<TaskBar> {
     } catch (e) {
       print('Error loading categories: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể tải danh mục sản phẩm')),
+        SnackBar(content: Text('Unable to load product catalog',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -89,7 +93,7 @@ class _TaskBarState extends State<TaskBar> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildSectionTitle('Bộ lọc'),
+                            _buildSectionTitle('Filter'),
                             IconButton(
                               icon: Icon(Icons.close, color: Colors.white),
                               onPressed: widget.onClose,
@@ -99,7 +103,7 @@ class _TaskBarState extends State<TaskBar> {
                         SizedBox(height: 10),
                         _buildProductRow(),
                         SizedBox(height: 20),
-                        _buildSectionTitle('Khoảng giá'),
+                        _buildSectionTitle('Price Range'),
                         SizedBox(height: 20),
                         _buildPriceRangeRow(),
                       ],
@@ -149,8 +153,8 @@ class _TaskBarState extends State<TaskBar> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  selectedCategory == null ? 'Tất cả' : 
-                  categories.firstWhere((c) => c['_id'] == selectedCategory)['categoryName'] ?? 'Tất cả',
+                  selectedCategory == null ? 'All Products' : 
+                  categories.firstWhere((c) => c['_id'] == selectedCategory)['categoryName'] ?? 'All Products',
                   style: TextStyle(color: Colors.black, fontSize: 16),
                 ),
                 Icon(
@@ -206,7 +210,7 @@ class _TaskBarState extends State<TaskBar> {
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Text(
-              category['categoryName'] ?? 'Tất cả',
+              category['categoryName'] ?? 'All Products',
               style: TextStyle(
                 color: Colors.black,
                 fontSize: 16,
@@ -224,18 +228,16 @@ class _TaskBarState extends State<TaskBar> {
         Expanded(
           child: _buildTextField(
             controller: minPriceController,
-            hintText: 'Min price (USD)',
+            hintText: 'Min price',
             keyboardType: TextInputType.number,
-            prefixIcon: Text('\$', style: TextStyle(color: Colors.black)),
           ),
         ),
         SizedBox(width: 15),
         Expanded(
           child: _buildTextField(
             controller: maxPriceController,
-            hintText: 'Max price (USD)',
+            hintText: 'Max price',
             keyboardType: TextInputType.number,
-            prefixIcon: Text('\$', style: TextStyle(color: Colors.black)),
           ),
         ),
         SizedBox(width: 15),
@@ -248,19 +250,12 @@ class _TaskBarState extends State<TaskBar> {
     required TextEditingController controller,
     required String hintText,
     TextInputType? keyboardType,
-    Widget? prefixIcon,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
         hintText: hintText,
-        prefixIcon: prefixIcon != null 
-            ? Container(
-                padding: EdgeInsets.symmetric(horizontal: 10),
-                child: prefixIcon,
-              ) 
-            : null,
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
@@ -273,13 +268,13 @@ class _TaskBarState extends State<TaskBar> {
         if (value != null && value.isNotEmpty) {
           final number = double.tryParse(value);
           if (number == null) {
-            return 'Vui lòng nhập số hợp lệ';
+            return 'Please enter a valid number';
           }
           if (number < 0) {
-            return 'Giá không thể âm';
+            return 'Price cannot be negative';
           }
           if (number > 1000000) {
-            return 'Giá quá lớn';
+            return 'Price is too high';
           }
         }
         return null;
@@ -300,7 +295,11 @@ class _TaskBarState extends State<TaskBar> {
 
           if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Giá tối thiểu không thể lớn hơn giá tối đa')),
+              SnackBar(content: Text('Minimum price cannot be greater than maximum price',
+              textAlign: TextAlign.center,
+              ),
+              backgroundColor: Colors.red,
+              ),
             );
             return;
           }
@@ -311,20 +310,20 @@ class _TaskBarState extends State<TaskBar> {
           print('Max Price: $maxPrice');
 
           // Gửi category ID hoặc 'all' nếu không có category được chọn
-          final categoryToSend = selectedCategory ?? 'all';
+          final categoryToSend = selectedCategory ?? 'All Products';
           widget.onFiltersApplied(categoryToSend, minPrice, maxPrice);
           widget.onClose();
         }
       },
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.grey,
+        backgroundColor: const Color.fromARGB(255, 215, 159, 54),
         padding: EdgeInsets.symmetric(horizontal: 25, vertical: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(25),
         ),
       ),
       child: Text(
-        'Áp dụng',
+        'Apply',
         style: TextStyle(
           color: Colors.white,
           fontSize: 16,

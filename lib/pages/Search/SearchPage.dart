@@ -61,7 +61,11 @@ class _SearchPageState extends State<SearchPage> {
         });
         
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi khi tìm kiếm: $e')),
+          SnackBar(content: Text('Error searching products: $e',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
+          ),
         );
       }
     });
@@ -82,7 +86,7 @@ class _SearchPageState extends State<SearchPage> {
     if (_searchResults.isEmpty) {
       return Center(
         child: Text(
-          _searchController.text.isEmpty ? 'Nhập từ khóa tìm kiếm' : 'Không tìm thấy sản phẩm',
+          _searchController.text.isEmpty ? 'Enter search keyword' : 'No products found',
           style: const TextStyle(fontSize: 16),
         ),
       );
@@ -128,19 +132,21 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                     if (discount > 0)
                       Positioned(
-                        top: 8,
-                        left: 8,
+                        top: 0,
+                        right: 0,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                           decoration: BoxDecoration(
                             color: Colors.red,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: const BorderRadius.only(
+                              bottomLeft: Radius.circular(12),
+                            ),
                           ),
                           child: Text(
-                            '-${discount.round()}%',
+                            '-${discount.toStringAsFixed(1)}%',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -178,7 +184,7 @@ class _SearchPageState extends State<SearchPage> {
                         Text(
                           '\$${discountedPrice.toStringAsFixed(2)}',
                           style: const TextStyle(
-                            color: Colors.green,
+                            color: Colors.red,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -196,7 +202,31 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _buildProductImage(dynamic product) {
-    final imageUrl = product['imageURL'] ?? '';
+    String imageUrl = '';
+    
+    // Kiểm tra và lấy URL hình ảnh từ mảng images trước
+    if (product['images'] != null && product['images'] is List && product['images'].isNotEmpty) {
+      var firstImage = product['images'][0];
+      if (firstImage is Map) {
+        imageUrl = firstImage['url'] ?? '';
+      } else {
+        imageUrl = firstImage.toString();
+      }
+    }
+    
+    // Nếu không có trong mảng images, thử lấy từ imageURL
+    if (imageUrl.isEmpty) {
+      imageUrl = product['imageURL'] ?? '';
+    }
+
+    // Nếu imageUrl là đường dẫn tương đối, thêm baseUrl
+    if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
+      imageUrl = '${APIService.baseUrl}$imageUrl';
+    }
+
+    print('Product: ${product['productName']}');
+    print('Image URL: $imageUrl');
+
     if (imageUrl.isEmpty) {
       return const Center(
         child: Icon(
@@ -241,7 +271,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tìm kiếm sản phẩm'),
+        title: const Text('Search Products'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -253,7 +283,7 @@ class _SearchPageState extends State<SearchPage> {
               controller: _searchController,
               onChanged: _performSearch,
               decoration: InputDecoration(
-                hintText: 'Tìm kiếm sản phẩm...',
+                hintText: 'Search products...',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),

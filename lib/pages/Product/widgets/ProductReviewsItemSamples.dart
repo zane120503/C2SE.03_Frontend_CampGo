@@ -59,7 +59,7 @@ class _ProductReviewsItemSamplesState extends State<ProductReviewsItemSamples> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Tất cả đánh giá',
+              'All Reviews',
               style: TextStyle(
                 color: Colors.black,
                 fontSize: 20,
@@ -67,10 +67,10 @@ class _ProductReviewsItemSamplesState extends State<ProductReviewsItemSamples> {
               ),
             ),
             Text(
-              '$totalReviews đánh giá • ${averageRating.toStringAsFixed(1)} sao',
+              '$totalReviews reviews • ${averageRating.toStringAsFixed(1)} stars',
               style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
+                color: Color.fromARGB(255, 108, 108, 108),
+                fontSize: 16,
               ),
             ),
           ],
@@ -81,7 +81,7 @@ class _ProductReviewsItemSamplesState extends State<ProductReviewsItemSamples> {
           : reviews.isEmpty
               ? const Center(
                   child: Text(
-                    'Chưa có đánh giá nào cho sản phẩm này',
+                    'No reviews yet',
                     style: TextStyle(fontSize: 16),
                   ),
                 )
@@ -142,8 +142,8 @@ class _ProductReviewsItemSamplesState extends State<ProductReviewsItemSamples> {
                                           Text(
                                             _formatDate(review.createdAt),
                                             style: TextStyle(
-                                              color: Colors.grey[600],
-                                              fontSize: 12,
+                                              color: Color.fromARGB(255, 108, 108, 108),
+                                              fontSize: 16,
                                             ),
                                           ),
                                         ],
@@ -156,7 +156,7 @@ class _ProductReviewsItemSamplesState extends State<ProductReviewsItemSamples> {
                             const SizedBox(height: 12),
                             Text(
                               review.comment,
-                              style: const TextStyle(fontSize: 14),
+                              style: const TextStyle(fontSize: 16),
                             ),
                             if (review.images.isNotEmpty) ...[
                               const SizedBox(height: 12),
