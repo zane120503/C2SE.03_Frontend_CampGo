@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:CampGo/services/api_service.dart';
-import 'package:CampGo/pages/Home/widgets/HomeItemsWidget.dart';
 
 class CategoriesWidget extends StatefulWidget {
   final Function(String?)? onCategorySelected;
@@ -33,22 +32,22 @@ class _CategoriesWidgetState extends State<CategoriesWidget> {
       if (response['success'] == true && response['data'] != null) {
         setState(() {
           categories = [
-            {'_id': null, 'categoryName': 'Tất cả'},
+            {'_id': null, 'categoryName': 'All Products'}, 
             ...response['data']
           ];
           isLoading = false;
         });
       } else {
-        print('Lỗi khi tải danh mục: ${response['message']}');
+        print('Error loading categories: ${response['message']}');
         setState(() {
-          categories = [{'_id': null, 'categoryName': 'Tất cả'}];
+          categories = [{'_id': null, 'categoryName': 'All Products'}];
           isLoading = false;
         });
       }
     } catch (e) {
-      print('Lỗi khi tải danh mục: $e');
+      print('Error loading categories: $e');
       setState(() {
-        categories = [{'_id': null, 'categoryName': 'Tất cả'}];
+        categories = [{'_id': null, 'categoryName': 'All Products'}];
         isLoading = false;
       });
     }

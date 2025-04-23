@@ -74,36 +74,30 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
               selectedCategory == 'all' ||
               productCategoryId == selectedCategory;
 
-          // Tính giá cuối cùng của sản phẩm
-          double originalPrice = double.tryParse(product['originalPrice']?.toString() ?? '0') ?? 0.0;
-          double discount = (product['discount'] ?? 0).toDouble();
-          double finalPrice = discount > 0 
-              ? originalPrice * (1 - discount / 100) 
-              : originalPrice;
+          // Lấy giá gốc và giá sau giảm
+          final originalPrice = double.tryParse(product['originalPrice']?.toString() ?? '0') ?? double.tryParse(product['price']?.toString() ?? '0') ?? 0;
+          final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0;
+          final discount = product['discount']?.toDouble() ?? 0;
+          final discountedPrice = originalPrice * (1 - discount / 100);
           
-          print('Product: ${product['name']}');
-          print('Category ID: $productCategoryId');
-          print('Selected Category: $selectedCategory');
-          print('Matches Category: $matchesCategory');
-          print('Final Price: $finalPrice');
-          print('-------------------');
-
           // Kiểm tra khoảng giá
           bool matchesPrice = true;
           if (minPrice != null || maxPrice != null) {
             if (minPrice != null) {
-              matchesPrice = matchesPrice && finalPrice >= minPrice!;
+              matchesPrice = matchesPrice && discountedPrice >= minPrice!;
             }
             if (maxPrice != null) {
-              matchesPrice = matchesPrice && finalPrice <= maxPrice!;
+              matchesPrice = matchesPrice && discountedPrice <= maxPrice!;
             }
           }
 
           return matchesCategory && matchesPrice;
         }).toList();
 
-        print('Filtered Products Count: ${products.length}');
-        print('Applied Filters - Category: $selectedCategory, Min Price: $minPrice, Max Price: $maxPrice');
+        setState(() {
+          isLoading = false;
+        });
+
       } else {
         products = [];
       }
@@ -148,11 +142,19 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
             favoriteProducts.remove(productId);
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'] ?? 'Đã xóa khỏi danh sách yêu thích')),
+            SnackBar(content: Text(result['message'] ?? 'Removed from favorites',
+            textAlign: TextAlign.center,
+            ),
+            backgroundColor: Colors.green,
+            ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'] ?? 'Không thể xóa khỏi danh sách yêu thích')),
+            SnackBar(content: Text(result['message'] ?? 'Cannot remove from favorites',
+            textAlign: TextAlign.center,
+            ),
+            backgroundColor: Colors.red,
+            ),
           );
         }
       } else {
@@ -163,18 +165,30 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
             favoriteProducts.add(productId);
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'] ?? 'Đã thêm vào danh sách yêu thích')),
+            SnackBar(content: Text(result['message'] ?? 'Added to favorites',
+            textAlign: TextAlign.center,
+            ),
+            backgroundColor: Colors.green,
+            ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'] ?? 'Không thể thêm vào danh sách yêu thích')),
+            SnackBar(content: Text(result['message'] ?? 'Cannot add to favorites',
+            textAlign: TextAlign.center,
+            ),
+            backgroundColor: Colors.red,
+            ),
           );
         }
       }
     } catch (e) {
       print('Error toggling favorite: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Có lỗi xảy ra khi cập nhật danh sách yêu thích')),
+        const SnackBar(content: Text('An error occurred while updating the favorites list',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -211,13 +225,13 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
     }
 
     if (products.isEmpty) {
-      return Center(child: Text('Không tìm thấy sản phẩm nào'));
+      return Center(child: Text('No products found'));
     }
 
     return GridView.builder(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.85,
+        childAspectRatio: 0.75,
         mainAxisSpacing: 15,
         crossAxisSpacing: 15,
       ),
@@ -230,9 +244,18 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
         final productId = product['_id']?.toString() ?? '';
         final isFavorite = favoriteProducts.contains(productId);
         
-        final originalPrice = double.tryParse(product['originalPrice']?.toString() ?? '0') ?? 0;
-        final discountedPrice = double.tryParse(product['discountedPrice']?.toString() ?? '0') ?? 0;
+        // Lấy giá gốc và giá sau giảm
+        final originalPrice = double.tryParse(product['originalPrice']?.toString() ?? '0') ?? double.tryParse(product['price']?.toString() ?? '0') ?? 0;
+        final price = double.tryParse(product['price']?.toString() ?? '0') ?? 0;
         final discount = product['discount']?.toDouble() ?? 0;
+        final discountedPrice = originalPrice * (1 - discount / 100);
+        
+        // Debug log
+        print('Product: ${product['name']}');
+        print('Original Price: $originalPrice');
+        print('Price: $price');
+        print('Discount: $discount%');
+        print('Discounted Price: $discountedPrice');
         
         final name = product['name'] ?? '';
         final soldCount = product['soldCount']?.toString() ?? '0';
@@ -242,8 +265,6 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
         final imageUrl = (images != null && images.isNotEmpty) 
             ? images[0].toString()
             : product['imageURL']?.toString() ?? '';
-
-        print('Product $productId - Name: $name - Image URL: $imageUrl');
 
         return GestureDetector(
           onTap: () => _navigateToProductPage(productId),
@@ -270,7 +291,7 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                       child: imageUrl.isNotEmpty
                           ? Image.network(
                               imageUrl,
-                              height: 140,
+                              height: 120,
                               width: double.infinity,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
@@ -284,15 +305,15 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                         top: 8,
                         left: 8,
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                           decoration: BoxDecoration(
                             color: Colors.red,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            "-$discount%",
+                            "-${discount.toStringAsFixed(1)}%",
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 10,
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                             ),
@@ -311,10 +332,10 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                           icon: Icon(
                             isFavorite ? Icons.favorite : Icons.favorite_border,
                             color: isFavorite ? Colors.red : Colors.white,
-                            size: 20,
+                            size: 18,
                           ),
                           onPressed: () => toggleFavorite(productId),
-                          constraints: BoxConstraints.tightFor(width: 30, height: 30),
+                          constraints: BoxConstraints.tightFor(width: 28, height: 28),
                           padding: EdgeInsets.zero,
                         ),
                       ),
@@ -331,7 +352,7 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                         Text(
                           name,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: Colors.black87,
                           ),
@@ -341,21 +362,19 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                         SizedBox(height: 4),
                         Row(
                           children: [
-                            if (originalPrice > 0) ...[
-                              Text(
-                                "\$${originalPrice.toStringAsFixed(2)}",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                  decoration: TextDecoration.lineThrough,
-                                ),
+                            Text(
+                              '\$${originalPrice.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                                decoration: TextDecoration.lineThrough,
                               ),
-                              SizedBox(width: 4),
-                            ],
+                            ),
+                            SizedBox(width: 4),
                             Text(
                               "\$${discountedPrice.toStringAsFixed(2)}",
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.red,
                               ),
@@ -364,26 +383,30 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                         ),
                         Spacer(),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              "$soldCount đã bán",
+                              "$soldCount sold",
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 11,
                                 color: Colors.grey[600],
                               ),
                             ),
-                            Spacer(),
-                            Icon(
-                              Icons.star,
-                              color: Colors.amber,
-                              size: 14,
-                            ),
-                            Text(
-                              " $rating",
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.star,
+                                  color: Colors.amber,
+                                  size: 12,
+                                ),
+                                Text(
+                                  " $rating",
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),

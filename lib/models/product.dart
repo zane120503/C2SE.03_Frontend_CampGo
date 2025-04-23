@@ -2,8 +2,8 @@ class Product {
   final String id;
   final String productName;
   final String description;
-  final double price;          // giá gốc (originalPrice từ backend)
-  final double discountedPrice; // giá đã giảm (price từ backend)
+  final double originalPrice;    // giá gốc
+  final double price;           // giá sau giảm
   final int stockQuantity;
   final String categoryID;
   final String imageURL;
@@ -12,7 +12,7 @@ class Product {
   final int discount;
   final DateTime createdAt;
   final double rating;
-  final List<dynamic> images;  // Thêm trường images
+  final List<dynamic> images;
 
   // Getters để tương thích với UI
   String get name => productName;
@@ -24,8 +24,8 @@ class Product {
     required this.id,
     required this.productName,
     required this.description,
+    required this.originalPrice,
     required this.price,
-    required this.discountedPrice,
     required this.stockQuantity,
     required this.categoryID,
     required this.imageURL,
@@ -34,7 +34,7 @@ class Product {
     required this.discount,
     required this.createdAt,
     this.rating = 0.0,
-    this.images = const [],  // Khởi tạo mảng images rỗng
+    this.images = const [],
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -54,15 +54,14 @@ class Product {
         imageUrl = json['imageURL']?.toString() ?? '';
       }
 
-      // Đọc giá gốc từ originalPrice
+      // Đọc giá gốc và giá sau giảm
       final double originalPrice = json['originalPrice'] is int 
           ? (json['originalPrice'] as int).toDouble()
           : json['originalPrice'] is String 
               ? double.parse(json['originalPrice'])
               : (json['originalPrice'] ?? 0.0).toDouble();
 
-      // Đọc giá đã giảm từ price
-      final double finalPrice = json['price'] is int 
+      final double price = json['price'] is int 
           ? (json['price'] as int).toDouble()
           : json['price'] is String 
               ? double.parse(json['price'])
@@ -72,8 +71,8 @@ class Product {
         id: json['_id']?.toString() ?? '',
         productName: json['productName']?.toString() ?? '',
         description: json['description']?.toString() ?? '',
-        price: originalPrice,           // giá gốc
-        discountedPrice: finalPrice,    // giá đã giảm
+        originalPrice: originalPrice,
+        price: price,
         stockQuantity: (json['stockQuantity'] ?? 0).toInt(),
         categoryID: json['categoryID']?.toString() ?? '',
         imageURL: imageUrl,
@@ -84,7 +83,7 @@ class Product {
             ? DateTime.parse(json['createdAt'].toString())
             : DateTime.now(),
         rating: (json['rating'] ?? 0.0).toDouble(),
-        images: json['images'] ?? [],  // Lưu trữ mảng images
+        images: json['images'] ?? [],
       );
     } catch (e) {
       print('Lỗi khi parse JSON Product: $e');
@@ -92,8 +91,8 @@ class Product {
         id: '',
         productName: '',
         description: '',
+        originalPrice: 0.0,
         price: 0.0,
-        discountedPrice: 0.0,
         stockQuantity: 0,
         categoryID: '',
         imageURL: '',
@@ -112,8 +111,8 @@ class Product {
       '_id': id,
       'productName': productName,
       'description': description,
-      'originalPrice': price,
-      'price': discountedPrice,
+      'originalPrice': originalPrice,
+      'price': price,
       'stockQuantity': stockQuantity,
       'categoryID': categoryID,
       'imageURL': imageURL,

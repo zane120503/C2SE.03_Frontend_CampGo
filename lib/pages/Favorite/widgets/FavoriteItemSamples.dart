@@ -40,26 +40,24 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
               print('Product detail data for $productId: $productData');
 
               // Xử lý URL hình ảnh
-              String imageUrl = '';
-              if (productData['images'] != null && productData['images'] is List && productData['images'].isNotEmpty) {
-                var firstImage = productData['images'][0];
-                if (firstImage is Map && firstImage.containsKey('url')) {
-                  imageUrl = firstImage['url'].toString();
-                }
-              }
-              print('Extracted image URL for $productId: $imageUrl');
+              String imageUrl = productData['imageURL'] ?? 
+                (productData['images']?.isNotEmpty == true ? 
+                  (productData['images'][0] is Map ? 
+                    productData['images'][0]['url'] : 
+                    productData['images'][0]) : 
+                  '');
 
               // Tính toán giá sau giảm giá
               final price = (productData['price'] ?? 0.0).toDouble();
+              final originalPrice = (productData['originalPrice'] ?? productData['price'] ?? 0.0).toDouble();
               final discount = (productData['discount'] ?? 0).toDouble();
-              final discountedPrice = price * (1 - discount / 100);
 
               detailedProducts.add({
                 '_id': productId,
                 'productName': productData['productName'],
                 'price': price,
+                'originalPrice': originalPrice,
                 'discount': discount,
-                'discount_price': discountedPrice,
                 'imageURL': imageUrl,
                 'stockQuantity': productData['stockQuantity'],
                 'description': productData['description'],
@@ -147,7 +145,7 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
         itemBuilder: (context, index) {
           final item = wishlistItems[index];
           final price = item['price']?.toDouble() ?? 0.0;
-          final discountPrice = item['discount_price']?.toDouble() ?? price;
+          final originalPrice = item['originalPrice']?.toDouble() ?? price;
           final discount = item['discount']?.toDouble() ?? 0.0;
           final imageUrl = item['imageURL'] ?? '';
           
@@ -236,17 +234,17 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
-                              '\$${discountPrice.toStringAsFixed(2)}',
+                              '\$${price.toStringAsFixed(2)}',
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.red,
                               ),
                             ),
-                            if (discount > 0) ...[
+                            if (originalPrice > price) ...[
                               const SizedBox(width: 8),
                               Text(
-                                '\$${price.toStringAsFixed(2)}',
+                                '\$${originalPrice.toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   decoration: TextDecoration.lineThrough,

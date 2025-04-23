@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:CampGo/services/auth_service.dart';
 import 'package:CampGo/pages/Login/LoginPage.dart';
+import 'package:CampGo/services/share_service.dart';
+
 
 class ResetPasswordPage extends StatefulWidget {
   final String email;
@@ -28,12 +30,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     String password = _passwordController.text;
     String confirmPassword = _confirmPasswordController.text;
 
-    if (password.isEmpty || password.length < 4) {
-      showSnackBar('Mật khẩu phải có ít nhất 4 ký tự!', Colors.red);
+    if (password.isEmpty || password.length < 6) {
+      showSnackBar('The password must be at least 6 characters!', Colors.red);  
       return false;
     }
     if (password != confirmPassword) {
-      showSnackBar('Mật khẩu không khớp!', Colors.red);
+      showSnackBar('The passwords do not match!', Colors.red);
       return false;
     }
     return true;
@@ -60,6 +62,14 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     });
 
     try {
+      // Kiểm tra token trước khi gọi API
+      String? token = await ShareService.getToken();
+      print('Token before reset password: $token');
+
+      if (token == null || token.isEmpty) {
+        throw Exception('Invalid reset token. Please try again from the beginning.');
+      }
+
       final response = await _authService.resetPassword(
         widget.email,
         widget.otp,
@@ -71,9 +81,15 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       if (!mounted) return;
 
       if (response['success'] == true) {
+        // Xóa token sau khi reset password thành công
+        await ShareService.clearUserData();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Đặt lại mật khẩu thành công!'),
+            content: Text(
+              'Reset password successful!',
+              textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -90,7 +106,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(response['message'] ?? 'Đặt lại mật khẩu thất bại'),
+            content: Text(
+              response['message'] ?? 'Reset password failed',
+              textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -100,7 +119,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Lỗi: ${e.toString()}'),
+          content: Text(
+            'Error: ${e.toString()}',
+            textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -127,131 +149,146 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           ),
           Container(color: Colors.black.withOpacity(0.5)),
 
-          SafeArea(
-            child: SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: MediaQuery.of(context).size.height,
+          Column(
+            children: [
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
                 ),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(height: 20),
+                    // Back Button + Title
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: Colors.black),
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                        ),
+                        const SizedBox(width: 45),
+                        const Text(
+                          'Reset Password',
+                          style: TextStyle(
+                            color: Color(0xFF2B2321),
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
 
-                    // White Form Container
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(30),
-                          topRight: Radius.circular(30),
+                    const SizedBox(height: 30),
+
+                    // New Password
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscureText,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.grey.withOpacity(0.1),
+                        labelText: 'New Password',
+                        labelStyle: const TextStyle(color: Colors.black87),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureText ? Icons.visibility : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureText = !_obscureText;
+                            });
+                          },
                         ),
                       ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Back Button + Title
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Confirm New Password
+                    TextFormField(
+                      controller: _confirmPasswordController,
+                      obscureText: _obscureTextConfirm,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.grey.withOpacity(0.1),
+                        labelText: 'Confirm New Password',
+                        labelStyle: const TextStyle(color: Colors.black87),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureTextConfirm ? Icons.visibility : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureTextConfirm = !_obscureTextConfirm;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // Reset Password Button
+                    _isLoading
+                        ? const CircularProgressIndicator()
+                        : SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: resetPassword,
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 15),
+                                backgroundColor: const Color.fromARGB(255, 215, 159, 54),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
-                              const SizedBox(width: 50),
-                              const Text(
-                                'Đặt lại mật khẩu',
+                              child: const Text(
+                                'Reset Password',
                                 style: TextStyle(
-                                  color: Color(0xFF2B2321),
-                                  fontSize: 28,
+                                  color: Colors.white,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // New Password
-                          TextFormField(
-                            controller: _passwordController,
-                            obscureText: _obscureText,
-                            decoration: InputDecoration(
-                              labelText: 'Mật khẩu mới',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscureText ? Icons.visibility : Icons.visibility_off,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _obscureText = !_obscureText;
-                                  });
-                                },
-                              ),
                             ),
                           ),
 
-                          const SizedBox(height: 20),
-
-                          // Confirm New Password
-                          TextFormField(
-                            controller: _confirmPasswordController,
-                            obscureText: _obscureTextConfirm,
-                            decoration: InputDecoration(
-                              labelText: 'Xác nhận mật khẩu mới',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscureTextConfirm ? Icons.visibility : Icons.visibility_off,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _obscureTextConfirm = !_obscureTextConfirm;
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 30),
-
-                          // Reset Password Button
-                          _isLoading
-                              ? const CircularProgressIndicator()
-                              : ElevatedButton(
-                                  onPressed: resetPassword,
-                                  style: ElevatedButton.styleFrom(
-                                    minimumSize: const Size(400, 55),
-                                    backgroundColor: const Color.fromARGB(255, 215, 159, 54),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Đặt lại mật khẩu',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),

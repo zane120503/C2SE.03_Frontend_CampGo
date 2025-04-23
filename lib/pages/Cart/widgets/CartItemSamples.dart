@@ -8,7 +8,7 @@ class CartItem {
   final String id;
   final String name;
   final double price;
-  final double discountedPrice;
+  final double originalPrice;
   final String image;
   int quantity;
   bool isSelected;
@@ -19,7 +19,7 @@ class CartItem {
     required this.id,
     required this.name,
     required this.price,
-    required this.discountedPrice,
+    required this.originalPrice,
     required this.image,
     required this.quantity,
     required this.isSelected,
@@ -31,14 +31,14 @@ class CartItem {
     try {
       final product = json['product'];
       final price = (product['price'] ?? 0.0).toDouble();
+      final originalPrice = (product['originalPrice'] ?? product['price'] ?? 0.0).toDouble();
       final discount = product['discount'] ?? 0;
-      final discountedPrice = price * (1 - discount / 100);
       
       return CartItem(
         id: product['_id'] ?? '',
         name: product['productName'] ?? '',
         price: price,
-        discountedPrice: discountedPrice,
+        originalPrice: originalPrice,
         image: product['imageURL'] ?? 'assets/images/placeholder.png',
         quantity: json['quantity'] ?? 1,
         isSelected: false,
@@ -51,7 +51,7 @@ class CartItem {
         id: '',
         name: 'Error Item',
         price: 0.0,
-        discountedPrice: 0.0,
+        originalPrice: 0.0,
         image: 'assets/images/placeholder.png',
         quantity: 1,
         isSelected: false,
@@ -66,7 +66,7 @@ class CartItem {
       'id': id,
       'name': name,
       'price': price,
-      'discountedPrice': discountedPrice,
+      'originalPrice': originalPrice,
       'quantity': quantity,
       'image': image,
       'discount': discount,
@@ -138,7 +138,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
               final price = (item['price'] ?? 0.0).toDouble();
               final quantity = (item['quantity'] ?? 1).toInt();
               final discount = (product['discount'] ?? 0).toInt();
-              final discountedPrice = price * (1 - discount / 100);
+              final originalPrice = (product['originalPrice'] ?? price).toDouble();
 
               String imageUrl = '';
               if (product['images'] != null && product['images'] is List && product['images'].isNotEmpty) {
@@ -152,7 +152,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
                 id: product['_id'] ?? '',
                 name: product['productName'] ?? '',
                 price: price,
-                discountedPrice: discountedPrice,
+                originalPrice: originalPrice,
                 image: imageUrl.isNotEmpty ? imageUrl : 'assets/images/placeholder.png',
                 quantity: quantity,
                 isSelected: false,
@@ -360,8 +360,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
   double calculateTotalPrice() {
     return cartItems.fold(0.0, (sum, item) {
       if (item.isSelected) {
-        double discountAmount = item.price * (item.discount / 100);
-        return sum + (item.price * item.quantity) - (discountAmount * item.quantity);
+        return sum + (item.price * item.quantity);
       }
       return sum;
     });
@@ -378,7 +377,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
         'id': item.id,
         'name': item.name,
         'price': item.price,
-        'discountedPrice': item.discountedPrice,
+        'originalPrice': item.originalPrice,
         'quantity': item.quantity,
         'image': item.image,
         'discount': item.discount,
@@ -504,7 +503,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
                   Row(
                     children: [
                       Text(
-                        "${item.discountedPrice.toStringAsFixed(2)}đ",
+                        "${item.price.toStringAsFixed(2)}đ",
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -512,7 +511,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
                         ),
                       ),
                       SizedBox(width: 4),
-                      if (item.discount > 0)
+                      if (item.originalPrice > item.price)
                         Text(
                           "-${item.discount}%",
                           style: TextStyle(
@@ -522,9 +521,9 @@ class _CartItemSamplesState extends State<CartItemSamples> {
                         ),
                     ],
                   ),
-                  if (item.discount > 0)
+                  if (item.originalPrice > item.price)
                     Text(
-                      "${item.price.toStringAsFixed(2)}đ",
+                      "${item.originalPrice.toStringAsFixed(2)}đ",
                       style: TextStyle(
                         fontSize: 13,
                         decoration: TextDecoration.lineThrough,

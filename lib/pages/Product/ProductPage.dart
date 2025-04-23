@@ -39,25 +39,21 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
           averageRating = (reviewResponse['data']['summary']?['averageRating'] ?? 0.0).toDouble();
         }
 
-        // Xử lý URL hình ảnh
-        String imageUrl = '';
-        if (productData['images'] != null && productData['images'] is List && productData['images'].isNotEmpty) {
-          var firstImage = productData['images'][0];
-          if (firstImage is Map && firstImage.containsKey('url')) {
-            imageUrl = firstImage['url'].toString();
-          }
-        }
-
         setState(() {
           product = {
             'id': productData['_id'],
             'name': productData['productName'],
             'description': productData['description'],
+            'originalPrice': productData['originalPrice'] ?? productData['price'],
             'price': productData['price'],
-            'originalPrice': productData['price'],
-            'discountedPrice': productData['price'] * (1 - (productData['discount'] ?? 0) / 100),
-            'discountPercentage': productData['discount'],
-            'imageURL': imageUrl,
+            'discountedPrice': productData['price'],
+            'discountPercentage': productData['discount'] ?? 0,
+            'imageURL': productData['imageURL'] ?? 
+              (productData['images']?.isNotEmpty == true ? 
+                (productData['images'][0] is Map ? 
+                  productData['images'][0]['url'] : 
+                  productData['images'][0]) : 
+                ''),
             'stockQuantity': productData['stockQuantity'],
             'soldCount': productData['sold'],
             'brand': productData['brand'],
@@ -367,7 +363,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
   Widget _buildProductDetails() {
     final discountPercentage = product!['discountPercentage'] ?? 0.0;
     final originalPrice = product!['originalPrice'] ?? 0.0;
-    final discountedPrice = product!['discountedPrice'] ?? originalPrice;
+    final discountedPrice = product!['price'] ?? originalPrice;
     final soldCount = product!['soldCount'] ?? 0;
     final stockQuantity = product!['stockQuantity'] ?? 0;
     final rating = product!['rating'] ?? 0.0;
@@ -567,7 +563,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
   Widget _buildBottomBar() {
     final discountPercentage = product!['discountPercentage'] ?? 0.0;
     final originalPrice = product!['originalPrice'] ?? 0.0;
-    final discountedPrice = product!['discountedPrice'] ?? originalPrice;
+    final discountedPrice = product!['price'] ?? originalPrice;
     final totalPrice = discountedPrice * quantity;
 
     return Container(

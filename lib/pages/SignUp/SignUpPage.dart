@@ -31,19 +31,19 @@ class _SignUpPageState extends State<SignUpPage> {
     String confirmPassword = _confirmPasswordController.text;
 
     if (name.isEmpty || name.length < 3 || name.length > 50) {
-      showSnackBar('Tên người dùng phải từ 3 đến 50 ký tự!', Colors.red);
+      showSnackBar('The name must be between 3 and 50 characters!', Colors.red);
       return false;
     }
     if (!RegExp(r'^\S+@\S+\.\S+$').hasMatch(email)) {
-      showSnackBar('Vui lòng nhập email hợp lệ!', Colors.red);
+      showSnackBar('Please enter a valid email!', Colors.red);
       return false;
     }
     if (password.isEmpty || password.length < 4) {
-      showSnackBar('Mật khẩu phải có ít nhất 4 ký tự!', Colors.red);
+      showSnackBar('The password must be at least 4 characters!', Colors.red);
       return false;
     }
     if (password != confirmPassword) {
-      showSnackBar('Mật khẩu không khớp!', Colors.red);
+      showSnackBar('The passwords do not match!', Colors.red);
       return false;
     }
     return true;
@@ -88,7 +88,9 @@ class _SignUpPageState extends State<SignUpPage> {
         // Hiển thị thông báo thành công
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Đăng ký thành công!'),
+            content: Text('Sign up Success!',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -110,7 +112,9 @@ class _SignUpPageState extends State<SignUpPage> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(response['message'] ?? 'Đăng ký thất bại'),
+            content: Text(response['message'] ?? 'Sign up Failed',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -119,7 +123,9 @@ class _SignUpPageState extends State<SignUpPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Lỗi: ${e.toString()}'),
+          content: Text('Error: ${e.toString()}',
+          textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
         ),
       );
