@@ -19,8 +19,9 @@ class APIService {
     if (_dio == null) {
       _dio = Dio(BaseOptions(
         baseUrl: Config.baseUrl,
-        connectTimeout: Duration(seconds: 5),
-        receiveTimeout: Duration(seconds: 3),
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
         validateStatus: (status) {
           return status! < 500;
         },
@@ -407,7 +408,10 @@ class APIService {
   }) async {
     try {
       _initDio();
-      if (_authToken == null || _authToken!.isEmpty) {
+      
+      // Lấy token từ ShareService
+      final token = await ShareService.getToken();
+      if (token == null || token.isEmpty) {
         throw Exception('Vui lòng đăng nhập để đánh giá sản phẩm');
       }
 
@@ -417,6 +421,7 @@ class APIService {
       print('Images: $imagePaths');
       print('First Name: $firstName');
       print('Last Name: $lastName');
+      print('Using token: $token');
 
       Response response;
 
@@ -435,9 +440,25 @@ class APIService {
         
         // Thêm ảnh
         for (var imagePath in imagePaths) {
+          // Kiểm tra xem đường dẫn ảnh có hợp lệ không
+          if (imagePath.startsWith('file://')) {
+            imagePath = imagePath.replaceFirst('file://', '');
+          }
+          
           String? mimeType = lookupMimeType(imagePath);
           if (mimeType == null) {
-            throw Exception('Cannot determine file type');
+            throw Exception('Không thể xác định loại file');
+          }
+
+          // Kiểm tra kích thước file
+          final file = File(imagePath);
+          if (!file.existsSync()) {
+            throw Exception('File không tồn tại: $imagePath');
+          }
+
+          final fileSize = file.lengthSync();
+          if (fileSize > 5 * 1024 * 1024) { // 5MB
+            throw Exception('Kích thước file quá lớn (tối đa 5MB)');
           }
 
           formData.files.add(MapEntry(
@@ -456,9 +477,11 @@ class APIService {
           options: Options(
             headers: {
               'Accept': 'application/json',
-              'Authorization': 'Bearer $_authToken',
+              'Authorization': 'Bearer $token',
             },
             contentType: 'multipart/form-data',
+            receiveTimeout: const Duration(seconds: 60),
+            sendTimeout: const Duration(seconds: 60),
           ),
         );
       } else {
@@ -479,8 +502,10 @@ class APIService {
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_authToken',
+              'Authorization': 'Bearer $token',
             },
+            receiveTimeout: const Duration(seconds: 30),
+            sendTimeout: const Duration(seconds: 30),
           ),
         );
       }
@@ -1381,22 +1406,64 @@ class APIService {
 
   static Future<Map<String, dynamic>> confirmDelivery(String orderId) async {
     try {
-      _initDio();
+      print('Confirming delivery for order: $orderId');
+      
+      // Kiểm tra đăng nhập
+      final isLoggedIn = await ShareService.isLoggedIn();
+      if (!isLoggedIn) {
+        print('User not logged in');
+        return {
+          'success': false,
+          'message': 'User not logged in'
+        };
+      }
+
+      // Lấy token
+      final token = await ShareService.getToken();
+      if (token == null || token.isEmpty) {
+        print('Token is null or empty');
+        return {
+          'success': false,
+          'message': 'No token, authorization denied'
+        };
+      }
+
+      print('Token retrieved successfully');
+      
+      // Gọi API cập nhật trạng thái đơn hàng
       final response = await _dio!.put(
         '/api/orders/$orderId/confirm-delivery',
-        options: Options(headers: getHeaders()),
+        data: {
+          'delivery_status': 'Delivered',
+          'waiting_confirmation': false
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
       );
-      
-      return {
-        'success': response.statusCode == 200,
-        'message': response.data['message'] ?? 'Đã xác nhận nhận hàng',
-        'data': response.data
-      };
+
+      print('API Response: ${response.data}');
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': 'Order confirmed as delivered successfully',
+          'data': response.data
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to confirm delivery: ${response.data['message'] ?? 'Unknown error'}'
+        };
+      }
     } catch (e) {
       print('Error confirming delivery: $e');
       return {
         'success': false,
-        'message': 'Không thể xác nhận nhận hàng: $e'
+        'message': 'Error confirming delivery: $e'
       };
     }
   }

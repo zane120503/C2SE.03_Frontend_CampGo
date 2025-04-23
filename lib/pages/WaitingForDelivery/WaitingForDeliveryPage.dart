@@ -87,7 +87,7 @@ class _WaitingForDeliveryState extends State<WaitingForDeliveryPage> {
       setState(() {
         _orders = [];
       });
-    } finally {
+    } finally { 
       setState(() {
         _isLoading = false;
       });

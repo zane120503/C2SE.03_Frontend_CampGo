@@ -45,6 +45,19 @@ class _ProductReviewsState extends State<ProductReviews> {
     }
   }
 
+  // Thêm phương thức để cập nhật danh sách đánh giá
+  void updateReviews(Map<String, dynamic> newReview) {
+    setState(() {
+      // Thêm review mới vào đầu danh sách
+      reviews.insert(0, newReview);
+      // Cập nhật tổng số review
+      totalReviews++;
+      // Cập nhật điểm trung bình
+      final totalRating = reviews.fold<double>(0, (sum, review) => sum + (review['rating'] as num).toDouble());
+      averageRating = totalRating / totalReviews;
+    });
+  }
+
   Widget _buildReviewSummary() {
     // Tính toán số lượng đánh giá cho mỗi mức sao
     final starCounts = List<int>.filled(5, 0);
@@ -159,7 +172,13 @@ class _ProductReviewsState extends State<ProductReviews> {
             final String firstName = review['first_name'] ?? '';
             final String lastName = review['last_name'] ?? '';
             final String displayName = [firstName, lastName].where((s) => s.isNotEmpty).join(' ');
-            final String? userImage = review['user_image'] as String?;
+            
+            // Lấy thông tin ảnh profile từ user_image
+            String? userImageUrl;
+            if (review['user_image'] != null && review['user_image'] is Map) {
+              userImageUrl = review['user_image']['url'] as String?;
+            }
+            
             final int rating = (review['rating'] ?? 0).toInt();
             final String comment = review['comment'] ?? '';
             final List<String> images = List<String>.from(review['images'] ?? []);
@@ -187,10 +206,10 @@ class _ProductReviewsState extends State<ProductReviews> {
                     children: [
                       CircleAvatar(
                         backgroundColor: Colors.grey[200],
-                        backgroundImage: userImage != null && userImage.isNotEmpty 
-                            ? NetworkImage(userImage) as ImageProvider
+                        backgroundImage: userImageUrl != null && userImageUrl.isNotEmpty 
+                            ? NetworkImage(userImageUrl) as ImageProvider
                             : null,
-                        child: (userImage == null || userImage.isEmpty)
+                        child: (userImageUrl == null || userImageUrl.isEmpty)
                             ? Text(
                                 displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
                                 style: const TextStyle(

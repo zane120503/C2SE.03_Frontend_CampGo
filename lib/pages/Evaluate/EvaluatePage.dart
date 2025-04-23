@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:CampGo/api/api.service.dart';
 import 'package:intl/intl.dart';
+import 'package:CampGo/services/share_service.dart';
 
 class EvaluatePage extends StatefulWidget {
   const EvaluatePage({super.key});
@@ -32,8 +33,23 @@ class _EvaluateState extends State<EvaluatePage> {
     try {
       print('Checking review status for product: $productId');
       
+      // Lấy thông tin người dùng hiện tại
+      final userInfo = await ShareService.getUserInfo();
+      if (userInfo == null) {
+        print('User info is null');
+        return false;
+      }
+      
+      final userId = userInfo['userId'] as String?;
+      if (userId == null) {
+        print('User ID is null');
+        return false;
+      }
+      
+      print('Current user ID: $userId');
+      
       final response = await APIService.getProductReviews(productId, forceRefresh: true);
-      print('Review response: $response'); // Debug log
+      print('Review response: $response');
       
       if (response != null && response['success'] == true && response['data'] != null) {
         final data = response['data'];
@@ -41,20 +57,19 @@ class _EvaluateState extends State<EvaluatePage> {
           final List<dynamic> reviews = data['reviews'];
           print('Found ${reviews.length} reviews for product $productId');
           
-          for (var review in reviews) {
+          // Kiểm tra xem người dùng hiện tại đã đánh giá chưa
+          final hasReviewed = reviews.any((review) {
             if (review is Map<String, dynamic>) {
-              if (review['is_current_user'] == true) {
-                print('Found review by current user for product $productId');
-                return true;
-              }
+              final reviewUserId = review['user_id'] as String?;
+              print('Comparing review user ID: $reviewUserId with current user ID: $userId');
+              return reviewUserId == userId;
             }
-          }
-          print('No review found by current user for product $productId');
-        } else {
-          print('Invalid reviews data structure for product $productId: $data');
+            return false;
+          });
+          
+          print('User $userId has reviewed: $hasReviewed');
+          return hasReviewed;
         }
-      } else {
-        print('Failed to get reviews for product $productId. Response: $response');
       }
       return false;
     } catch (e) {
@@ -342,10 +357,17 @@ class _EvaluateState extends State<EvaluatePage> {
                       future: _checkIfProductReviewed(product['product']['_id']),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const CircularProgressIndicator();
+                          return const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          );
                         }
                         
                         final bool isReviewed = snapshot.data ?? false;
+                        print('Product ${product['product']['_id']} is reviewed: $isReviewed');
                         
                         return ElevatedButton(
                           onPressed: isReviewed ? null : () async {
@@ -400,15 +422,16 @@ class _EvaluateState extends State<EvaluatePage> {
                             }
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: isReviewed ? Colors.grey : Colors.deepOrange,
-                            disabledBackgroundColor: Colors.grey,
+                            backgroundColor: isReviewed ? Colors.grey[400] : Colors.deepOrange,
+                            disabledBackgroundColor: Colors.grey[400],
+                            disabledForegroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
                           child: Text(
                             isReviewed ? 'Đã review' : 'Review',
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: Colors.white,
                             ),
                           ),
