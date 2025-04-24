@@ -7,6 +7,7 @@ import 'package:CampGo/config/config.dart';
 import 'package:CampGo/services/auth_service.dart';
 import 'package:CampGo/services/share_service.dart';
 import 'package:dio/dio.dart';
+import 'package:CampGo/models/campsite.dart';
 
 class APIService {
   static final String baseUrl = Config.baseUrl;
@@ -1481,6 +1482,73 @@ class APIService {
         'success': false,
         'message': 'Lỗi kết nối: $e',
       };
+    }
+  }
+
+  // Lấy danh sách tất cả các địa điểm cắm trại
+  static Future<List<Campsite>> getAllCampsites() async {
+    try {
+      final response = await _dio!.get('/api/campsite/locations');
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'];
+        return data.map((json) => Campsite.fromJson(json)).toList();
+      }
+      throw Exception('Failed to load campsites');
+    } catch (e) {
+      print('Error getting campsites: $e');
+      rethrow;
+    }
+  }
+
+  // Tìm kiếm địa điểm cắm trại
+  static Future<List<Campsite>> searchCampsites(String query) async {
+    try {
+      final response = await _dio!.get(
+        '/api/campsite/search',
+        queryParameters: {'q': query},
+      );
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'];
+        return data.map((json) => Campsite.fromJson(json)).toList();
+      }
+      throw Exception('Failed to search campsites');
+    } catch (e) {
+      print('Error searching campsites: $e');
+      rethrow;
+    }
+  }
+
+  // Lấy chi tiết một địa điểm cắm trại
+  static Future<Campsite> getCampsiteDetails(String id) async {
+    try {
+      final response = await _dio!.get('/api/campsite/$id');
+      
+      if (response.statusCode == 200) {
+        return Campsite.fromJson(response.data['data']);
+      }
+      throw Exception('Failed to load campsite details');
+    } catch (e) {
+      print('Error getting campsite details: $e');
+      rethrow;
+    }
+  }
+
+  // Thêm đánh giá cho địa điểm cắm trại
+  static Future<void> addCampsiteReview(String id, String review) async {
+    try {
+      final response = await _dio!.post(
+        '/api/campsite/$id/review',
+        data: {'review': review},
+      );
+      
+      if (response.statusCode != 200) {
+        throw Exception('Failed to add review');
+      }
+    } catch (e) {
+      print('Error adding review: $e');
+      rethrow;
     }
   }
 } 

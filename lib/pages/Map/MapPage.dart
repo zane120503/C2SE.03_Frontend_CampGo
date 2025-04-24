@@ -3,52 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:CampGo/services/places_service.dart';
 import 'package:CampGo/services/api_service.dart';
-
-class CampingSpot {
-  final String id;
-  final String name;
-  final LatLng location;
-  final String description;
-  final double rating;
-  final List<String> facilities;
-  final List<String> images;
-  final Map<String, dynamic> priceRange;
-  final Map<String, dynamic> contactInfo;
-  final Map<String, dynamic> openingHours;
-
-  CampingSpot({
-    required this.id,
-    required this.name,
-    required this.location,
-    required this.description,
-    required this.rating,
-    required this.facilities,
-    required this.images,
-    required this.priceRange,
-    required this.contactInfo,
-    required this.openingHours,
-  });
-
-  factory CampingSpot.fromJson(Map<String, dynamic> json) {
-    return CampingSpot(
-      id: json['_id'] ?? '',
-      name: json['campsiteName'] ?? '',
-      location: LatLng(
-        json['latitude'] ?? 0.0,
-        json['longitude'] ?? 0.0,
-      ),
-      description: json['description'] ?? '',
-      rating: (json['rating'] ?? 0.0).toDouble(),
-      facilities: List<String>.from(json['facilities'] ?? []),
-      images: List<String>.from(json['images']?.map((img) => img['url']) ?? []),
-      priceRange: json['priceRange'] ?? {},
-      contactInfo: json['contactInfo'] ?? {},
-      openingHours: json['openingHours'] ?? {},
-    );
-  }
-}
+import 'package:CampGo/models/campsite.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -61,15 +17,12 @@ class _MapPageState extends State<MapPage> {
   late final MapController _mapController;
   final List<Marker> _markers = [];
   final TextEditingController _searchController = TextEditingController();
-  final PlacesService _placesService = PlacesService();
   LatLng? _currentPosition;
   bool _isLoading = false;
-  bool _isSearching = false;
-  List<Place> _searchResults = [];
   double _currentZoom = 13.0;
-  CampingSpot? _selectedSpot;
+  Campsite? _selectedSpot;
   bool _showSpotDetails = false;
-  List<CampingSpot> _campingSpots = [];
+  List<Campsite> _campsites = [];
 
   // Vị trí mặc định (Đà Nẵng)
   static const LatLng _defaultLocation = LatLng(16.0544, 108.2022);
@@ -82,7 +35,7 @@ class _MapPageState extends State<MapPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _getCurrentLocation();
     });
-    _loadCampingSpots();
+    _loadCampsites();
   }
 
   @override
@@ -92,34 +45,35 @@ class _MapPageState extends State<MapPage> {
     super.dispose();
   }
 
-  Future<void> _loadCampingSpots() async {
+  Future<void> _loadCampsites() async {
     try {
       setState(() => _isLoading = true);
-      final response = await APIService.getCampingSpots();
+      final campsites = await APIService.getAllCampsites();
       
-      if (response['success'] == true) {
-        final List<dynamic> spotsData = response['data'];
-        setState(() {
-          _campingSpots = spotsData.map((spot) => CampingSpot.fromJson(spot)).toList();
-          _addCampingSpotMarkers();
-        });
-      }
+      setState(() {
+        _campsites = campsites;
+        _addCampsiteMarkers();
+      });
     } catch (e) {
-      print('Error loading camping spots: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi tải địa điểm cắm trại: $e')),
-      );
+      print('Error loading campsites: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải địa điểm cắm trại: $e')),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  void _addCampingSpotMarkers() {
+  void _addCampsiteMarkers() {
     _markers.clear();
-    for (var spot in _campingSpots) {
+    for (var spot in _campsites) {
       _markers.add(
         Marker(
-          point: spot.location,
+          point: spot.coordinates,
           width: 40.0,
           height: 40.0,
           child: GestureDetector(
@@ -133,28 +87,46 @@ class _MapPageState extends State<MapPage> {
         ),
       );
     }
+    // Thêm lại marker vị trí hiện tại nếu có
+    if (_currentPosition != null) {
+      _markers.add(
+        Marker(
+          point: _currentPosition!,
+          width: 40.0,
+          height: 40.0,
+          child: const Icon(
+            Icons.location_on,
+            color: Colors.blue,
+            size: 40,
+          ),
+        ),
+      );
+    }
   }
 
-  void _showSpotInfo(CampingSpot spot) async {
+  void _showSpotInfo(Campsite spot) async {
     try {
       setState(() => _isLoading = true);
-      final response = await APIService.getCampingSpotDetails(spot.id);
+      final updatedSpot = await APIService.getCampsiteDetails(spot.id);
       
-      if (response['success'] == true) {
-        final updatedSpot = CampingSpot.fromJson(response['data']);
+      if (mounted) {
         setState(() {
           _selectedSpot = updatedSpot;
           _showSpotDetails = true;
         });
-        _mapController.move(spot.location, 15);
+        _mapController.move(spot.coordinates, 15);
       }
     } catch (e) {
       print('Error loading spot details: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi tải chi tiết địa điểm: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải chi tiết địa điểm: $e')),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -166,7 +138,6 @@ class _MapPageState extends State<MapPage> {
       print('Kiểm tra dịch vụ vị trí...');
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        // Hiển thị dialog yêu cầu bật dịch vụ vị trí
         if (mounted) {
           showDialog(
             context: context,
@@ -206,7 +177,6 @@ class _MapPageState extends State<MapPage> {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        // Hiển thị dialog hướng dẫn người dùng cấp quyền
         if (mounted) {
           showDialog(
             context: context,
@@ -247,29 +217,10 @@ class _MapPageState extends State<MapPage> {
       final currentLocation = LatLng(position.latitude, position.longitude);
       
       setState(() {
-        // Xóa marker vị trí hiện tại cũ nếu có
-        _markers.removeWhere((marker) => 
-          marker.child is Icon && 
-          (marker.child as Icon).color == Colors.blue
-        );
-        
         _currentPosition = currentLocation;
-        // Thêm marker vị trí hiện tại mới
-        _markers.add(
-          Marker(
-            point: currentLocation,
-            width: 40.0,
-            height: 40.0,
-            child: const Icon(
-              Icons.location_on,
-              color: Colors.blue,
-              size: 40,
-            ),
-          ),
-        );
+        _addCampsiteMarkers(); // Cập nhật lại tất cả markers
       });
 
-      // Di chuyển map đến vị trí hiện tại với animation
       _mapController.move(currentLocation, 15.0);
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -303,196 +254,27 @@ class _MapPageState extends State<MapPage> {
     _mapController.move(_mapController.camera.center, _currentZoom);
   }
 
-  // Thêm marker cho địa điểm
-  void _addPlaceMarker(Place place) {
-    setState(() {
-      _markers.add(
-        Marker(
-          point: place.location,
-          width: 120.0,
-          height: 60.0,
-          child: Column(
-            children: [
-              Icon(
-                Icons.location_on,
-                color: Colors.red,
-                size: 40,
-              ),
-              Container(
-                padding: EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  place.name,
-                  style: TextStyle(fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    });
-  }
-
-  // Hiển thị chi tiết địa điểm
-  Future<void> _showPlaceDetails(Place place) async {
-    try {
-      final details = await _placesService.getPlaceDetails(place.id);
-      if (!mounted) return;
-
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) => Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (details.photos.isNotEmpty)
-                Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: NetworkImage(details.photos.first),
-                      fit: BoxFit.cover,
-                    ),
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(20),
-                    ),
-                  ),
-                ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      details.name,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber),
-                        Text(' ${details.rating}'),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(details.address),
-                    if (details.phoneNumber != null) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.phone),
-                          Text(' ${details.phoneNumber}'),
-                        ],
-                      ),
-                    ],
-                    if (details.website != null) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.language),
-                          Text(' ${details.website}'),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e')),
-      );
-    }
-  }
-
-  // Tìm kiếm địa điểm
-  Future<void> _searchLocation(String query) async {
-    setState(() => _isSearching = true);
-    try {
-      final results = await _placesService.searchPlaces(query, _currentPosition);
-      setState(() {
-        _searchResults = results;
-        _markers.removeWhere(
-          (marker) => marker.point != _currentPosition,
-        );
-        for (final place in results) {
-          _addPlaceMarker(place);
-        }
-      });
-
-      if (results.isNotEmpty) {
-        final bounds = _calculateBounds(results);
-        _mapController.fitBounds(
-          bounds,
-          options: const FitBoundsOptions(padding: EdgeInsets.all(50)),
-        );
-      }
-    } catch (e) {
-      print('Error searching location: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi tìm kiếm: $e')),
-      );
-    } finally {
-      setState(() => _isSearching = false);
-    }
-  }
-
-  // Tính toán bounds cho camera
-  LatLngBounds _calculateBounds(List<Place> places) {
-    double? minLat, maxLat, minLng, maxLng;
-
-    for (final place in places) {
-      if (minLat == null || place.location.latitude < minLat) {
-        minLat = place.location.latitude;
-      }
-      if (maxLat == null || place.location.latitude > maxLat) {
-        maxLat = place.location.latitude;
-      }
-      if (minLng == null || place.location.longitude < minLng) {
-        minLng = place.location.longitude;
-      }
-      if (maxLng == null || place.location.longitude > maxLng) {
-        maxLng = place.location.longitude;
-      }
-    }
-
-    return LatLngBounds(
-      LatLng(minLat!, minLng!),
-      LatLng(maxLat!, maxLng!),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bản đồ Cắm trại'),
         centerTitle: true,
+        backgroundColor: Colors.green[700],
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
               showSearch(
                 context: context,
-                delegate: CampingSpotSearchDelegate(_campingSpots),
+                delegate: CampsiteSearchDelegate(_campsites),
               );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: () {
+              _showFilterDialog();
             },
           ),
         ],
@@ -532,6 +314,10 @@ class _MapPageState extends State<MapPage> {
               right: 16,
               bottom: 16,
               child: Card(
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -545,48 +331,90 @@ class _MapPageState extends State<MapPage> {
                             child: Text(
                               _selectedSpot!.name,
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                          Row(
-                            children: [
-                              const Icon(Icons.star, color: Colors.amber),
-                              Text(_selectedSpot!.rating.toStringAsFixed(1)),
-                            ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.green[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.star, color: Colors.amber, size: 16),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _selectedSpot!.rating.toStringAsFixed(1),
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(_selectedSpot!.description),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
+                      Text(
+                        _selectedSpot!.description,
+                        style: TextStyle(color: Colors.grey[700]),
+                      ),
+                      const SizedBox(height: 12),
                       if (_selectedSpot!.facilities.isNotEmpty) ...[
                         const Text(
                           'Tiện ích:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
+                        const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
+                          runSpacing: 8,
                           children: _selectedSpot!.facilities.map((amenity) {
                             return Chip(
                               label: Text(amenity),
-                              backgroundColor: Colors.blue.shade100,
+                              backgroundColor: Colors.green[50],
+                              labelStyle: TextStyle(color: Colors.green[900]),
                             );
                           }).toList(),
                         ),
                       ],
-                      const SizedBox(height: 8),
-                      if (_selectedSpot!.priceRange.isNotEmpty) ...[
-                        const Text(
-                          'Khoảng giá:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          '${_selectedSpot!.priceRange['min']} - ${_selectedSpot!.priceRange['max']} VNĐ',
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(Icons.attach_money, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${_selectedSpot!.priceRange.min} - ${_selectedSpot!.priceRange.max} VNĐ',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      if (_selectedSpot!.contactInfo.phone != null) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.phone, color: Colors.blue),
+                            const SizedBox(width: 8),
+                            Text(_selectedSpot!.contactInfo.phone!),
+                          ],
                         ),
                       ],
-                      const SizedBox(height: 8),
+                      if (_selectedSpot!.openingHours.open != null) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.access_time, color: Colors.orange),
+                            const SizedBox(width: 8),
+                            Text('${_selectedSpot!.openingHours.open} - ${_selectedSpot!.openingHours.close}'),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
@@ -601,18 +429,23 @@ class _MapPageState extends State<MapPage> {
                             },
                             icon: const Icon(Icons.directions),
                             label: const Text('Chỉ đường'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
                           ),
                           ElevatedButton.icon(
-                            onPressed: () {
-                              // TODO: Implement reviews
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Tính năng đánh giá đang phát triển'),
-                                ),
-                              );
+                            onPressed: () async {
+                              _showReviewDialog();
                             },
                             icon: const Icon(Icons.rate_review),
                             label: const Text('Đánh giá'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
                           ),
                         ],
                       ),
@@ -629,12 +462,14 @@ class _MapPageState extends State<MapPage> {
                 FloatingActionButton(
                   heroTag: 'zoomIn',
                   onPressed: _zoomIn,
+                  backgroundColor: Colors.green[700],
                   child: const Icon(Icons.add),
                 ),
                 const SizedBox(height: 8),
                 FloatingActionButton(
                   heroTag: 'zoomOut',
                   onPressed: _zoomOut,
+                  backgroundColor: Colors.green[700],
                   child: const Icon(Icons.remove),
                 ),
               ],
@@ -646,6 +481,7 @@ class _MapPageState extends State<MapPage> {
             child: FloatingActionButton(
               heroTag: 'location',
               onPressed: _getCurrentLocation,
+              backgroundColor: Colors.green[700],
               child: const Icon(Icons.my_location),
             ),
           ),
@@ -653,12 +489,131 @@ class _MapPageState extends State<MapPage> {
       ),
     );
   }
+
+  void _showFilterDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Lọc địa điểm'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.star),
+              title: const Text('Đánh giá cao'),
+              onTap: () {
+                // TODO: Implement rating filter
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.attach_money),
+              title: const Text('Giá thấp'),
+              onTap: () {
+                // TODO: Implement price filter
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.pool),
+              title: const Text('Có hồ bơi'),
+              onTap: () {
+                // TODO: Implement facility filter
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showReviewDialog() {
+    final reviewController = TextEditingController();
+    int rating = 5;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Thêm đánh giá'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) {
+                return IconButton(
+                  icon: Icon(
+                    index < rating ? Icons.star : Icons.star_border,
+                    color: Colors.amber,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      rating = index + 1;
+                    });
+                  },
+                );
+              }),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reviewController,
+              decoration: const InputDecoration(
+                hintText: 'Nhập đánh giá của bạn...',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await APIService.addCampsiteReview(
+                  _selectedSpot!.id,
+                  reviewController.text,
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã thêm đánh giá thành công'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+                Navigator.pop(context);
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Lỗi thêm đánh giá: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Gửi'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class CampingSpotSearchDelegate extends SearchDelegate {
-  final List<CampingSpot> spots;
+class CampsiteSearchDelegate extends SearchDelegate {
+  final List<Campsite> campsites;
 
-  CampingSpotSearchDelegate(this.spots);
+  CampsiteSearchDelegate(this.campsites);
 
   @override
   List<Widget>? buildActions(BuildContext context) {
@@ -684,7 +639,7 @@ class CampingSpotSearchDelegate extends SearchDelegate {
 
   @override
   Widget buildResults(BuildContext context) {
-    final results = spots.where((spot) =>
+    final results = campsites.where((spot) =>
         spot.name.toLowerCase().contains(query.toLowerCase()) ||
         spot.description.toLowerCase().contains(query.toLowerCase())).toList();
 
@@ -705,7 +660,7 @@ class CampingSpotSearchDelegate extends SearchDelegate {
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    final suggestions = spots.where((spot) =>
+    final suggestions = campsites.where((spot) =>
         spot.name.toLowerCase().contains(query.toLowerCase()) ||
         spot.description.toLowerCase().contains(query.toLowerCase())).toList();
 

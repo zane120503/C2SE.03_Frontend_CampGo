@@ -21,6 +21,7 @@ class HomeItemsWidget extends StatefulWidget {
 class _HomeItemsWidgetState extends State<HomeItemsWidget> {
   List<dynamic> products = [];
   Set<String> favoriteProducts = {};
+  Map<String, double> productRatings = {};
   bool isLoading = true;
   String? selectedCategory;
   double? minPrice;
@@ -48,6 +49,24 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
         maxPrice = widget.maxPrice;
       });
       loadProducts();
+    }
+  }
+
+  Future<void> loadProductRatings() async {
+    try {
+      for (var product in products) {
+        final productId = product['_id']?.toString() ?? '';
+        final response = await api.APIService.getProductReviews(productId);
+        
+        if (response['success'] == true && response['data'] != null) {
+          final averageRating = (response['data']['summary']?['averageRating'] ?? 0.0).toDouble();
+          setState(() {
+            productRatings[productId] = averageRating;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading product ratings: $e');
     }
   }
 
@@ -93,6 +112,9 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
 
           return matchesCategory && matchesPrice;
         }).toList();
+
+        // Load ratings sau khi có danh sách sản phẩm
+        await loadProductRatings();
 
         setState(() {
           isLoading = false;
@@ -231,7 +253,7 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
     return GridView.builder(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.73,
+        childAspectRatio: 0.68,
         mainAxisSpacing: 15,
         crossAxisSpacing: 15,
       ),
@@ -250,6 +272,9 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
         final discount = product['discount']?.toDouble() ?? 0;
         final discountedPrice = originalPrice * (1 - discount / 100);
         
+        // Lấy rating từ productRatings map
+        final rating = productRatings[productId] ?? 0.0;
+        
         // Debug log
         print('Product: ${product['name']}');
         print('Original Price: $originalPrice');
@@ -259,7 +284,6 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
         
         final name = product['name'] ?? '';
         final soldCount = product['soldCount']?.toString() ?? '0';
-        final rating = product['rating']?.toString() ?? '5.0';
 
         final images = product['images'] as List<dynamic>?;
         final imageUrl = (images != null && images.isNotEmpty) 
@@ -331,7 +355,7 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                       child: IconButton(
                         icon: Icon(
                           isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: isFavorite ? Colors.red : Colors.white,
+                          color: isFavorite ? Colors.red : const Color.fromARGB(255, 160, 69, 69),
                           size: 30,
                         ),
                         onPressed: () => toggleFavorite(productId),
@@ -361,23 +385,33 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                         SizedBox(height: 4),
                         Row(
                           children: [
-                            Text(
-                              '\$${originalPrice.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Colors.grey,
-                                decoration: TextDecoration.lineThrough,
+                            if (discount > 0) ...[
+                              Text(
+                                '\$${originalPrice.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.grey,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
                               ),
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              "\$${discountedPrice.toStringAsFixed(2)}",
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red,
+                              SizedBox(width: 4),
+                              Text(
+                                "\$${discountedPrice.toStringAsFixed(2)}",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red,
+                                ),
                               ),
-                            ),
+                            ] else
+                              Text(
+                                "\$${originalPrice.toStringAsFixed(2)}",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
                           ],
                         ),
                         Row(
@@ -398,7 +432,7 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                                   size: 20,
                                 ),
                                 Text(
-                                  " $rating",
+                                  " ${rating.toStringAsFixed(1)}",
                                   style: TextStyle(
                                     fontSize: 15,
                                     color: Colors.grey[600],
