@@ -35,7 +35,7 @@ class _CartPageState extends State<CartPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Please select product to checkout',
+            'Vui lòng chọn sản phẩm để thanh toán',
             textAlign: TextAlign.center,
           ),
           backgroundColor: Colors.red,
@@ -51,7 +51,7 @@ class _CartPageState extends State<CartPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'An error occurred while retrieving product information',
+            'Có lỗi xảy ra khi lấy thông tin sản phẩm',
             textAlign: TextAlign.center,
           ),
           backgroundColor: Colors.red,
@@ -64,7 +64,7 @@ class _CartPageState extends State<CartPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Please select at least one product',
+            'Vui lòng chọn ít nhất một sản phẩm',
             textAlign: TextAlign.center,
           ),
           backgroundColor: Colors.red,
@@ -74,7 +74,7 @@ class _CartPageState extends State<CartPage> {
     }
 
     try {
-      Navigator.push(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder:
@@ -88,11 +88,21 @@ class _CartPageState extends State<CartPage> {
               ),
         ),
       );
+
+      if (result == true) {
+        // Thanh toán thành công, xóa các sản phẩm đã chọn
+        await _cartController.removeSelectedItems();
+        // Cập nhật lại danh sách sản phẩm
+        setState(() {
+          selectedProducts.clear();
+          this.totalPrice = 0.0;
+        });
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'An error occurred: ${e.toString()}',
+            'Có lỗi xảy ra: ${e.toString()}',
             textAlign: TextAlign.center,
           ),
           backgroundColor: Colors.red,

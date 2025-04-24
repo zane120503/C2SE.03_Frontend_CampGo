@@ -78,7 +78,14 @@ class _OrderInformationState extends State<OrderInformation> {
     
     for (var product in products) {
       double price = (product['product']['price'] ?? 0).toDouble();
+      int discount = (product['product']['discount'] ?? 0).toInt();
       int quantity = (product['quantity'] ?? 0).toInt();
+      
+      // Tính giá sau khi giảm giá
+      if (discount > 0) {
+        price = price * (1 - discount / 100);
+      }
+      
       total += price * quantity;
     }
     
@@ -326,6 +333,16 @@ class _OrderInformationState extends State<OrderInformation> {
     int quantity,
     String imageUrl,
   ) {
+    // Tính toán giá sau khi giảm giá từ dữ liệu sản phẩm
+    List<dynamic> products = widget.orderData['products'] ?? [];
+    var productData = products.firstWhere(
+      (p) => p['product']['productName'] == title,
+      orElse: () => {'product': {'discount': 0}},
+    );
+    
+    int discount = (productData['product']['discount'] ?? 0).toInt();
+    double finalPrice = discount > 0 ? price * (1 - discount / 100) : price;
+
     return Column(
       children: [
         Row(
@@ -401,8 +418,42 @@ class _OrderInformationState extends State<OrderInformation> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '\$${price.toStringAsFixed(2)}',
+                  if (discount > 0) Row(
+                    children: [
+                      Text(
+                        '\$${(finalPrice * quantity).toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '\$${(price * quantity).toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          decoration: TextDecoration.lineThrough,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '-$discount%',
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ) else Text(
+                    '\$${(price * quantity).toStringAsFixed(2)}',
                     style: const TextStyle(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,

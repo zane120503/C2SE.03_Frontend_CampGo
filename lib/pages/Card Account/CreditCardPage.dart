@@ -40,21 +40,24 @@ class _CreditCardPageState extends State<CreditCardPage> {
       if (response['success'] == true && response['data'] != null) {
         final List<dynamic> cardsData = response['data'];
         setState(() {
-          _cards = cardsData.map((card) => CardModel(
-            id: card['_id'] ?? '',
-            userId: card['user_id'] ?? '',
-            cardNumber: card['card_number'] ?? '',
-            cardHolderName: card['card_name'] ?? '',
-            cardType: card['card_type'] ?? 'VISA',
-            lastFourDigits: card['card_number']?.substring(card['card_number'].length - 4) ?? '',
-            expiryMonth: card['card_exp_month']?.toString() ?? '',
-            expiryYear: card['card_exp_year']?.toString() ?? '',
-            cvv: card['card_cvc'] ?? '',
-            isDefault: card['is_default'] ?? false,
-            createdAt: card['createdAt'] != null ? DateTime.parse(card['createdAt']) : null,
-            updatedAt: card['updatedAt'] != null ? DateTime.parse(card['updatedAt']) : null,
-            v: card['__v'] ?? 0,
-          )).toList();
+          _cards = cardsData.map((card) {
+            final cardNumber = card['card_number']?.toString() ?? '';
+            return CardModel(
+              id: card['_id']?.toString() ?? '',
+              userId: card['user_id']?.toString() ?? '',
+              cardNumber: cardNumber,
+              cardHolderName: card['card_name']?.toString() ?? '',
+              cardType: card['card_type']?.toString() ?? 'VISA',
+              lastFourDigits: cardNumber.length >= 4 ? cardNumber.substring(cardNumber.length - 4) : '',
+              expiryMonth: card['card_exp_month']?.toString() ?? '',
+              expiryYear: card['card_exp_year']?.toString() ?? '',
+              cvv: card['card_cvc']?.toString() ?? '',
+              isDefault: card['is_default'] ?? false,
+              createdAt: card['createdAt'] != null ? DateTime.tryParse(card['createdAt']) : null,
+              updatedAt: card['updatedAt'] != null ? DateTime.tryParse(card['updatedAt']) : null,
+              v: card['__v'] ?? 0,
+            );
+          }).toList();
           _isLoading = false;
         });
       } else {

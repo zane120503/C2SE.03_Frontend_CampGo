@@ -5,6 +5,8 @@ import 'package:CampGo/pages/Address/AddressPage.dart';
 import 'package:CampGo/services/api_service.dart';
 import 'package:CampGo/models/card_model.dart';
 import 'package:CampGo/pages/Card%20Account/CreditCardPage.dart';
+import 'package:CampGo/pages/Cart/widgets/CartItemSamples.dart';
+import 'package:CampGo/pages/WaitForConfirmation/WaitForConfirmationPage.dart';
 
 class AddressUser {
   final String id;
@@ -144,12 +146,14 @@ class CheckoutPage extends StatefulWidget {
   final Set<String> selectedProductIds;
   final double totalAmount;
   final Map<String, dynamic>? selectedItemsData;
+  final CartItemSamplesController? cartController;
 
   const CheckoutPage({
     Key? key,
     required this.selectedProductIds,
     required this.totalAmount,
     this.selectedItemsData,
+    this.cartController,
   }) : super(key: key);
 
   @override
@@ -294,63 +298,95 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Future<void> _processCheckout() async {
     try {
-      Map<String, dynamic> checkoutData = {
+      if (_defaultAddress == null) {
+        throw Exception('Vui lòng chọn địa chỉ giao hàng');
+      }
+
+      if (_cart?.items == null || _cart!.items!.isEmpty) {
+        throw Exception('Giỏ hàng trống');
+      }
+
+      // Chuẩn bị dữ liệu đơn hàng
+      Map<String, dynamic> orderData = {
         'paymentMethod': _selectedPaymentMethod,
-        'addressId': _defaultAddress?.id,
-        'totalPrices': total,
-        'products':
-            widget.selectedProductIds.map((id) => {'productId': id}).toList(),
+        'selectedProducts': _cart?.items?.map((item) => item.id).toList() ?? [],
       };
 
-      final result = await DataService.checkout(checkoutData);
+      // Log chi tiết dữ liệu
+      print('Sending order data:');
+      print('Payment Method: ${orderData['paymentMethod']}');
+      print('Selected Products: ${orderData['selectedProducts']}');
 
-      // Show success dialog
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            contentPadding: EdgeInsets.all(16.0),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
-                  size: 80.0,
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Payment successful',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+      // Gọi API tạo đơn hàng
+      final result = await APIService.createOrder(orderData);
+      print('Create order response: $result');
+
+      if (result['success'] == true) {
+        // Show success dialog
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              contentPadding: EdgeInsets.all(16.0),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 80.0,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Your order has been paid successfully. '
-                  'We will contact you soon to deliver the product, service.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
-                ),
-                SizedBox(height: 30),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(); // Close the dialog
-                    Navigator.of(context).pushReplacementNamed('/main'); // Navigate to home
-                  },
-                  child: Text('Close'),
-                ),
-              ],
-            ),
-          );
-        },
-      );
+                  SizedBox(height: 20),
+                  Text(
+                    'Thanh toán thành công',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Đơn hàng của bạn đã được thanh toán thành công. '
+                    'Chúng tôi sẽ liên hệ với bạn sớm để giao hàng.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  SizedBox(height: 30),
+                  ElevatedButton(
+                    onPressed: () async {
+                      Navigator.of(context).pop(); // Close the dialog
+                      Navigator.of(context).pop(true); // Return to CartPage with success
+                      
+                      // Chờ một chút để đảm bảo đơn hàng đã được tạo xong
+                      await Future.delayed(Duration(seconds: 1));
+                      
+                      if (mounted) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => WaitForConfirmationPage(),
+                          ),
+                        );
+                      }
+                    },
+                    child: Text('Đóng'),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      } else {
+        throw Exception(result['message'] ?? 'Không thể tạo đơn hàng');
+      }
     } catch (e) {
-      print(e);
+      print('Error during checkout: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Checkout failed: $e')),
+        SnackBar(
+          content: Text('Thanh toán thất bại: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -509,28 +545,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   'Quantity: ${item.quantity}',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey[600],
+                    color: const Color.fromARGB(255, 65, 65, 65),
                   ),
                 ),
                 Row(
                   children: [
-                    Text(
-                      '${(item.discountedPrice * item.quantity).toStringAsFixed(2)}đ',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2B2321),
-                      ),
-                    ),
-                    if (item.discount > 0)
                       Padding(
-                        padding: EdgeInsets.only(left: 8),
+                        padding: EdgeInsets.only(left: 0),
                         child: Text(
-                          '${(item.price * item.quantity).toStringAsFixed(2)}đ',
+                          '${(item.price * item.quantity).toStringAsFixed(2)}',
                           style: TextStyle(
-                            fontSize: 12,
-                            decoration: TextDecoration.lineThrough,
-                            color: Colors.grey,
+                            fontSize: 14,
+                            color: const Color.fromARGB(255, 32, 32, 32),
                           ),
                         ),
                       ),

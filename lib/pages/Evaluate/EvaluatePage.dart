@@ -287,6 +287,12 @@ class _EvaluateState extends State<EvaluatePage> {
   }
 
   Widget _buildProductItem(Map<String, dynamic> product) {
+    // Tính toán giá sau khi giảm giá
+    double price = (product['product']['price'] ?? 0).toDouble();
+    int discount = (product['product']['discount'] ?? 0).toInt();
+    double finalPrice = discount > 0 ? price * (1 - discount / 100) : price;
+    int quantity = (product['quantity'] ?? 0).toInt();
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 15.0),
       child: Row(
@@ -347,7 +353,7 @@ class _EvaluateState extends State<EvaluatePage> {
                           ),
                         ),
                         Text(
-                          'Price: \$${product['amount']}',
+                          'Price: \$${(finalPrice * quantity).toStringAsFixed(2)}',
                           style: const TextStyle(
                             color: Color.fromARGB(255, 76, 76, 76),
                             fontSize: 14,

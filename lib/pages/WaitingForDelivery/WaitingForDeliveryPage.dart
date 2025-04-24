@@ -104,7 +104,14 @@ class _WaitingForDeliveryState extends State<WaitingForDeliveryPage> {
     
     for (var product in products) {
       double price = (product['product']['price'] ?? 0).toDouble();
+      int discount = (product['product']['discount'] ?? 0).toInt();
       int quantity = (product['quantity'] ?? 0).toInt();
+      
+      // Tính giá sau khi giảm giá
+      if (discount > 0) {
+        price = price * (1 - discount / 100);
+      }
+      
       total += price * quantity;
     }
     
@@ -492,6 +499,12 @@ class _WaitingForDeliveryState extends State<WaitingForDeliveryPage> {
   }
 
   Widget _buildExpandedProductItem(Map<String, dynamic> product) {
+    // Tính toán giá sau khi giảm giá
+    double price = (product['product']['price'] ?? 0).toDouble();
+    int discount = (product['product']['discount'] ?? 0).toInt();
+    double discountedPrice = discount > 0 ? price * (1 - discount / 100) : price;
+    int quantity = (product['quantity'] ?? 0).toInt();
+
     return Container(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -585,12 +598,55 @@ class _WaitingForDeliveryState extends State<WaitingForDeliveryPage> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              Text(
-                '\$${(product['amount'] ?? 0).toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (discount > 0) ...[
+                    Row(
+                      children: [
+                        Text(
+                          '\$${(discountedPrice * quantity).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '-$discount%',
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      '\$${(price * quantity).toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        decoration: TextDecoration.lineThrough,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ] else
+                    Text(
+                      '\$${(price * quantity).toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                ],
               ),
             ],
           ),

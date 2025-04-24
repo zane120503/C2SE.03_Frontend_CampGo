@@ -1272,28 +1272,51 @@ class APIService {
 
   static Future<Map<String, dynamic>> createOrder(Map<String, dynamic> orderData) async {
     try {
-      final response = await _makeRequest(
-        endpoint: '/api/orders/create',
-        method: 'POST',
-        body: orderData,
-      );
-
-      if (response['success'] == true) {
+      _initDio();
+      
+      // Lấy token từ ShareService
+      String? token = await ShareService.getToken();
+      if (token == null || token.isEmpty) {
+        print('Token is null or empty');
         return {
-          'success': true,
-          'message': 'Đặt hàng thành công',
-          'data': response['data'],
+          'success': false,
+          'message': 'Không tìm thấy token xác thực',
         };
       }
-      return {
-        'success': false,
-        'message': response['message'] ?? 'Đặt hàng thất bại',
-      };
+
+      print('Creating order with data: $orderData');
+      print('Using token: $token');
+
+      final response = await _dio!.post(
+        '/api/orders/create',
+        data: orderData,
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+      
+      print('Create order response: ${response.data}');
+      
+      if (response.statusCode == 201) {
+        return {
+          'success': true,
+          'message': response.data['message'] ?? 'Tạo đơn hàng thành công',
+          'data': response.data['order']
+        };
+      } else {
+        return {
+          'success': false,
+          'message': response.data['message'] ?? 'Không thể tạo đơn hàng',
+        };
+      }
     } catch (e) {
       print('Error creating order: $e');
       return {
         'success': false,
-        'message': e.toString(),
+        'message': 'Không thể tạo đơn hàng: $e'
       };
     }
   }

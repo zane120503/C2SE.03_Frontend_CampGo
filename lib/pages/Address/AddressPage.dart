@@ -59,35 +59,45 @@ class _AddressPageState extends State<AddressPage> {
     try {
       print('Loading addresses...'); // Debug log
       final token = await dataService.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
       print('Current token: $token'); // Debug log
 
       final response = await apiService.getAddresses();
       print('Response from getAddresses: $response'); // Debug log
       
+      if (response == null) {
+        throw Exception('No response from server');
+      }
+
       if (response['success'] == true) {
         final List<dynamic> addressData = response['data'] ?? [];
         print('Address data: $addressData'); // Debug log
         
         setState(() {
           addresses = addressData.map((data) {
+            if (data == null) return null;
             print('Processing address with ward: ${data['ward']}'); // Debug log cho phường/xã
+            final createdAt = data['createdAt']?.toString();
+            final updatedAt = data['updatedAt']?.toString();
             return AddressUser(
-              id: data['_id'] ?? '',
-              userId: data['user_id'] ?? '',
-              fullName: data['fullName'] ?? '',
-              phoneNumber: data['phoneNumber'] ?? '',
-              street: data['street'] ?? '',
-              district: data['district'] ?? '',
-              city: data['city'] ?? '',
-              ward: data['ward'] ?? '', // Kiểm tra giá trị ward
-              country: data['country'] ?? '',
-              zipCode: data['zipCode'] ?? '',
+              id: data['_id']?.toString() ?? '',
+              userId: data['user_id']?.toString() ?? '',
+              fullName: data['fullName']?.toString() ?? '',
+              phoneNumber: data['phoneNumber']?.toString() ?? '',
+              street: data['street']?.toString() ?? '',
+              district: data['district']?.toString() ?? '',
+              city: data['city']?.toString() ?? '',
+              ward: data['ward']?.toString() ?? '',
+              country: data['country']?.toString() ?? '',
+              zipCode: data['zipCode']?.toString() ?? '',
               isDefault: data['isDefault'] ?? false,
-              createdAt: DateTime.parse(data['createdAt'] ?? DateTime.now().toIso8601String()),
-              updatedAt: DateTime.parse(data['updatedAt'] ?? DateTime.now().toIso8601String()),
+              createdAt: createdAt != null ? DateTime.tryParse(createdAt) ?? DateTime.now() : DateTime.now(),
+              updatedAt: updatedAt != null ? DateTime.tryParse(updatedAt) ?? DateTime.now() : DateTime.now(),
               v: data['__v'] ?? 0,
             );
-          }).toList();
+          }).where((address) => address != null).cast<AddressUser>().toList();
           print('Processed addresses with wards: ${addresses.map((a) => a.ward).toList()}'); // Debug log cho danh sách phường/xã
           _isLoading = false;
         });
@@ -368,6 +378,79 @@ class _AddressPageState extends State<AddressPage> {
     }
   }
 
+  Future<void> _addNewAddress(Map<String, dynamic> addressData) async {
+    try {
+      print('Sending address data: $addressData'); // Debug log
+      
+      // Validate required fields
+      if (addressData['fullName']?.isEmpty ?? true ||
+          addressData['phoneNumber']?.isEmpty ?? true ||
+          addressData['street']?.isEmpty ?? true ||
+          addressData['city']?.isEmpty ?? true ||
+          addressData['district']?.isEmpty ?? true ||
+          addressData['country']?.isEmpty ?? true ||
+          addressData['zipCode']?.isEmpty ?? true) {
+        throw Exception('Please fill in all required information');
+      }
+
+      final token = await dataService.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+      print('Getting token from ShareService: $token'); // Debug log
+
+      final response = await apiService.addAddress(addressData);
+      print('Add address response: $response'); // Debug log
+
+      if (response == null) {
+        throw Exception('No response from server');
+      }
+
+      if (response['success'] == true) {
+        setState(() {
+          addresses = [];
+        });
+        await _loadAddresses();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Center(
+                child: Text(
+                  response['message'] ?? 'Address added successfully',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.fixed,
+              margin: null,
+              shape: RoundedRectangleBorder(),
+            ),
+          );
+        }
+      } else {
+        throw Exception(response['message'] ?? 'Cannot add address');
+      }
+    } catch (e) {
+      print('Error adding address: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Center(
+              child: Text(
+                'Error: ${e.toString()}',
+                textAlign: TextAlign.center,
+              ),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.fixed,
+            margin: null,
+            shape: RoundedRectangleBorder(),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -645,71 +728,7 @@ class _AddressPageState extends State<AddressPage> {
                             );
 
                             if (result != null) {
-                              // Validate required fields
-                              if (result['fullName']?.isEmpty ?? true ||
-                                  result['phoneNumber']?.isEmpty ?? true ||
-                                  result['street']?.isEmpty ?? true ||
-                                  result['city']?.isEmpty ?? true ||
-                                  result['district']?.isEmpty ?? true ||
-                                  result['country']?.isEmpty ?? true ||
-                                  result['zipCode']?.isEmpty ?? true) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Center(
-                                      child: Text(
-                                        'Please fill in all required information',
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    backgroundColor: Colors.red,
-                                    behavior: SnackBarBehavior.fixed,
-                                    margin: null,
-                                    shape: RoundedRectangleBorder(),
-                                  ),
-                                );
-                                return;
-                              }
-
-                              final response = await apiService.addAddress(result);
-                              if (response['success']) {
-                                setState(() {
-                                  addresses = [];
-                                });
-                                _loadAddresses();
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Center(
-                                        child: Text(
-                                          response['message'] ?? 'Address added successfully',
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                      backgroundColor: Colors.green,
-                                      behavior: SnackBarBehavior.fixed,
-                                      margin: null,
-                                      shape: RoundedRectangleBorder(),
-                                    ),
-                                  );
-                                }
-                              } else {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Center(
-                                        child: Text(
-                                          response['message'] ?? 'Cannot add address',
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                      backgroundColor: Colors.red,
-                                      behavior: SnackBarBehavior.fixed,
-                                      margin: null,
-                                      shape: RoundedRectangleBorder(),
-                                    ),
-                                  );
-                                }
-                              }
+                              await _addNewAddress(result);
                             }
                           },
                           style: ElevatedButton.styleFrom(

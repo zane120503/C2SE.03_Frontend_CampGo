@@ -42,12 +42,10 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
         final filteredOrders = ordersData
             .where((order) {
               print('Processing order: ${order['_id']}');
-              print('Order status - Waiting Confirmation: ${order['waiting_confirmation']}');
-              print('Order status - Delivery Status: ${order['delivery_status']}');
+              print('Order status: ${order['delivery_status']}');
               
-              // Chỉ lấy những đơn hàng có waiting_confirmation = false và delivery_status = Pending
-              return order['waiting_confirmation'] == false && 
-                     order['delivery_status'] == 'Pending';
+              // Chỉ lấy những đơn hàng có delivery_status là Pending
+              return order['delivery_status'] == 'Pending';
             })
             .map((e) => e as Map<String, dynamic>)
             .toList();
@@ -86,7 +84,14 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
     
     for (var product in products) {
       double price = (product['product']['price'] ?? 0).toDouble();
+      int discount = (product['product']['discount'] ?? 0).toInt();
       int quantity = (product['quantity'] ?? 0).toInt();
+      
+      // Tính giá sau khi giảm giá
+      if (discount > 0) {
+        price = price * (1 - discount / 100);
+      }
+      
       total += price * quantity;
     }
     
@@ -114,6 +119,7 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
               'productName': product['product']?['productName']?.toString() ?? '',
               'description': product['product']?['description']?.toString() ?? '',
               'price': double.tryParse(product['product']?['price']?.toString() ?? '0') ?? 0.0,
+              'discount': int.tryParse(product['product']?['discount']?.toString() ?? '0') ?? 0,
               'imageURL': product['product']?['imageURL']?.toString() ?? '',
             },
             'quantity': int.tryParse(product['quantity']?.toString() ?? '1') ?? 1,
@@ -127,6 +133,7 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
           'district': orderData['shipping_address']?['district']?.toString() ?? '',
           'city': orderData['shipping_address']?['city']?.toString() ?? '',
         },
+        'total_amount': _calculateTotalAmount(orderData),
       };
 
       print('Converted order data: $convertedOrderData'); // Debug log
@@ -239,6 +246,20 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
     List<dynamic> products = orderData['products'] ?? [];
     bool hasMultipleProducts = products.length > 1;
     var firstProduct = products.first;
+    
+    double price = (firstProduct['product']['price'] ?? 0).toDouble();
+    int discount = (firstProduct['product']['discount'] ?? 0).toInt();
+    int quantity = (firstProduct['quantity'] ?? 0).toInt();
+    
+    // Tính giá sau khi giảm giá
+    double finalPrice = discount > 0 ? price * (1 - discount / 100) : price;
+    String productDetail = '';
+    
+    if (discount > 0) {
+      productDetail = 'Price: \$${(finalPrice).toStringAsFixed(2)} (-$discount%) | Original: \$${price.toStringAsFixed(2)}';
+    } else {
+      productDetail = 'Price: \$${price.toStringAsFixed(2)}';
+    }
 
     return Padding(
       padding: const EdgeInsets.only(top: 8, right: 10, left: 10),
@@ -252,7 +273,7 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
             headerText: 'Order ID: ${orderData['_id']}',
             imageUrl: firstProduct['product']['imageURL'] ?? '',
             productName: firstProduct['product']['productName'] ?? '',
-            productDetail: 'Product details',
+            productDetail: productDetail,
             totalAmountLabel: hasMultipleProducts 
                 ? 'Total amount (${products.length} products):'
                 : 'Amount:',

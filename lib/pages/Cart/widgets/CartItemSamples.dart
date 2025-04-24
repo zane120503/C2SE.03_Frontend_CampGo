@@ -84,6 +84,10 @@ class CartItemSamplesController {
   Map<String, dynamic>? getSelectedItemsData() {
     return _state?.getSelectedItemsData();
   }
+
+  Future<void> removeSelectedItems() async {
+    await _state?.removeSelectedItems();
+  }
 }
 
 class CartItemSamples extends StatefulWidget {
@@ -394,6 +398,51 @@ class _CartItemSamplesState extends State<CartItemSamples> {
       }).toList(),
       'totalPrice': calculateTotalPrice(),
     };
+  }
+
+  Future<void> removeSelectedItems() async {
+    try {
+      final selectedItems = getSelectedItems();
+      if (selectedItems.isEmpty) {
+        return;
+      }
+
+      final productIds = selectedItems.map((item) => item.id).toList();
+      final response = await APIService.removeMultipleItems(productIds);
+
+      if (response['success']) {
+        await loadCartItems(); // Tải lại giỏ hàng sau khi xóa thành công
+      } else {
+        // Nếu có lỗi nhưng là do sản phẩm không tồn tại, vẫn tải lại giỏ hàng
+        if (response['message']?.contains('Item not found in cart') == true) {
+          await loadCartItems();
+        } else {
+          // Nếu là lỗi khác, hiển thị thông báo
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(response['message'] ?? 'Không thể xóa sản phẩm',
+                textAlign: TextAlign.center,
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('Error removing selected items: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể xóa sản phẩm: $e',
+            textAlign: TextAlign.center,
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override

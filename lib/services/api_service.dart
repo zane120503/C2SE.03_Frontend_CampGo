@@ -390,10 +390,15 @@ class APIService {
   // Address APIs
   Future<Map<String, dynamic>> getAddresses() async {
     try {
+      _initDio();
+      
       final token = await _getAuthToken();
       if (token == null) {
         return {'success': false, 'message': 'Token not found'};
       }
+
+      print('Making API request to get addresses...');
+      print('Using token: $token');
 
       final response = await _dio!.get(
         '${Config.baseUrl}/api/AllAddresses',
@@ -404,10 +409,35 @@ class APIService {
           },
         ),
       );
-      return response.data;
+
+      print('Address API response status: ${response.statusCode}');
+      print('Address API response data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          return data;
+        } else {
+          return {
+            'success': false,
+            'message': 'Invalid response format',
+            'data': []
+          };
+        }
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to get addresses: ${response.statusCode}',
+          'data': []
+        };
+      }
     } catch (e) {
       print('Error getting addresses: $e');
-      return {'success': false, 'message': e.toString()};
+      return {
+        'success': false,
+        'message': e.toString(),
+        'data': []
+      };
     }
   }
 
@@ -1549,6 +1579,71 @@ class APIService {
     } catch (e) {
       print('Error adding review: $e');
       rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> createOrder(Map<String, dynamic> orderData) async {
+    try {
+      _initDio();
+      String? token = await ShareService.getToken();
+      
+      if (token == null) {
+        return {'success': false, 'message': 'Token không tồn tại'};
+      }
+
+      final response = await _dio!.post(
+        '/api/orders/create',
+        data: orderData,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      return {
+        'success': true,
+        'data': response.data,
+      };
+    } catch (e) {
+      print('Error creating order: $e');
+      return {'success': false, 'message': 'Không thể tạo đơn hàng'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> removeMultipleItems(List<String> productIds) async {
+    try {
+      final token = await ShareService.getToken();
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'Vui lòng đăng nhập để xóa sản phẩm khỏi giỏ hàng'
+        };
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/cart/remove-multiple'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({
+          'productIds': productIds,
+        }),
+      );
+
+      print('Remove multiple items response: ${response.statusCode} - ${response.body}');
+      
+      final data = json.decode(response.body);
+      return {
+        'success': data['success'] ?? false,
+        'message': data['message'] ?? 'Xóa sản phẩm khỏi giỏ hàng thành công',
+        'data': data['data']
+      };
+    } catch (e) {
+      print('Error removing multiple items from cart: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi khi xóa sản phẩm khỏi giỏ hàng: $e'
+      };
     }
   }
 } 
