@@ -135,7 +135,9 @@ class _EvaluateState extends State<EvaluatePage> {
       if (_orders.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Không còn sản phẩm nào cần đánh giá'),
+            content: Text('There are no more products to review',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 2),
           ),
@@ -390,7 +392,8 @@ class _EvaluateState extends State<EvaluatePage> {
                                   });
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('Đánh giá sản phẩm thành công'),
+                                      content: Text('Product review success',
+                                      textAlign: TextAlign.center,),
                                       backgroundColor: Colors.green,
                                       duration: Duration(seconds: 2),
                                     ),
@@ -404,7 +407,8 @@ class _EvaluateState extends State<EvaluatePage> {
                                   });
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('Sản phẩm này đã được đánh giá'),
+                                      content: Text('This product has been rated',
+                                       textAlign: TextAlign.center,),
                                       backgroundColor: Colors.orange,
                                       duration: Duration(seconds: 2),
                                     ),
@@ -412,7 +416,7 @@ class _EvaluateState extends State<EvaluatePage> {
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Có lỗi xảy ra: ${e.toString()}'),
+                                      content: Text('An error occurred: ${e.toString()}'),
                                       backgroundColor: Colors.red,
                                       duration: const Duration(seconds: 2),
                                     ),
@@ -430,7 +434,7 @@ class _EvaluateState extends State<EvaluatePage> {
                             ),
                           ),
                           child: Text(
-                            isReviewed ? 'Đã review' : 'Review',
+                            isReviewed ? 'Reviewed' : 'Review',
                             style: const TextStyle(
                               color: Colors.white,
                             ),

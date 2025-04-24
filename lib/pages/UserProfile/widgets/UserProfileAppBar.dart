@@ -29,7 +29,7 @@ class UserProfileAppBar extends StatelessWidget {
           Text(
             "User Profile",
             style: TextStyle(
-              fontSize: 23,
+              fontSize: 30,
               fontWeight: FontWeight.bold,
               color: Color(0xFF2B2321),
             ),

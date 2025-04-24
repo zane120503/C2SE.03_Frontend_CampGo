@@ -191,7 +191,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
     try {
       // Kiểm tra số lượng tồn kho
       if (product == null || product!['stockQuantity'] == null) {
-        throw Exception('Không có thông tin sản phẩm');
+        throw Exception('No product information available');
       }
 
       if (quantity > product!['stockQuantity']) {

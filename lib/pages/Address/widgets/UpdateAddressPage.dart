@@ -136,7 +136,9 @@ class _UpdateAddressPageState extends State<UpdateAddressPage> {
         _zipCodeController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in all information'),
+          content: Text('Please fill in all information',
+          textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -147,7 +149,8 @@ class _UpdateAddressPageState extends State<UpdateAddressPage> {
     if (!RegExp(r'^[0-9]+$').hasMatch(_zipCodeController.text)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Zip code must contain only numbers'),
+          content: Text('Zip code must contain only numbers',
+          textAlign: TextAlign.center,),
           backgroundColor: Colors.red,
         ),
       );
@@ -158,7 +161,9 @@ class _UpdateAddressPageState extends State<UpdateAddressPage> {
     if (!RegExp(r'^[a-zA-ZÀ-ỹ\s]+$').hasMatch(_countryController.text)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Country name must contain only letters'),
+          content: Text('Country name must contain only letters',
+          textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -256,6 +261,8 @@ class _UpdateAddressPageState extends State<UpdateAddressPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {

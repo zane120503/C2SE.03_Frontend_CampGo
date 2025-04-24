@@ -2,8 +2,6 @@ import 'dart:io';
 import 'package:CampGo/api/api.service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:CampGo/services/auth_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:CampGo/services/share_service.dart';
 
 class EvaluateFeedBackPage extends StatefulWidget {
@@ -113,7 +111,7 @@ class _EvaluateFeedBackPageState extends State<EvaluateFeedBackPage> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Bạn đã đánh giá sản phẩm này',
+                  'You have rated this product', 
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -121,7 +119,7 @@ class _EvaluateFeedBackPageState extends State<EvaluateFeedBackPage> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Mỗi sản phẩm chỉ có thể đánh giá một lần',
+                  'Each product can only be rated once', 
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -136,7 +134,7 @@ class _EvaluateFeedBackPageState extends State<EvaluateFeedBackPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                   ),
                   child: const Text(
-                    'Quay lại',
+                    'Come back',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -417,7 +415,9 @@ class _EvaluateFeedBackPageState extends State<EvaluateFeedBackPage> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi khi chọn ảnh: $e'),
+            content: Text('Error selecting photo: $e',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -428,14 +428,20 @@ class _EvaluateFeedBackPageState extends State<EvaluateFeedBackPage> {
   Future<void> _submitReview() async {
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn số sao đánh giá')),
+        const SnackBar(content: Text('Please select star rating',
+        textAlign: TextAlign.center,),
+            backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
     if (_commentController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập nội dung đánh giá')),
+        const SnackBar(content: Text('Please enter review content',
+        textAlign: TextAlign.center,),
+            backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -448,19 +454,19 @@ class _EvaluateFeedBackPageState extends State<EvaluateFeedBackPage> {
       // Kiểm tra đăng nhập
       final isLoggedIn = await ShareService.isLoggedIn();
       if (!isLoggedIn) {
-        throw Exception('Vui lòng đăng nhập để đánh giá sản phẩm');
+        throw Exception('Please login to rate the product');
       }
 
       // Lấy token
       final token = await ShareService.getToken();
       if (token == null || token.isEmpty) {
-        throw Exception('Không tìm thấy token đăng nhập');
+        throw Exception('Login token not found');  
       }
 
       // Lấy thông tin người dùng
       final userInfo = await ShareService.getUserInfo();
       if (userInfo == null) {
-        throw Exception('Không tìm thấy thông tin người dùng');
+        throw Exception('User information not found');
       }
 
       // Chuẩn bị danh sách đường dẫn ảnh
@@ -493,11 +499,14 @@ class _EvaluateFeedBackPageState extends State<EvaluateFeedBackPage> {
         };
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đánh giá thành công')),
+          const SnackBar(content: Text('Success Evaluation',
+          textAlign: TextAlign.center,),
+          backgroundColor: Colors.green,
+          ),
         );
         Navigator.pop(context, newReview); // Trả về review mới
       } else {
-        throw Exception('Có lỗi xảy ra khi đánh giá');
+        throw Exception('An error occurred while evaluating.');
       }
     } catch (e) {
       print('Error submitting review: $e');

@@ -152,7 +152,9 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Không thể mở thông tin đơn hàng'),
+            content: Text('Unable to open order information',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -163,12 +165,14 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFEDECF2),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(58.0),
         child: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
           systemOverlayStyle: SystemUiOverlayStyle.dark,
           leading: Padding(
             padding: const EdgeInsets.only(top: 0),

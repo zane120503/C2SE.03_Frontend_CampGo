@@ -158,7 +158,7 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
           children: [
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-              padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+              padding: const EdgeInsets.only(left: 15, right: 15, bottom: 15, top: 15),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(15),
@@ -171,111 +171,123 @@ class _FavoriteItemSamplesState extends State<FavoriteItemSamples> {
                   ),
                 ],
               ),
-              child: Row(
+              child: Stack(
                 children: [
-                  // Hình ảnh sản phẩm
-                  Container(
-                    width: 120,
-                    height: 120,
-                    child: ClipRRect(
-                      child: item['imageURL'] != null && item['imageURL'].isNotEmpty
-                          ? Image.network(
-                              item['imageURL'],
-                              fit: BoxFit.cover,
-                            )
-                          : const Icon(
-                              Icons.image_not_supported,
-                              color: Colors.grey,
-                              size: 40,
-                            ),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  // Thông tin sản phẩm
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item['productName'] ?? 'Unknown product',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black87,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Text(
-                              '\$${item['price']?.toStringAsFixed(2) ?? '0.00'}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red,
-                              ),
-                            ),
-                            if (item['originalPrice'] != null && item['originalPrice'] > (item['price'] ?? 0)) ...[
-                              const SizedBox(width: 8),
-                              Text(
-                                '\$${item['originalPrice']?.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  decoration: TextDecoration.lineThrough,
+                  Row(
+                    children: [
+                      // Hình ảnh sản phẩm
+                      Container(
+                        width: 100,
+                        height: 100,
+                        child: ClipRRect(
+                          child: item['imageURL'] != null && item['imageURL'].isNotEmpty
+                              ? Image.network(
+                                  item['imageURL'],
+                                  fit: BoxFit.cover,
+                                )
+                              : const Icon(
+                                  Icons.image_not_supported,
                                   color: Colors.grey,
+                                  size: 40,
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // Thông tin sản phẩm
+                      Expanded(
+                        child: Container(
+                          height: 100,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Transform.translate(
+                                offset: const Offset(0, 3),
+                                child: Text(
+                                  item['productName'] ?? 'Unknown product',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black87,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Nút xóa và chuyển trang
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.delete,
-                          color: Colors.red,
-                          size: 25,
-                        ),
-                        onPressed: () => removeFromWishlist(item['_id']),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      const SizedBox(height: 15),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.arrow_forward_ios,
-                          color: Colors.black54,
-                          size: 20,
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ProductPage(
-                                productId: item['_id'],
+                              const Spacer(),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (item['originalPrice'] != null && item['originalPrice'] > (item['price'] ?? 0))
+                                    Text(
+                                      '\$${item['originalPrice']?.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        decoration: TextDecoration.lineThrough,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  Text(
+                                    '\$${item['price']?.toStringAsFixed(2) ?? '0.00'}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ).then((_) => _loadWishlist());
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
+                  ),
+                  // Icon delete ở góc trên phải
+                  Positioned(
+                    right: -10,
+                    top: -10,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.delete,
+                        color: Colors.red,
+                        size: 25,
+                      ),
+                      onPressed: () => removeFromWishlist(item['_id']),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ),
+                  // Icon arrow ở góc dưới phải
+                  Positioned(
+                    right: -10,
+                    bottom: -10,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.black54,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ProductPage(
+                              productId: item['_id'],
+                            ),
+                          ),
+                        ).then((_) => _loadWishlist());
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
                   ),
                 ],
               ),
             ),
             if (item['originalPrice'] != null && item['originalPrice'] > (item['price'] ?? 0))
               Positioned(
-                top: 0,
-                left: 5,
+                top: 10,
+                left: 15,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(

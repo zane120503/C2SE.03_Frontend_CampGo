@@ -33,24 +33,42 @@ class _CartPageState extends State<CartPage> {
     final selectedItemsData = _cartController.getSelectedItemsData();
     if (selectedItemsData == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vui lòng chọn sản phẩm để thanh toán')),
+        SnackBar(
+          content: Text(
+            'Please select product to checkout',
+            textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
     final selectedItems = selectedItemsData['selectedItems'];
     final totalPrice = selectedItemsData['totalPrice'];
-    
+
     if (selectedItems == null || totalPrice == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Có lỗi xảy ra khi lấy thông tin sản phẩm')),
+        SnackBar(
+          content: Text(
+            'An error occurred while retrieving product information',
+            textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
     if ((selectedItems as List).isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vui lòng chọn ít nhất một sản phẩm')),
+        SnackBar(
+          content: Text(
+            'Please select at least one product',
+            textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -59,16 +77,26 @@ class _CartPageState extends State<CartPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => CheckoutPage(
-            selectedProductIds: (selectedItems as List).map((item) => item['id'].toString()).toSet(),
-            totalAmount: (totalPrice as num).toDouble(),
-            selectedItemsData: selectedItemsData,
-          ),
+          builder:
+              (context) => CheckoutPage(
+                selectedProductIds:
+                    (selectedItems as List)
+                        .map((item) => item['id'].toString())
+                        .toSet(),
+                totalAmount: (totalPrice as num).toDouble(),
+                selectedItemsData: selectedItemsData,
+              ),
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Có lỗi xảy ra: ${e.toString()}')),
+        SnackBar(
+          content: Text(
+            'An error occurred: ${e.toString()}',
+            textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -116,7 +144,8 @@ class _CartPageState extends State<CartPage> {
                     children: [
                       CartItemSamples(
                         controller: _cartController,
-                        onSelectedProductsChanged: _handleSelectedProductsChanged,
+                        onSelectedProductsChanged:
+                            _handleSelectedProductsChanged,
                         onTotalPriceChanged: _handleTotalPriceChanged,
                       ),
                       SizedBox(height: 20),

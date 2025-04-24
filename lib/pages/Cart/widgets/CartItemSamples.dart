@@ -194,7 +194,9 @@ class _CartItemSamplesState extends State<CartItemSamples> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Không thể tải giỏ hàng: ${e.toString()}'),
+            content: Text('Unable to load cart: ${e.toString()}',
+            textAlign: TextAlign.center,
+            ),   
             backgroundColor: Colors.red,
           ),
         );
@@ -228,15 +230,17 @@ class _CartItemSamplesState extends State<CartItemSamples> {
     try {
       final response = await APIService.updateCartItem(productId, quantity);
       if (!response['success']) {
-        throw Exception(response['message'] ?? 'Không thể cập nhật số lượng');
+        throw Exception(response['message'] ?? 'Unable to update quantity');    
       }
-      
+
       await loadCartItems();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(response['message'] ?? 'Cập nhật số lượng thành công'),
+            content: Text(response['message'] ?? 'Update quantity successfully',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -246,7 +250,9 @@ class _CartItemSamplesState extends State<CartItemSamples> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Không thể cập nhật số lượng: $e'),
+            content: Text('Unable to update quantity: $e',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -299,16 +305,16 @@ class _CartItemSamplesState extends State<CartItemSamples> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Xác nhận xóa'),
-          content: Text('Bạn có chắc chắn muốn xóa ${item.name} khỏi giỏ hàng?'),
+          title: Text('Confirm deletion'),
+          content: Text('Are you sure you want to delete ${item.name} from cart?'),
           actions: <Widget>[
             TextButton(
-              child: Text('Hủy'),
+              child: Text('Cancel'),
               onPressed: () => Navigator.of(context).pop(false),
             ),
             TextButton(
               child: Text(
-                'Xóa',
+                'Cancel',
                 style: TextStyle(color: Colors.red),
               ),
               onPressed: () => Navigator.of(context).pop(true),
@@ -336,20 +342,24 @@ class _CartItemSamplesState extends State<CartItemSamples> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(response['message'] ?? 'Đã xóa sản phẩm khỏi giỏ hàng'),
+              content: Text(response['message'] ?? 'Product removed from cart',
+            textAlign: TextAlign.center,
+              ),
               backgroundColor: Colors.green,
             ),
           );
         }
       } else {
-        throw Exception(response['message'] ?? 'Không thể xóa sản phẩm');
+        throw Exception(response['message'] ?? 'Cannot delete product');
       }
     } catch (e) {
       print('Error removing item: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Không thể xóa sản phẩm: $e'),
+            content: Text('Cannot delete product: $e',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );

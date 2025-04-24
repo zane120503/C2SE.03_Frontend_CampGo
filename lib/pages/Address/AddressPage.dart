@@ -377,6 +377,7 @@ class _AddressPageState extends State<AddressPage> {
           backgroundColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
           systemOverlayStyle: SystemUiOverlayStyle.dark,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, size: 30, color: Colors.black),

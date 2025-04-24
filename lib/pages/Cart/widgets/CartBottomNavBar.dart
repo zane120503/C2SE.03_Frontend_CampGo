@@ -38,7 +38,7 @@ class CartBottomNavBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Tổng tiền:',
+                'Total Amount:',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -70,7 +70,7 @@ class CartBottomNavBar extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Thanh toán',
+                'Check Out',
                 style: TextStyle(
                   fontSize: 18,
                   color: Colors.white,

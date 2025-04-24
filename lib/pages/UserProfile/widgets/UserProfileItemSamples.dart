@@ -88,7 +88,7 @@ class _UserProfileItemSamplesState extends State<UserProfileItemSamples> {
                     Icons.star, "Evaluate", Colors.black, context, _onEvaluate),
               ],
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 10),
           ],
         ),
       ),
@@ -99,13 +99,13 @@ class _UserProfileItemSamplesState extends State<UserProfileItemSamples> {
     if (_userProfileScreen?.profileImage != null && 
         _userProfileScreen!.profileImage!['url'] != null) {
       return CircleAvatar(
-        radius: 50,
+        radius: 30,
         backgroundImage: NetworkImage(_userProfileScreen!.profileImage!['url']),
       );
     }
     return const CircleAvatar(
-      radius: 50,
-      child: Icon(Icons.person, size: 50),
+      radius: 30,
+      child: Icon(Icons.person, size: 30),
     );
   }
 
@@ -115,8 +115,8 @@ class _UserProfileItemSamplesState extends State<UserProfileItemSamples> {
       onTap: () => onTap(context),
       child: Column(
         children: [
-          Icon(icon, size: 40, color: color),
-          SizedBox(height: 8),
+          Icon(icon, size: 30, color: color),
+          SizedBox(height: 5),
           Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 12)),
         ],
       ),
