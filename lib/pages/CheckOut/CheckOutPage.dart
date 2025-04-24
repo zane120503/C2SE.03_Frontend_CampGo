@@ -282,7 +282,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Không thể tải dữ liệu: $e'),
+            content: Text('Unable to load data: $e',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -318,7 +320,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ),
                 SizedBox(height: 20),
                 Text(
-                  'Thanh toán thành công',
+                  'Payment successful',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -327,8 +329,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ),
                 SizedBox(height: 20),
                 Text(
-                  'Đơn hàng của quý khách đã thanh toán thành công. '
-                  'Chúng tôi sẽ sớm liên hệ với quý khách để bàn giao sản phẩm, dịch vụ.',
+                  'Your order has been paid successfully. '
+                  'We will contact you soon to deliver the product, service.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 16),
                 ),
@@ -338,7 +340,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     Navigator.of(context).pop(); // Close the dialog
                     Navigator.of(context).pushReplacementNamed('/main'); // Navigate to home
                   },
-                  child: Text('Đóng'),
+                  child: Text('Close'),
                 ),
               ],
             ),
@@ -411,7 +413,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return Container(
         padding: EdgeInsets.all(16),
         child: Center(
-          child: Text('Không có sản phẩm nào trong giỏ hàng'),
+          child: Text('No products in the cart'),
         ),
       );
     }
@@ -504,7 +506,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Số lượng: ${item.quantity}',
+                  'Quantity: ${item.quantity}',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[600],

@@ -109,7 +109,7 @@ class _LoginPageState extends State<LoginPage> {
         }
       } else {
         if (!mounted) return;
-        String errorMessage = 'Tài khoản hoặc mật khẩu không chính xác';
+        String errorMessage = 'Account or password is incorrect';
         
         // Kiểm tra status code hoặc error code từ response
         if (response['statusCode'] != null) {
@@ -142,7 +142,9 @@ class _LoginPageState extends State<LoginPage> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
+            content: Text(errorMessage,
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -165,7 +167,9 @@ class _LoginPageState extends State<LoginPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(errorMessage),
+          content: Text(errorMessage,
+          textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
@@ -236,7 +240,6 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         const SizedBox(height: 20),
-
                         // Email TextField
                         TextField(
                           controller: _emailController,
@@ -258,7 +261,6 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         const SizedBox(height: 10),
-
                         // Password TextField
                         TextField(
                           controller: _passwordController,

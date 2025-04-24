@@ -48,7 +48,11 @@ class _NewProfilePageState extends State<NewProfilePage> {
     } catch (e) {
       print("Error picking image: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể chọn ảnh. Vui lòng thử lại.')),
+        const SnackBar(content: Text('Unable to select image. Please try again.',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -63,14 +67,22 @@ class _NewProfilePageState extends State<NewProfilePage> {
   Future<void> _saveProfile() async {
     if (!isFormValid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng điền đầy đủ thông tin')),
+        const SnackBar(content: Text('Please fill in all information',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
     if (!RegExp(r'^[0-9]{10}$').hasMatch(_phoneController.text.trim())) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Số điện thoại phải có 10 chữ số')),
+        const SnackBar(content: Text('Phone number must be 10 digits',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -94,7 +106,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
         print('Token from AuthService: $token');
         
         if (token == null || token.isEmpty) {
-          throw Exception('Vui lòng đăng nhập lại');
+          throw Exception('Please login again');
         }
         
         // Lưu token vào ShareService nếu chưa có
@@ -118,7 +130,7 @@ class _NewProfilePageState extends State<NewProfilePage> {
         // Kiểm tra và lưu thông tin từ response
         final userData = response['data'];
         if (userData == null) {
-          throw Exception('Không nhận được dữ liệu từ server');
+          throw Exception('Unable to get data from server');
         }
 
         // Lưu thông tin vào local storage với isProfileCompleted = true
@@ -141,7 +153,9 @@ class _NewProfilePageState extends State<NewProfilePage> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Cập nhật thông tin thành công'),
+            content: Text('Update information successfully',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -153,14 +167,16 @@ class _NewProfilePageState extends State<NewProfilePage> {
           (route) => false,
         );
       } else {
-        throw Exception(response['message'] ?? 'Cập nhật thông tin thất bại');
+        throw Exception(response['message'] ?? 'Update information failed');
       }
     } catch (e) {
       print('Error saving profile: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi: ${e.toString()}'),
+            content: Text('Error: ${e.toString()}',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );

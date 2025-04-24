@@ -1,8 +1,8 @@
 import 'package:CampGo/pages/Cart/CartPage.dart';
 import 'package:CampGo/pages/Favorite/FavoritePage.dart';
-import 'package:CampGo/pages/GGMap/MapPage.dart';
 import 'package:CampGo/pages/Home/HomePage.dart';
 import 'package:CampGo/pages/Home/widgets/HomeNavigationBar.dart';
+import 'package:CampGo/pages/Map/MapPage.dart';
 import 'package:CampGo/pages/UserProfile/UserProfilePage.dart';
 import 'package:flutter/material.dart';
 

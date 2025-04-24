@@ -11,8 +11,25 @@ import 'package:dio/dio.dart';
 class APIService {
   static final String baseUrl = Config.baseUrl;
   final AuthService _authService = AuthService();
-  final Dio _dio = Dio();
+  static Dio? _dio;
   
+  static void _initDio() {
+    if (_dio == null) {
+      _dio = Dio(BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(milliseconds: 5000),
+        receiveTimeout: const Duration(milliseconds: 3000),
+      ));
+    }
+  }
+
+  static Map<String, String> getHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+  }
+
   static Future<String?> _getAuthToken() async {
     try {
       final token = await ShareService.getToken();
@@ -377,7 +394,7 @@ class APIService {
         return {'success': false, 'message': 'Token not found'};
       }
 
-      final response = await _dio.get(
+      final response = await _dio!.get(
         '${Config.baseUrl}/api/AllAddresses',
         options: Options(
           headers: {
@@ -400,7 +417,7 @@ class APIService {
         return {'success': false, 'message': 'Token not found'};
       }
 
-      final response = await _dio.post(
+      final response = await _dio!.post(
         '${Config.baseUrl}/api/addresses',
         data: addressData,
         options: Options(
@@ -424,7 +441,7 @@ class APIService {
         return false;
       }
 
-      final response = await _dio.put(
+      final response = await _dio!.put(
         '${Config.baseUrl}/api/addresses/$addressId',
         data: addressData,
         options: Options(
@@ -448,7 +465,7 @@ class APIService {
         return false;
       }
 
-      final response = await _dio.delete(
+      final response = await _dio!.delete(
         '${Config.baseUrl}/api/addresses/$addressId',
         options: Options(
           headers: {
@@ -471,7 +488,7 @@ class APIService {
         return false;
       }
 
-      final response = await _dio.put(
+      final response = await _dio!.put(
         '${Config.baseUrl}/api/addresses/$addressId/set-default',
         options: Options(
           headers: {
@@ -494,7 +511,7 @@ class APIService {
         return {'success': false, 'message': 'Token not found'};
       }
 
-      final response = await _dio.post(
+      final response = await _dio!.post(
         '${Config.baseUrl}/api/AddCards',
         data: cardData,
         options: Options(
@@ -518,7 +535,7 @@ class APIService {
         return {'success': false, 'message': 'Token not found'};
       }
 
-      final response = await _dio.get(
+      final response = await _dio!.get(
         '${Config.baseUrl}/api/AllCards',
         options: Options(
           headers: {
@@ -541,7 +558,7 @@ class APIService {
         return false;
       }
 
-      final response = await _dio.put(
+      final response = await _dio!.put(
         '${Config.baseUrl}/api/UpdateCards/$cardId',
         data: cardData,
         options: Options(
@@ -565,7 +582,7 @@ class APIService {
         return false;
       }
 
-      final response = await _dio.delete(
+      final response = await _dio!.delete(
         '${Config.baseUrl}/api/DeleteCards/$cardId',
         options: Options(
           headers: {
@@ -588,7 +605,7 @@ class APIService {
         return false;
       }
 
-      final response = await _dio.put(
+      final response = await _dio!.put(
         '${Config.baseUrl}/api/cards/$cardId/set-default',
         options: Options(
           headers: {
@@ -1312,6 +1329,157 @@ class APIService {
         'success': false,
         'message': 'Lỗi khi lấy danh sách đơn hàng: $e',
         'data': []
+      };
+    }
+  }
+
+  // CAMPING SPOT METHODS
+  static Future<Map<String, dynamic>> getCampingSpots() async {
+    try {
+      _initDio();
+      final response = await _dio!.get(
+        '/api/campsite/locations',
+        options: Options(
+          headers: getHeaders(),
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': response.data['data'] ?? [],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Không thể lấy danh sách địa điểm cắm trại',
+        'data': []
+      };
+    } catch (e) {
+      print('Error getting camping spots: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi kết nối: $e',
+        'data': []
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getCampingSpotDetails(String spotId) async {
+    try {
+      _initDio();
+      final response = await _dio!.get(
+        '/api/campsite/$spotId',
+        options: Options(
+          headers: getHeaders(),
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': response.data['data'],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Không thể lấy thông tin địa điểm',
+      };
+    } catch (e) {
+      print('Error getting spot details: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi kết nối: $e',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> searchCampingSpots({
+    String? keyword,
+    List<String>? facilities,
+    double? minRating,
+    double? maxPrice,
+  }) async {
+    try {
+      _initDio();
+      final queryParams = {
+        if (keyword != null) 'keyword': keyword,
+        if (facilities != null) 'facilities': facilities.join(','),
+        if (minRating != null) 'minRating': minRating.toString(),
+        if (maxPrice != null) 'maxPrice': maxPrice.toString(),
+      };
+
+      final response = await _dio!.get(
+        '/api/campsite/search',
+        queryParameters: queryParams,
+        options: Options(
+          headers: getHeaders(),
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': response.data['data'] ?? [],
+        };
+      }
+      return {
+        'success': false,
+        'message': 'Không thể tìm kiếm địa điểm',
+        'data': []
+      };
+    } catch (e) {
+      print('Error searching camping spots: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi kết nối: $e',
+        'data': []
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> addCampingSpotReview(
+    String spotId,
+    double rating,
+    String comment,
+    List<String>? images,
+  ) async {
+    try {
+      _initDio();
+      final formData = FormData.fromMap({
+        'rating': rating,
+        'comment': comment,
+        if (images != null && images.isNotEmpty)
+          'images': images.map((path) => MultipartFile.fromFileSync(path)).toList(),
+      });
+
+      final response = await _dio!.post(
+        '/api/campsite/$spotId/review',
+        data: formData,
+        options: Options(
+          headers: {
+            ...getHeaders(),
+            'Content-Type': 'multipart/form-data',
+          },
+        ),
+      );
+
+      if (response.statusCode == 201) {
+        return {
+          'success': true,
+          'message': 'Thêm đánh giá thành công',
+          'data': response.data['data'],
+        };
+      }
+      return {
+        'success': false,
+        'message': response.data['message'] ?? 'Không thể thêm đánh giá',
+      };
+    } catch (e) {
+      print('Error adding review: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi kết nối: $e',
       };
     }
   }

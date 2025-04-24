@@ -4,28 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:CampGo/services/places_service.dart';
-
-// Mock data cho camping spots
-final List<CampingSpot> mockCampingSpots = [
-  CampingSpot(
-    id: '1',
-    name: 'Sơn Trà Camping',
-    location: const LatLng(16.1059, 108.2892),
-    description: 'Khu cắm trại view biển tuyệt đẹp',
-    rating: 4.5,
-    amenities: ['Nhà vệ sinh', 'Bãi đỗ xe', 'Nguồn nước'],
-    images: ['https://example.com/image1.jpg'],
-  ),
-  CampingSpot(
-    id: '2',
-    name: 'Bà Nà Camping',
-    location: const LatLng(15.9977, 107.9886),
-    description: 'Khu cắm trại trên núi, không khí trong lành',
-    rating: 4.2,
-    amenities: ['Nhà vệ sinh', 'Nguồn nước'],
-    images: ['https://example.com/image2.jpg'],
-  ),
-];
+import 'package:CampGo/services/api_service.dart';
 
 class CampingSpot {
   final String id;
@@ -33,8 +12,11 @@ class CampingSpot {
   final LatLng location;
   final String description;
   final double rating;
-  final List<String> amenities;
+  final List<String> facilities;
   final List<String> images;
+  final Map<String, dynamic> priceRange;
+  final Map<String, dynamic> contactInfo;
+  final Map<String, dynamic> openingHours;
 
   CampingSpot({
     required this.id,
@@ -42,9 +24,30 @@ class CampingSpot {
     required this.location,
     required this.description,
     required this.rating,
-    required this.amenities,
+    required this.facilities,
     required this.images,
+    required this.priceRange,
+    required this.contactInfo,
+    required this.openingHours,
   });
+
+  factory CampingSpot.fromJson(Map<String, dynamic> json) {
+    return CampingSpot(
+      id: json['_id'] ?? '',
+      name: json['campsiteName'] ?? '',
+      location: LatLng(
+        json['latitude'] ?? 0.0,
+        json['longitude'] ?? 0.0,
+      ),
+      description: json['description'] ?? '',
+      rating: (json['rating'] ?? 0.0).toDouble(),
+      facilities: List<String>.from(json['facilities'] ?? []),
+      images: List<String>.from(json['images']?.map((img) => img['url']) ?? []),
+      priceRange: json['priceRange'] ?? {},
+      contactInfo: json['contactInfo'] ?? {},
+      openingHours: json['openingHours'] ?? {},
+    );
+  }
 }
 
 class MapPage extends StatefulWidget {
@@ -66,6 +69,7 @@ class _MapPageState extends State<MapPage> {
   double _currentZoom = 13.0;
   CampingSpot? _selectedSpot;
   bool _showSpotDetails = false;
+  List<CampingSpot> _campingSpots = [];
 
   // Vị trí mặc định (Đà Nẵng)
   static const LatLng _defaultLocation = LatLng(16.0544, 108.2022);
@@ -74,8 +78,11 @@ class _MapPageState extends State<MapPage> {
   void initState() {
     super.initState();
     _mapController = MapController();
-    _getCurrentLocation();
-    _addCampingSpotMarkers();
+    // Tự động lấy vị trí khi mở bản đồ
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _getCurrentLocation();
+    });
+    _loadCampingSpots();
   }
 
   @override
@@ -85,8 +92,31 @@ class _MapPageState extends State<MapPage> {
     super.dispose();
   }
 
+  Future<void> _loadCampingSpots() async {
+    try {
+      setState(() => _isLoading = true);
+      final response = await APIService.getCampingSpots();
+      
+      if (response['success'] == true) {
+        final List<dynamic> spotsData = response['data'];
+        setState(() {
+          _campingSpots = spotsData.map((spot) => CampingSpot.fromJson(spot)).toList();
+          _addCampingSpotMarkers();
+        });
+      }
+    } catch (e) {
+      print('Error loading camping spots: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi tải địa điểm cắm trại: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   void _addCampingSpotMarkers() {
-    for (var spot in mockCampingSpots) {
+    _markers.clear();
+    for (var spot in _campingSpots) {
       _markers.add(
         Marker(
           point: spot.location,
@@ -105,12 +135,27 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  void _showSpotInfo(CampingSpot spot) {
-    setState(() {
-      _selectedSpot = spot;
-      _showSpotDetails = true;
-    });
-    _mapController.move(spot.location, 15);
+  void _showSpotInfo(CampingSpot spot) async {
+    try {
+      setState(() => _isLoading = true);
+      final response = await APIService.getCampingSpotDetails(spot.id);
+      
+      if (response['success'] == true) {
+        final updatedSpot = CampingSpot.fromJson(response['data']);
+        setState(() {
+          _selectedSpot = updatedSpot;
+          _showSpotDetails = true;
+        });
+        _mapController.move(spot.location, 15);
+      }
+    } catch (e) {
+      print('Error loading spot details: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi tải chi tiết địa điểm: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -121,6 +166,33 @@ class _MapPageState extends State<MapPage> {
       print('Kiểm tra dịch vụ vị trí...');
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
+        // Hiển thị dialog yêu cầu bật dịch vụ vị trí
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Dịch vụ vị trí đang tắt'),
+                content: const Text('Vui lòng bật dịch vụ vị trí để sử dụng tính năng này'),
+                actions: [
+                  TextButton(
+                    child: const Text('Mở cài đặt'),
+                    onPressed: () async {
+                      await Geolocator.openLocationSettings();
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  TextButton(
+                    child: const Text('Đóng'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        }
         throw Exception('Dịch vụ vị trí đang tắt');
       }
 
@@ -134,6 +206,33 @@ class _MapPageState extends State<MapPage> {
       }
 
       if (permission == LocationPermission.deniedForever) {
+        // Hiển thị dialog hướng dẫn người dùng cấp quyền
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Quyền truy cập vị trí bị từ chối'),
+                content: const Text('Vui lòng vào cài đặt để cấp quyền truy cập vị trí cho ứng dụng'),
+                actions: [
+                  TextButton(
+                    child: const Text('Mở cài đặt'),
+                    onPressed: () async {
+                      await Geolocator.openAppSettings();
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  TextButton(
+                    child: const Text('Đóng'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        }
         throw Exception('Quyền truy cập vị trí bị từ chối vĩnh viễn');
       }
 
@@ -170,7 +269,7 @@ class _MapPageState extends State<MapPage> {
         );
       });
 
-      // Di chuyển map đến vị trí hiện tại
+      // Di chuyển map đến vị trí hiện tại với animation
       _mapController.move(currentLocation, 15.0);
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -390,9 +489,9 @@ class _MapPageState extends State<MapPage> {
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              // TODO: Implement search
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Tính năng tìm kiếm đang phát triển')),
+              showSearch(
+                context: context,
+                delegate: CampingSpotSearchDelegate(_campingSpots),
               );
             },
           ),
@@ -408,7 +507,6 @@ class _MapPageState extends State<MapPage> {
               minZoom: 3,
               maxZoom: 18,
               onTap: (tapPosition, point) {
-                // Ẩn thông tin spot khi nhấn vào map
                 setState(() {
                   _showSpotDetails = false;
                 });
@@ -416,8 +514,7 @@ class _MapPageState extends State<MapPage> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                subdomains: const ['a', 'b', 'c'],
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.campgo.app',
               ),
               MarkerLayer(
@@ -429,7 +526,6 @@ class _MapPageState extends State<MapPage> {
             const Center(
               child: CircularProgressIndicator(),
             ),
-          // Hiển thị thông tin camping spot
           if (_showSpotDetails && _selectedSpot != null)
             Positioned(
               left: 16,
@@ -445,17 +541,19 @@ class _MapPageState extends State<MapPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            _selectedSpot!.name,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Text(
+                              _selectedSpot!.name,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           Row(
                             children: [
                               const Icon(Icons.star, color: Colors.amber),
-                              Text(_selectedSpot!.rating.toString()),
+                              Text(_selectedSpot!.rating.toStringAsFixed(1)),
                             ],
                           ),
                         ],
@@ -463,15 +561,31 @@ class _MapPageState extends State<MapPage> {
                       const SizedBox(height: 8),
                       Text(_selectedSpot!.description),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: _selectedSpot!.amenities.map((amenity) {
-                          return Chip(
-                            label: Text(amenity),
-                            backgroundColor: Colors.blue.shade100,
-                          );
-                        }).toList(),
-                      ),
+                      if (_selectedSpot!.facilities.isNotEmpty) ...[
+                        const Text(
+                          'Tiện ích:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Wrap(
+                          spacing: 8,
+                          children: _selectedSpot!.facilities.map((amenity) {
+                            return Chip(
+                              label: Text(amenity),
+                              backgroundColor: Colors.blue.shade100,
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      if (_selectedSpot!.priceRange.isNotEmpty) ...[
+                        const Text(
+                          'Khoảng giá:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '${_selectedSpot!.priceRange['min']} - ${_selectedSpot!.priceRange['max']} VNĐ',
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -537,6 +651,77 @@ class _MapPageState extends State<MapPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class CampingSpotSearchDelegate extends SearchDelegate {
+  final List<CampingSpot> spots;
+
+  CampingSpotSearchDelegate(this.spots);
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = '';
+        },
+      ),
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () {
+        close(context, null);
+      },
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    final results = spots.where((spot) =>
+        spot.name.toLowerCase().contains(query.toLowerCase()) ||
+        spot.description.toLowerCase().contains(query.toLowerCase())).toList();
+
+    return ListView.builder(
+      itemCount: results.length,
+      itemBuilder: (context, index) {
+        final spot = results[index];
+        return ListTile(
+          title: Text(spot.name),
+          subtitle: Text(spot.description),
+          onTap: () {
+            close(context, spot);
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    final suggestions = spots.where((spot) =>
+        spot.name.toLowerCase().contains(query.toLowerCase()) ||
+        spot.description.toLowerCase().contains(query.toLowerCase())).toList();
+
+    return ListView.builder(
+      itemCount: suggestions.length,
+      itemBuilder: (context, index) {
+        final spot = suggestions[index];
+        return ListTile(
+          title: Text(spot.name),
+          subtitle: Text(spot.description),
+          onTap: () {
+            query = spot.name;
+            showResults(context);
+          },
+        );
+      },
     );
   }
 } 

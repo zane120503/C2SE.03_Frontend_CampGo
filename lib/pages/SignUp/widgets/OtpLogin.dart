@@ -53,7 +53,9 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Mã OTP đã được gửi đến email của bạn'),
+            content: Text('OTP has been sent to your email',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -61,7 +63,9 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(response['message'] ?? 'Lỗi gửi mã OTP'),
+            content: Text(response['message'] ?? 'Error sending OTP',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -70,7 +74,9 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Lỗi: ${e.toString()}'),
+          content: Text('Error: ${e.toString()}',
+          textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -87,7 +93,9 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
     if (otpController.text.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Vui lòng nhập đủ 6 số OTP'),
+          content: Text('Please enter 6 OTP digits',
+          textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -112,7 +120,9 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
         // Hiển thị thông báo thành công
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Xác thực email thành công!'),
+            content: Text('Email verification successful!',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -131,7 +141,9 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(response['message'] ?? 'Mã OTP không đúng'),
+            content: Text(response['message'] ?? 'OTP is incorrect',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -140,7 +152,9 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Lỗi: ${e.toString()}'),
+          content: Text('Error: ${e.toString()}',
+          textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -169,7 +183,9 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Mã OTP mới đã được gửi đến email của bạn'),
+            content: Text('New OTP has been sent to your email',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -177,7 +193,9 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(response['message'] ?? 'Lỗi gửi lại mã OTP'),
+            content: Text(response['message'] ?? 'Error sending new OTP',
+            textAlign: TextAlign.center,
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -186,7 +204,9 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Lỗi: ${e.toString()}'),
+          content: Text('Error: ${e.toString()}',
+          textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -245,7 +265,7 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
                         ),
                         const SizedBox(width: 80),
                         const Text(
-                          'Xác thực Email',
+                          'Email Verification',
                           style: TextStyle(
                             color: Color(0xFF2B2321),
                             fontSize: 28,
@@ -257,7 +277,7 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
                     
                     const SizedBox(height: 10),
                     Text(
-                      'Vui lòng nhập mã OTP 6 số đã được gửi đến\n${widget.email}',
+                      'Please enter the 6-digit OTP sent to\n${widget.email}',
                       style: const TextStyle(
                         color: Colors.grey,
                         fontSize: 16,
@@ -301,8 +321,8 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
                     // Timer Countdown
                     Text(
                       _secondsRemaining > 0
-                          ? 'Mã OTP sẽ hết hạn sau $_secondsRemaining giây'
-                          : 'Mã OTP đã hết hạn',
+                          ? 'OTP will expire in $_secondsRemaining seconds'
+                          : 'OTP has expired',
                       style: const TextStyle(color: Colors.grey),
                     ),
 
@@ -321,7 +341,7 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
                               ),
                             ),
                             child: const Text(
-                              'Xác nhận OTP',
+                              'Verify OTP',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
@@ -336,7 +356,7 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
                     TextButton(
                       onPressed: _secondsRemaining == 0 ? _resendOTP : null,
                       child: const Text(
-                        'Gửi lại mã OTP?',
+                        'Resend OTP?',
                         style: TextStyle(
                           color: Color.fromARGB(255, 37, 39, 41),
                         ),
