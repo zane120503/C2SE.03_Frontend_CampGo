@@ -507,7 +507,7 @@ class _WaitingForDeliveryState extends State<WaitingForDeliveryPage> {
 
     return Container(
       padding: const EdgeInsets.all(16.0),
-      child: Column(
+      child: Column(  
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,

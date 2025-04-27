@@ -36,6 +36,31 @@ class Campsite {
   });
 
   factory Campsite.fromJson(Map<String, dynamic> json) {
+    // Xử lý trường hợp API trả về dữ liệu rút gọn
+    if (json['coordinates'] != null) {
+      return Campsite(
+        id: json['id'] ?? '',
+        name: json['name'] ?? '',
+        location: json['location'] ?? '',
+        coordinates: LatLng(
+          json['coordinates']['lat']?.toDouble() ?? 0.0,
+          json['coordinates']['lng']?.toDouble() ?? 0.0,
+        ),
+        description: json['description'] ?? '',
+        images: [],
+        facilities: [],
+        rating: (json['rating'] ?? 0.0).toDouble(),
+        reviews: [],
+        priceRange: PriceRange(min: 0, max: 0),
+        contactInfo: ContactInfo(),
+        openingHours: OpeningHours(),
+        isActive: true,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
+
+    // Xử lý trường hợp API trả về dữ liệu đầy đủ
     return Campsite(
       id: json['_id'] ?? '',
       name: json['campsiteName'] ?? '',

@@ -8,19 +8,52 @@ import 'package:CampGo/services/auth_service.dart';
 import 'package:CampGo/services/share_service.dart';
 import 'package:dio/dio.dart';
 import 'package:CampGo/models/campsite.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class APIService {
-  static final String baseUrl = Config.baseUrl;
-  final AuthService _authService = AuthService();
+  static String? _authToken;
   static Dio? _dio;
-  
+  static String get baseUrl => Config.baseUrl;
+  static Map<String, dynamic> _cache = {};
+  static const String _tokenKey = 'auth_token';
+
   static void _initDio() {
     if (_dio == null) {
       _dio = Dio(BaseOptions(
-        baseUrl: baseUrl,
-        connectTimeout: const Duration(milliseconds: 5000),
-        receiveTimeout: const Duration(milliseconds: 3000),
+        baseUrl: Config.baseUrl,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
+        validateStatus: (status) {
+          return status! < 500;
+        },
       ));
+
+      // Thêm interceptor để tự động xử lý token
+      _dio!.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) async {
+            // Thêm token vào header nếu có
+            final token = await ShareService.getToken();
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+            return handler.next(options);
+          },
+          onError: (error, handler) async {
+            print('API Error: ${error.message}');
+            print('Error Response: ${error.response?.data}');
+            
+            if (error.response?.statusCode == 401) {
+              // Token hết hạn hoặc không hợp lệ
+              print('Token expired or invalid');
+              await ShareService.clearUserData();
+              return handler.next(error);
+            }
+            return handler.next(error);
+          },
+        ),
+      );
     }
   }
 
@@ -1518,9 +1551,13 @@ class APIService {
   // Lấy danh sách tất cả các địa điểm cắm trại
   static Future<List<Campsite>> getAllCampsites() async {
     try {
-      final response = await _dio!.get('/api/campsite/locations');
+      _initDio();
+      print('Đang lấy danh sách địa điểm cắm trại...');
       
-      if (response.statusCode == 200) {
+      final response = await _dio!.get('/api/campsite/locations');
+      print('API Response: ${response.data}');
+      
+      if (response.statusCode == 200 && response.data['data'] != null) {
         final List<dynamic> data = response.data['data'];
         return data.map((json) => Campsite.fromJson(json)).toList();
       }
@@ -1534,12 +1571,13 @@ class APIService {
   // Tìm kiếm địa điểm cắm trại
   static Future<List<Campsite>> searchCampsites(String query) async {
     try {
+      _initDio();
       final response = await _dio!.get(
         '/api/campsite/search',
         queryParameters: {'q': query},
       );
       
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 && response.data['data'] != null) {
         final List<dynamic> data = response.data['data'];
         return data.map((json) => Campsite.fromJson(json)).toList();
       }
@@ -1553,9 +1591,10 @@ class APIService {
   // Lấy chi tiết một địa điểm cắm trại
   static Future<Campsite> getCampsiteDetails(String id) async {
     try {
+      _initDio();
       final response = await _dio!.get('/api/campsite/$id');
       
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 && response.data['data'] != null) {
         return Campsite.fromJson(response.data['data']);
       }
       throw Exception('Failed to load campsite details');
@@ -1568,6 +1607,7 @@ class APIService {
   // Thêm đánh giá cho địa điểm cắm trại
   static Future<void> addCampsiteReview(String id, String review) async {
     try {
+      _initDio();
       final response = await _dio!.post(
         '/api/campsite/$id/review',
         data: {'review': review},

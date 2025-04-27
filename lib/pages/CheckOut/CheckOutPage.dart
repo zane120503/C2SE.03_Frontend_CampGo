@@ -299,11 +299,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Future<void> _processCheckout() async {
     try {
       if (_defaultAddress == null) {
-        throw Exception('Vui lòng chọn địa chỉ giao hàng');
+        throw Exception('Please select a shipping address');
       }
 
       if (_cart?.items == null || _cart!.items!.isEmpty) {
-        throw Exception('Giỏ hàng trống');
+        throw Exception('Cart is empty');
       }
 
       // Chuẩn bị dữ liệu đơn hàng
@@ -338,7 +338,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                   SizedBox(height: 20),
                   Text(
-                    'Thanh toán thành công',
+                    'Payment successful',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -347,8 +347,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                   SizedBox(height: 20),
                   Text(
-                    'Đơn hàng của bạn đã được thanh toán thành công. '
-                    'Chúng tôi sẽ liên hệ với bạn sớm để giao hàng.',
+                    'Your order has been paid successfully. '
+                    'We will contact you soon to deliver.',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 16),
                   ),
@@ -378,13 +378,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
           },
         );
       } else {
-        throw Exception(result['message'] ?? 'Không thể tạo đơn hàng');
+        throw Exception(result['message'] ?? 'Cannot create order');
       }
     } catch (e) {
       print('Error during checkout: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Thanh toán thất bại: $e'),
+          content: Text('Payment failed: $e',
+          textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -449,7 +451,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return Container(
         padding: EdgeInsets.all(16),
         child: Center(
-          child: Text('No products in the cart'),
+          child: Text('No products in the cart',
+          textAlign: TextAlign.center,
+          ),
         ),
       );
     }
@@ -468,7 +472,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           ),
           SizedBox(height: 8),
           SizedBox(
-            height: 200,
+            height: 270,
             child: ListView.builder(
               scrollDirection: Axis.vertical,
               itemCount: _cart!.items!.length,
@@ -629,12 +633,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.location_on,
-                        color: const Color(0xFF2B2321),
+                      Container(
+                        width: 40,
+                        height: 120,
+                        child: Center(
+                          child: Icon(
+                            Icons.location_on,
+                            color: const Color(0xFF2B2321),
+                            size: 24,
+                          ),
+                        ),
                       ),
-                      SizedBox(width: 8),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,33 +659,34 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 color: const Color(0xFF2B2321),
                               ),
                             ),
-                            SizedBox(height: 4),
+                            SizedBox(height: 8),
                             Text(
                               _defaultAddress!.phoneNumber,
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.grey[600],
+                                color: const Color.fromARGB(255, 53, 53, 53),
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              _defaultAddress!.streetAddress,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: const Color.fromARGB(255, 53, 53, 53),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '${_defaultAddress!.ward}, ${_defaultAddress!.district}, ${_defaultAddress!.province}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: const Color.fromARGB(255, 53, 53, 53),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ],
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    _defaultAddress!.streetAddress,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  Text(
-                    '${_defaultAddress!.ward}, ${_defaultAddress!.district}, ${_defaultAddress!.province}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
                   ),
                 ],
               ),

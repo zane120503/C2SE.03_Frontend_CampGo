@@ -33,9 +33,9 @@ class _CartPageState extends State<CartPage> {
     final selectedItemsData = _cartController.getSelectedItemsData();
     if (selectedItemsData == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        SnackBar( 
           content: Text(
-            'Vui lòng chọn sản phẩm để thanh toán',
+            'Please select products to checkout',
             textAlign: TextAlign.center,
           ),
           backgroundColor: Colors.red,
@@ -51,7 +51,7 @@ class _CartPageState extends State<CartPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Có lỗi xảy ra khi lấy thông tin sản phẩm',
+            'An error occurred when getting product information',
             textAlign: TextAlign.center,
           ),
           backgroundColor: Colors.red,
@@ -64,7 +64,7 @@ class _CartPageState extends State<CartPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Vui lòng chọn ít nhất một sản phẩm',
+            'Please select at least one product',
             textAlign: TextAlign.center,
           ),
           backgroundColor: Colors.red,
@@ -102,7 +102,7 @@ class _CartPageState extends State<CartPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Có lỗi xảy ra: ${e.toString()}',
+            'An error occurred: ${e.toString()}',
             textAlign: TextAlign.center,
           ),
           backgroundColor: Colors.red,

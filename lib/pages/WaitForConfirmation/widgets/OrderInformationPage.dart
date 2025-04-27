@@ -274,7 +274,7 @@ class _OrderInformationState extends State<OrderInformation> {
       ),
     );
   }
-
+  
   Widget _buildShopSection(List<dynamic> products) {
     return Container(
       padding: const EdgeInsets.only(right: 8, left: 8, bottom: 15),

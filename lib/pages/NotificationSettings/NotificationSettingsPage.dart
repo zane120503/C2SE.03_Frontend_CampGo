@@ -39,7 +39,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               child: Column(
                 children: [
                   _buildSwitchTile(
-                    'Thông báo trong ứng dụng',
+                    'In-App Notifications', 
                     inAppNotifications,
                     (value) {
                       setState(() {
@@ -50,7 +50,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   ),
                   const Divider(height: 1),
                   _buildSwitchTile(
-                    'Thông báo Gmail',
+                    'Email Notifications',
                     emailNotifications,
                     (value) {
                       setState(() {

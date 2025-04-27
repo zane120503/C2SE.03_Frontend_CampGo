@@ -44,23 +44,23 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
       // Validate old password
       if (oldPassword.isEmpty) {
-        _oldPasswordError = 'Vui lòng nhập mật khẩu cũ';
+        _oldPasswordError = 'Please enter old password';
       } else if (oldPassword.length < 6) {
-        _oldPasswordError = 'Mật khẩu cũ phải có ít nhất 6 ký tự';
+        _oldPasswordError = 'Old password must be at least 6 characters';
       }
 
       // Validate new password
       if (newPassword.isEmpty) {
-        _newPasswordError = 'Vui lòng nhập mật khẩu mới';
+        _newPasswordError = 'Please enter new password';
       } else if (newPassword.length < 6) {
-        _newPasswordError = 'Mật khẩu mới phải có ít nhất 6 ký tự';
+        _newPasswordError = 'New password must be at least 6 characters';
       }
 
       // Validate confirm password
       if (confirmPassword.isEmpty) {
-        _confirmPasswordError = 'Vui lòng xác nhận mật khẩu mới';
+        _confirmPasswordError = 'Please confirm new password';
       } else if (confirmPassword != newPassword) {
-        _confirmPasswordError = 'Mật khẩu xác nhận không khớp';
+        _confirmPasswordError = 'Confirm password does not match';
       }
 
       _isFormValid = oldPassword.length >= 6 &&
@@ -90,7 +90,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              result['message'] ?? 'Đổi mật khẩu thành công',
+              result['message'] ?? 'Change password successfully',
               textAlign: TextAlign.center,
             ),
             backgroundColor: Colors.green,
@@ -100,14 +100,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         setState(() {
           _errorMessage = result['message'];
           if (result['message'].toString().toLowerCase().contains('current password')) {
-            _oldPasswordError = 'Mật khẩu cũ không chính xác';
+            _oldPasswordError = 'Old password is incorrect';
           }
         });
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Lỗi: $e';
+        _errorMessage = 'Error: $e';
       });
     } finally {
       if (mounted) {

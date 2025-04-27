@@ -123,7 +123,7 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
               'imageURL': product['product']?['imageURL']?.toString() ?? '',
             },
             'quantity': int.tryParse(product['quantity']?.toString() ?? '1') ?? 1,
-          };
+          };  
         }).toList() ?? [],
         'address': {
           'fullName': orderData['shipping_address']?['fullName']?.toString() ?? '',

@@ -107,7 +107,7 @@ class _UserProfileItemSamplesState extends State<UserProfileItemSamples> {
       radius: 30,
       child: Icon(Icons.person, size: 30),
     );
-  }
+  } 
 
   Widget _buildOrderStatusButton(
       IconData icon, String label, Color color, BuildContext context, Function(BuildContext) onTap) {

@@ -127,7 +127,9 @@ class _AddNewAddressPageState extends State<AddNewAddressPage> {
         _zipCodeController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please fill in all information'),
+          content: Text('Please fill in all information',
+          textAlign: TextAlign.center,
+          ),
           backgroundColor: Colors.red,
         ),
       );

@@ -73,7 +73,7 @@ class _ProductReviewsItemSamplesState extends State<ProductReviewsItemSamples> {
                 fontSize: 16,
               ),
             ),
-          ],
+          ],    
         ),
       ),
       body: isLoading

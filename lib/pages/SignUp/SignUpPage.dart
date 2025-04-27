@@ -48,7 +48,7 @@ class _SignUpPageState extends State<SignUpPage> {
     }
     return true;
   }
-
+  
   void showSnackBar(String message, Color color) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

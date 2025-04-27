@@ -219,7 +219,7 @@ class _SearchPageState extends State<SearchPage> {
       imageUrl = product['imageURL'] ?? '';
     }
 
-    // Nếu imageUrl là đường dẫn tương đối, thêm baseUrl
+    // If imageUrl is a relative path, add baseUrl
     if (imageUrl.isNotEmpty && !imageUrl.startsWith('http')) {
       imageUrl = '${APIService.baseUrl}$imageUrl';
     }

@@ -130,7 +130,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
               ),
               backgroundColor: Colors.green,
             )
-          );
+          );  
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -742,4 +742,4 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
       ),
     );
   }
-}
+} 

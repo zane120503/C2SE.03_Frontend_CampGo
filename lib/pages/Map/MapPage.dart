@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:CampGo/services/api_service.dart';
 import 'package:CampGo/models/campsite.dart';
+import 'package:http/http.dart' as http;
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -13,8 +15,10 @@ class MapPage extends StatefulWidget {
   State<MapPage> createState() => _MapPageState();
 }
 
-class _MapPageState extends State<MapPage> {
+class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   late final MapController _mapController;
+  late AnimationController _animationController;
+  late Animation<double> _animation;
   final List<Marker> _markers = [];
   final TextEditingController _searchController = TextEditingController();
   LatLng? _currentPosition;
@@ -23,6 +27,14 @@ class _MapPageState extends State<MapPage> {
   Campsite? _selectedSpot;
   bool _showSpotDetails = false;
   List<Campsite> _campsites = [];
+  List<LatLng> _routePoints = [];
+  bool _isShowingRoute = false;
+  bool _isNavigating = false;
+  bool _isShowingNavigationSheet = false;
+  StreamSubscription<Position>? _positionStreamSubscription;
+  LatLng? _destinationPoint;
+  double _remainingDistance = 0;
+  Timer? _updateTimer;
 
   // Vị trí mặc định (Đà Nẵng)
   static const LatLng _defaultLocation = LatLng(16.0544, 108.2022);
@@ -31,6 +43,14 @@ class _MapPageState extends State<MapPage> {
   void initState() {
     super.initState();
     _mapController = MapController();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    );
     // Tự động lấy vị trí khi mở bản đồ
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _getCurrentLocation();
@@ -42,6 +62,9 @@ class _MapPageState extends State<MapPage> {
   void dispose() {
     _searchController.dispose();
     _mapController.dispose();
+    _animationController.dispose();
+    _positionStreamSubscription?.cancel();
+    _updateTimer?.cancel();
     super.dispose();
   }
 
@@ -74,34 +97,56 @@ class _MapPageState extends State<MapPage> {
       _markers.add(
         Marker(
           point: spot.coordinates,
-          width: 40.0,
-          height: 40.0,
+          width: 60.0,
+          height: 60.0,
           child: GestureDetector(
             onTap: () => _showSpotInfo(spot),
-            child: const Icon(
-              Icons.park,
-              color: Colors.green,
+            child: Icon(
+              Icons.location_on,
+              color: _getMarkerColor(spot.rating),
               size: 40,
             ),
           ),
         ),
       );
     }
-    // Thêm lại marker vị trí hiện tại nếu có
+    // Thêm marker vị trí hiện tại nếu có
     if (_currentPosition != null) {
       _markers.add(
         Marker(
           point: _currentPosition!,
           width: 40.0,
           height: 40.0,
-          child: const Icon(
-            Icons.location_on,
-            color: Colors.blue,
-            size: 40,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.8),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: const Icon(
+              Icons.my_location,
+              color: Colors.white,
+              size: 24,
+            ),
           ),
         ),
       );
     }
+    setState(() {});
+  }
+
+  Color _getMarkerColor(double rating) {
+    if (rating >= 4.5) return Colors.green[700]!;
+    if (rating >= 4.0) return Colors.green[500]!;
+    if (rating >= 3.5) return Colors.orange;
+    return Colors.red;
+  }
+
+  IconData _getMarkerIcon(List<String> facilities) {
+    if (facilities.contains('Hồ bơi')) return Icons.pool;
+    if (facilities.contains('BBQ')) return Icons.outdoor_grill;
+    if (facilities.contains('Wifi')) return Icons.wifi;
+    return Icons.park;
   }
 
   void _showSpotInfo(Campsite spot) async {
@@ -114,6 +159,7 @@ class _MapPageState extends State<MapPage> {
           _selectedSpot = updatedSpot;
           _showSpotDetails = true;
         });
+        _animationController.forward();
         _mapController.move(spot.coordinates, 15);
       }
     } catch (e) {
@@ -128,6 +174,14 @@ class _MapPageState extends State<MapPage> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _hideSpotDetails() {
+    _animationController.reverse().then((_) {
+      setState(() {
+        _showSpotDetails = false;
+      });
+    });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -254,6 +308,140 @@ class _MapPageState extends State<MapPage> {
     _mapController.move(_mapController.camera.center, _currentZoom);
   }
 
+  Future<void> _startNavigation(LatLng destination) async {
+    setState(() {
+      _isNavigating = true;
+      _isShowingNavigationSheet = true;
+      _destinationPoint = destination;
+    });
+    _animationController.forward();
+
+    // Hủy subscription cũ nếu có
+    await _positionStreamSubscription?.cancel();
+
+    // Bắt đầu theo dõi vị trí
+    _positionStreamSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10, // Cập nhật khi di chuyển 10 mét
+      ),
+    ).listen((Position position) async {
+      final currentLatLng = LatLng(position.latitude, position.longitude);
+      
+      // Cập nhật vị trí hiện tại
+      setState(() {
+        _currentPosition = currentLatLng;
+      });
+
+      // Tính khoảng cách đến đích
+      double distanceInMeters = Geolocator.distanceBetween(
+        currentLatLng.latitude,
+        currentLatLng.longitude,
+        destination.latitude,
+        destination.longitude,
+      );
+
+      setState(() {
+        _remainingDistance = distanceInMeters;
+      });
+
+      // Nếu đến gần đích (ví dụ: trong phạm vi 50m)
+      if (distanceInMeters < 50) {
+        _stopNavigation();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Bạn đã đến nơi!')),
+        );
+        return;
+      }
+
+      // Cập nhật đường đi mỗi 30 giây
+      _updateTimer?.cancel();
+      _updateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+        if (_isNavigating && _destinationPoint != null) {
+          _getDirections(_destinationPoint!);
+        }
+      });
+    });
+
+    // Lấy đường đi ban đầu
+    await _getDirections(destination);
+  }
+
+  void _stopNavigation() {
+    _animationController.reverse().then((_) {
+      setState(() {
+        _isNavigating = false;
+        _isShowingNavigationSheet = false;
+        _destinationPoint = null;
+        _routePoints = [];
+        _remainingDistance = 0;
+      });
+    });
+    _positionStreamSubscription?.cancel();
+    _updateTimer?.cancel();
+  }
+
+  Future<void> _getDirections(LatLng destination) async {
+    if (_currentPosition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng bật vị trí để sử dụng tính năng chỉ đường')),
+      );
+      return;
+    }
+
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final String baseUrl = 'https://api.openrouteservice.org/v2/directions/driving-car';
+      final String apiKey = '5b3ce3597851110001cf62482477b63bbe3b4be5943c784279c015e0';
+
+      final response = await http.get(
+        Uri.parse(
+          '$baseUrl?api_key=$apiKey&start=${_currentPosition!.longitude},${_currentPosition!.latitude}&end=${destination.longitude},${destination.latitude}'
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final coordinates = data['features'][0]['geometry']['coordinates'] as List;
+        
+        setState(() {
+          _routePoints = coordinates.map((point) {
+            return LatLng(point[1] as double, point[0] as double);
+          }).toList();
+          _isShowingRoute = true;
+        });
+
+        if (!_isNavigating) {
+          // Chỉ fit bounds khi không trong chế độ điều hướng
+          final bounds = LatLngBounds.fromPoints(_routePoints);
+          _mapController.fitBounds(
+            bounds,
+            options: const FitBoundsOptions(padding: EdgeInsets.all(50.0)),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error getting directions: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể tải thông tin chỉ đường. Vui lòng thử lại sau.')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _clearRoute() {
+    setState(() {
+      _routePoints = [];
+      _isShowingRoute = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -291,6 +479,9 @@ class _MapPageState extends State<MapPage> {
               onTap: (tapPosition, point) {
                 setState(() {
                   _showSpotDetails = false;
+                  if (_isShowingRoute && !_isNavigating) {
+                    _clearRoute();
+                  }
                 });
               },
             ),
@@ -302,6 +493,16 @@ class _MapPageState extends State<MapPage> {
               MarkerLayer(
                 markers: _markers,
               ),
+              if (_routePoints.isNotEmpty)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _routePoints,
+                      color: Colors.blue,
+                      strokeWidth: 4.0,
+                    ),
+                  ],
+                ),
             ],
           ),
           if (_isLoading)
@@ -309,145 +510,298 @@ class _MapPageState extends State<MapPage> {
               child: CircularProgressIndicator(),
             ),
           if (_showSpotDetails && _selectedSpot != null)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _hideSpotDetails,
+                child: Container(
+                  color: Colors.black.withOpacity(0.3),
+                  child: DraggableScrollableSheet(
+                    initialChildSize: 0.4,
+                    minChildSize: 0.2,
+                    maxChildSize: 0.9,
+                    builder: (context, scrollController) {
+                      return Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 10,
+                              offset: Offset(0, -2),
+                            ),
+                          ],
+                        ),
+                        child: SingleChildScrollView(
+                          controller: scrollController,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 4,
+                                margin: const EdgeInsets.only(top: 8, bottom: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            _selectedSpot!.name,
+                                            style: const TextStyle(
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          _selectedSpot!.rating.toString(),
+                                          style: const TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Row(
+                                          children: List.generate(5, (index) {
+                                            return Icon(
+                                              index < _selectedSpot!.rating
+                                                  ? Icons.star
+                                                  : Icons.star_border,
+                                              color: Colors.amber,
+                                              size: 20,
+                                            );
+                                          }),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '(${_selectedSpot!.reviews.length} đánh giá)',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Địa điểm cắm trại • ${_selectedSpot!.priceRange.min}-${_selectedSpot!.priceRange.max}K VNĐ',
+                                      style: TextStyle(
+                                        color: Colors.grey[800],
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green[100],
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            'Đang mở cửa',
+                                            style: TextStyle(
+                                              color: Colors.green[700],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Đóng cửa lúc ${_selectedSpot!.openingHours.close}',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Divider(height: 1),
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _buildActionButton(
+                                      icon: Icons.directions,
+                                      label: 'Đường đi',
+                                      onTap: () {
+                                        _getDirections(_selectedSpot!.coordinates);
+                                        setState(() {
+                                          _showSpotDetails = false;
+                                        });
+                                      },
+                                      color: Colors.blue,
+                                    ),
+                                    _buildActionButton(
+                                      icon: Icons.navigation,
+                                      label: 'Bắt đầu',
+                                      onTap: () {
+                                        _startNavigation(_selectedSpot!.coordinates);
+                                        setState(() {
+                                          _showSpotDetails = false;
+                                        });
+                                      },
+                                      color: Colors.blue,
+                                    ),
+                                    _buildActionButton(
+                                      icon: Icons.phone,
+                                      label: 'Gọi',
+                                      onTap: () {
+                                        // TODO: Implement call
+                                      },
+                                      color: Colors.blue,
+                                    ),
+                                    _buildActionButton(
+                                      icon: Icons.bookmark_border,
+                                      label: 'Lưu',
+                                      onTap: () {
+                                        // TODO: Implement save
+                                      },
+                                      color: Colors.blue,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Divider(height: 1),
+                              if (_selectedSpot!.images.isNotEmpty) ...[
+                                const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Text(
+                                    'Hình ảnh',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: 200,
+                                  child: ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: _selectedSpot!.images.length,
+                                    itemBuilder: (context, index) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(left: 16.0),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.network(
+                                            _selectedSpot!.images[index].url,
+                                            width: 300,
+                                            height: 200,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+              ),
+            ),
+          if (_isNavigating && _isShowingNavigationSheet)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 1),
+                  end: Offset.zero,
+                ).animate(_animation),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 10,
+                        offset: Offset(0, -2),
+                      ),
+                    ],
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _selectedSpot!.name,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.green[100],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                      Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Icon(Icons.star, color: Colors.amber, size: 16),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _selectedSpot!.rating.toStringAsFixed(1),
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Khoảng cách còn lại',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${(_remainingDistance / 1000).toStringAsFixed(1)} km',
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _selectedSpot!.description,
-                        style: TextStyle(color: Colors.grey[700]),
-                      ),
-                      const SizedBox(height: 12),
-                      if (_selectedSpot!.facilities.isNotEmpty) ...[
-                        const Text(
-                          'Tiện ích:',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _selectedSpot!.facilities.map((amenity) {
-                            return Chip(
-                              label: Text(amenity),
-                              backgroundColor: Colors.green[50],
-                              labelStyle: TextStyle(color: Colors.green[900]),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          const Icon(Icons.attach_money, color: Colors.green),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${_selectedSpot!.priceRange.min} - ${_selectedSpot!.priceRange.max} VNĐ',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      if (_selectedSpot!.contactInfo.phone != null) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.phone, color: Colors.blue),
-                            const SizedBox(width: 8),
-                            Text(_selectedSpot!.contactInfo.phone!),
-                          ],
-                        ),
-                      ],
-                      if (_selectedSpot!.openingHours.open != null) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.access_time, color: Colors.orange),
-                            const SizedBox(width: 8),
-                            Text('${_selectedSpot!.openingHours.open} - ${_selectedSpot!.openingHours.close}'),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              // TODO: Implement directions
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Tính năng chỉ đường đang phát triển'),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _buildActionButton(
+                                  icon: Icons.stop_circle,
+                                  label: 'Dừng',
+                                  onTap: _stopNavigation,
+                                  color: Colors.red,
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.directions),
-                            label: const Text('Chỉ đường'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ],
                             ),
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              _showReviewDialog();
-                            },
-                            icon: const Icon(Icons.rate_review),
-                            label: const Text('Đánh giá'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -455,33 +809,12 @@ class _MapPageState extends State<MapPage> {
               ),
             ),
           Positioned(
-            right: 16,
-            bottom: 96,
-            child: Column(
-              children: [
-                FloatingActionButton(
-                  heroTag: 'zoomIn',
-                  onPressed: _zoomIn,
-                  backgroundColor: Colors.green[700],
-                  child: const Icon(Icons.add),
-                ),
-                const SizedBox(height: 8),
-                FloatingActionButton(
-                  heroTag: 'zoomOut',
-                  onPressed: _zoomOut,
-                  backgroundColor: Colors.green[700],
-                  child: const Icon(Icons.remove),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            right: 16,
-            bottom: 16,
+            left: 16,
+            top: 16,
             child: FloatingActionButton(
               heroTag: 'location',
               onPressed: _getCurrentLocation,
-              backgroundColor: Colors.green[700],
+              backgroundColor: const Color.fromARGB(255, 21, 208, 255),
               child: const Icon(Icons.my_location),
             ),
           ),
@@ -603,6 +936,31 @@ class _MapPageState extends State<MapPage> {
               foregroundColor: Colors.white,
             ),
             child: const Text('Gửi'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required Color color,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+            ),
           ),
         ],
       ),

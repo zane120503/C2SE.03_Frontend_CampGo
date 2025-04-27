@@ -312,7 +312,7 @@ class _TaskBarState extends State<TaskBar> {
           // Gửi category ID hoặc 'all' nếu không có category được chọn
           final categoryToSend = selectedCategory ?? 'All Products';
           widget.onFiltersApplied(categoryToSend, minPrice, maxPrice);
-          widget.onClose();
+          widget.onClose(); 
         }
       },
       style: ElevatedButton.styleFrom(

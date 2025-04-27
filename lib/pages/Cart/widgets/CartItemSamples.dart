@@ -421,7 +421,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(response['message'] ?? 'Không thể xóa sản phẩm',
+                content: Text(response['message'] ?? 'Cannot delete product',  
                 textAlign: TextAlign.center,
                 ),
                 backgroundColor: Colors.red,
@@ -435,7 +435,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Không thể xóa sản phẩm: $e',
+            content: Text('Cannot delete product: $e',
             textAlign: TextAlign.center,
             ),
             backgroundColor: Colors.red,
@@ -458,7 +458,7 @@ class _CartItemSamplesState extends State<CartItemSamples> {
     if (cartItems.isEmpty) {
       return const Center(
         child: Text(
-          "Giỏ hàng trống",
+          "Cart is empty",
           style: TextStyle(
             fontSize: 16,
             color: Color(0xFF2B2321),

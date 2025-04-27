@@ -13,7 +13,7 @@ class Setting extends StatelessWidget {
   Future<void> _showLogoutDialog(BuildContext context) async {
     return showDialog<void>(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: false,  
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Confirm logout'),
