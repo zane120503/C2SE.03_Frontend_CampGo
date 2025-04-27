@@ -2,7 +2,7 @@ import 'dart:io';
 
 class Config {
   // Base URL Configuration
-  static const String apiURL = "192.168.0.103:3000";  // IP của máy chạy backend
+  static const String apiURL = "192.168.0.104:3000";  // IP của máy chạy backend
   static const bool useHttps = false;
   static String get baseUrl => "${useHttps ? 'https' : 'http'}://$apiURL";
 
