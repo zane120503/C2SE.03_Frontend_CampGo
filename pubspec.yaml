@@ -49,6 +49,8 @@ dependencies:
 
   # Added from the code block
   dropdown_search: ^5.0.6
+  firebase_core: ^3.13.0
+  firebase_database: ^11.3.5
 
 dev_dependencies:
   flutter_test:

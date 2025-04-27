@@ -8,6 +8,47 @@ import 'package:CampGo/services/api_service.dart';
 import 'package:CampGo/models/campsite.dart';
 import 'package:http/http.dart' as http;
 
+class CampingSpot {
+  final String id;
+  final String name;
+  final LatLng location;
+  final String description;
+  final double rating;
+  final List<String> facilities;
+  final List<String> images;
+  final Map<String, dynamic> priceRange;
+  final Map<String, dynamic> contactInfo;
+  final Map<String, dynamic> openingHours;
+
+  CampingSpot({
+    required this.id,
+    required this.name,
+    required this.location,
+    required this.description,
+    required this.rating,
+    required this.facilities,
+    required this.images,
+    required this.priceRange,
+    required this.contactInfo,
+    required this.openingHours,
+  });
+
+  factory CampingSpot.fromJson(Map<String, dynamic> json) {
+    return CampingSpot(
+      id: json['_id'] ?? '',
+      name: json['campsiteName'] ?? '',
+      location: LatLng(json['latitude'] ?? 0.0, json['longitude'] ?? 0.0),
+      description: json['description'] ?? '',
+      rating: (json['rating'] ?? 0.0).toDouble(),
+      facilities: List<String>.from(json['facilities'] ?? []),
+      images: List<String>.from(json['images']?.map((img) => img['url']) ?? []),
+      priceRange: json['priceRange'] ?? {},
+      contactInfo: json['contactInfo'] ?? {},
+      openingHours: json['openingHours'] ?? {},
+    );
+  }
+}
+
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
 
@@ -20,6 +61,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _animation;
   final List<Marker> _markers = [];
+  final List<Marker> _groupMarkers = [];
   final TextEditingController _searchController = TextEditingController();
   LatLng? _currentPosition;
   bool _isLoading = false;
@@ -31,6 +73,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   bool _isShowingRoute = false;
   bool _isNavigating = false;
   bool _isShowingNavigationSheet = false;
+  bool _isGroupMode = false;
   StreamSubscription<Position>? _positionStreamSubscription;
   LatLng? _destinationPoint;
   double _remainingDistance = 0;
@@ -72,7 +115,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     try {
       setState(() => _isLoading = true);
       final campsites = await APIService.getAllCampsites();
-      
+
       setState(() {
         _campsites = campsites;
         _addCampsiteMarkers();
@@ -123,11 +166,29 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 2),
             ),
-            child: const Icon(
-              Icons.my_location,
-              color: Colors.white,
-              size: 24,
+            child: const Icon(Icons.my_location, color: Colors.white, size: 24),
+          ),
+        ),
+      );
+    }
+    setState(() {});
+  }
+
+  void _updateGroupMarkers(List<LatLng> memberLocations) {
+    _groupMarkers.clear();
+    for (var location in memberLocations) {
+      _groupMarkers.add(
+        Marker(
+          point: location,
+          width: 40.0,
+          height: 40.0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.8),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
             ),
+            child: const Icon(Icons.person, color: Colors.white, size: 24),
           ),
         ),
       );
@@ -153,7 +214,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     try {
       setState(() => _isLoading = true);
       final updatedSpot = await APIService.getCampsiteDetails(spot.id);
-      
+
       if (mounted) {
         setState(() {
           _selectedSpot = updatedSpot;
@@ -186,7 +247,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
 
   Future<void> _getCurrentLocation() async {
     if (!mounted) return;
-    
+
     setState(() => _isLoading = true);
     try {
       print('Kiểm tra dịch vụ vị trí...');
@@ -198,7 +259,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
             builder: (BuildContext context) {
               return AlertDialog(
                 title: const Text('Dịch vụ vị trí đang tắt'),
-                content: const Text('Vui lòng bật dịch vụ vị trí để sử dụng tính năng này'),
+                content: const Text(
+                  'Vui lòng bật dịch vụ vị trí để sử dụng tính năng này',
+                ),
                 actions: [
                   TextButton(
                     child: const Text('Mở cài đặt'),
@@ -237,7 +300,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
             builder: (BuildContext context) {
               return AlertDialog(
                 title: const Text('Quyền truy cập vị trí bị từ chối'),
-                content: const Text('Vui lòng vào cài đặt để cấp quyền truy cập vị trí cho ứng dụng'),
+                content: const Text(
+                  'Vui lòng vào cài đặt để cấp quyền truy cập vị trí cho ứng dụng',
+                ),
                 actions: [
                   TextButton(
                     child: const Text('Mở cài đặt'),
@@ -269,14 +334,14 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       if (!mounted) return;
 
       final currentLocation = LatLng(position.latitude, position.longitude);
-      
+
       setState(() {
         _currentPosition = currentLocation;
         _addCampsiteMarkers(); // Cập nhật lại tất cả markers
       });
 
       _mapController.move(currentLocation, 15.0);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Đã cập nhật vị trí hiện tại'),
@@ -327,7 +392,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       ),
     ).listen((Position position) async {
       final currentLatLng = LatLng(position.latitude, position.longitude);
-      
+
       // Cập nhật vị trí hiện tại
       setState(() {
         _currentPosition = currentLatLng;
@@ -348,9 +413,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       // Nếu đến gần đích (ví dụ: trong phạm vi 50m)
       if (distanceInMeters < 50) {
         _stopNavigation();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Bạn đã đến nơi!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Bạn đã đến nơi!')));
         return;
       }
 
@@ -384,7 +449,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   Future<void> _getDirections(LatLng destination) async {
     if (_currentPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng bật vị trí để sử dụng tính năng chỉ đường')),
+        const SnackBar(
+          content: Text('Vui lòng bật vị trí để sử dụng tính năng chỉ đường'),
+        ),
       );
       return;
     }
@@ -394,23 +461,27 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
         _isLoading = true;
       });
 
-      final String baseUrl = 'https://api.openrouteservice.org/v2/directions/driving-car';
-      final String apiKey = '5b3ce3597851110001cf62482477b63bbe3b4be5943c784279c015e0';
+      final String baseUrl =
+          'https://api.openrouteservice.org/v2/directions/driving-car';
+      final String apiKey =
+          '5b3ce3597851110001cf62482477b63bbe3b4be5943c784279c015e0';
 
       final response = await http.get(
         Uri.parse(
-          '$baseUrl?api_key=$apiKey&start=${_currentPosition!.longitude},${_currentPosition!.latitude}&end=${destination.longitude},${destination.latitude}'
+          '$baseUrl?api_key=$apiKey&start=${_currentPosition!.longitude},${_currentPosition!.latitude}&end=${destination.longitude},${destination.latitude}',
         ),
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final coordinates = data['features'][0]['geometry']['coordinates'] as List;
-        
+        final coordinates =
+            data['features'][0]['geometry']['coordinates'] as List;
+
         setState(() {
-          _routePoints = coordinates.map((point) {
-            return LatLng(point[1] as double, point[0] as double);
-          }).toList();
+          _routePoints =
+              coordinates.map((point) {
+                return LatLng(point[1] as double, point[0] as double);
+              }).toList();
           _isShowingRoute = true;
         });
 
@@ -426,7 +497,11 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     } catch (e) {
       print('Error getting directions: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể tải thông tin chỉ đường. Vui lòng thử lại sau.')),
+        const SnackBar(
+          content: Text(
+            'Không thể tải thông tin chỉ đường. Vui lòng thử lại sau.',
+          ),
+        ),
       );
     } finally {
       setState(() {
@@ -490,9 +565,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.campgo.app',
               ),
-              MarkerLayer(
-                markers: _markers,
-              ),
+              MarkerLayer(markers: [..._markers, ..._groupMarkers]),
               if (_routePoints.isNotEmpty)
                 PolylineLayer(
                   polylines: [
@@ -505,10 +578,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                 ),
             ],
           ),
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(),
-            ),
+          if (_isLoading) const Center(child: CircularProgressIndicator()),
           if (_showSpotDetails && _selectedSpot != null)
             Positioned.fill(
               child: GestureDetector(
@@ -523,7 +593,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                       return Container(
                         decoration: const BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(16),
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black26,
@@ -540,14 +612,22 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                               Container(
                                 width: 40,
                                 height: 4,
-                                margin: const EdgeInsets.only(top: 8, bottom: 4),
+                                margin: const EdgeInsets.only(
+                                  top: 8,
+                                  bottom: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.grey[300],
                                   borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 0, 8, 16),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  8,
+                                  16,
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -613,7 +693,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                           ),
                                           decoration: BoxDecoration(
                                             color: Colors.green[100],
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
                                           ),
                                           child: Text(
                                             'Đang mở cửa',
@@ -639,13 +721,16 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                               Padding(
                                 padding: const EdgeInsets.all(16.0),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
                                   children: [
                                     _buildActionButton(
                                       icon: Icons.directions,
                                       label: 'Đường đi',
                                       onTap: () {
-                                        _getDirections(_selectedSpot!.coordinates);
+                                        _getDirections(
+                                          _selectedSpot!.coordinates,
+                                        );
                                         setState(() {
                                           _showSpotDetails = false;
                                         });
@@ -656,7 +741,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                       icon: Icons.navigation,
                                       label: 'Bắt đầu',
                                       onTap: () {
-                                        _startNavigation(_selectedSpot!.coordinates);
+                                        _startNavigation(
+                                          _selectedSpot!.coordinates,
+                                        );
                                         setState(() {
                                           _showSpotDetails = false;
                                         });
@@ -701,9 +788,13 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                     itemCount: _selectedSpot!.images.length,
                                     itemBuilder: (context, index) {
                                       return Padding(
-                                        padding: const EdgeInsets.only(left: 16.0),
+                                        padding: const EdgeInsets.only(
+                                          left: 16.0,
+                                        ),
                                         child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                           child: Image.network(
                                             _selectedSpot!.images[index].url,
                                             width: 300,
@@ -738,7 +829,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                 child: Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black26,
@@ -809,13 +902,43 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
               ),
             ),
           Positioned(
-            left: 16,
-            top: 16,
-            child: FloatingActionButton(
-              heroTag: 'location',
-              onPressed: _getCurrentLocation,
-              backgroundColor: const Color.fromARGB(255, 21, 208, 255),
-              child: const Icon(Icons.my_location),
+            right: 16,
+            bottom: 96,
+            child: Column(
+              children: [
+                FloatingActionButton(
+                  heroTag: 'zoomIn',
+                  onPressed: _zoomIn,
+                  child: const Icon(Icons.add),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton(
+                  heroTag: 'zoomOut',
+                  onPressed: _zoomOut,
+                  child: const Icon(Icons.remove),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: Column(
+              children: [
+                FloatingActionButton(
+                  heroTag: 'createGroup',
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/group-tracking');
+                  },
+                  child: const Icon(Icons.group_add),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton(
+                  heroTag: 'location',
+                  onPressed: _getCurrentLocation,
+                  child: const Icon(Icons.my_location),
+                ),
+              ],
             ),
           ),
         ],
@@ -826,119 +949,39 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   void _showFilterDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Lọc địa điểm'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.star),
-              title: const Text('Đánh giá cao'),
-              onTap: () {
-                // TODO: Implement rating filter
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.attach_money),
-              title: const Text('Giá thấp'),
-              onTap: () {
-                // TODO: Implement price filter
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.pool),
-              title: const Text('Có hồ bơi'),
-              onTap: () {
-                // TODO: Implement facility filter
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showReviewDialog() {
-    final reviewController = TextEditingController();
-    int rating = 5;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Thêm đánh giá'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (index) {
-                return IconButton(
-                  icon: Icon(
-                    index < rating ? Icons.star : Icons.star_border,
-                    color: Colors.amber,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      rating = index + 1;
-                    });
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Lọc địa điểm'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.star),
+                  title: const Text('Đánh giá cao'),
+                  onTap: () {
+                    // TODO: Implement rating filter
+                    Navigator.pop(context);
                   },
-                );
-              }),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.attach_money),
+                  title: const Text('Giá thấp'),
+                  onTap: () {
+                    // TODO: Implement price filter
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.pool),
+                  title: const Text('Có hồ bơi'),
+                  onTap: () {
+                    // TODO: Implement facility filter
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: reviewController,
-              decoration: const InputDecoration(
-                hintText: 'Nhập đánh giá của bạn...',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy'),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await APIService.addCampsiteReview(
-                  _selectedSpot!.id,
-                  reviewController.text,
-                );
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Đã thêm đánh giá thành công'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-                Navigator.pop(context);
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Lỗi thêm đánh giá: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Gửi'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -955,13 +998,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
         children: [
           Icon(icon, color: color),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-            ),
-          ),
+          Text(label, style: TextStyle(color: color, fontSize: 12)),
         ],
       ),
     );
@@ -997,9 +1034,14 @@ class CampsiteSearchDelegate extends SearchDelegate {
 
   @override
   Widget buildResults(BuildContext context) {
-    final results = campsites.where((spot) =>
-        spot.name.toLowerCase().contains(query.toLowerCase()) ||
-        spot.description.toLowerCase().contains(query.toLowerCase())).toList();
+    final results =
+        campsites
+            .where(
+              (spot) =>
+                  spot.name.toLowerCase().contains(query.toLowerCase()) ||
+                  spot.description.toLowerCase().contains(query.toLowerCase()),
+            )
+            .toList();
 
     return ListView.builder(
       itemCount: results.length,
@@ -1018,9 +1060,14 @@ class CampsiteSearchDelegate extends SearchDelegate {
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    final suggestions = campsites.where((spot) =>
-        spot.name.toLowerCase().contains(query.toLowerCase()) ||
-        spot.description.toLowerCase().contains(query.toLowerCase())).toList();
+    final suggestions =
+        campsites
+            .where(
+              (spot) =>
+                  spot.name.toLowerCase().contains(query.toLowerCase()) ||
+                  spot.description.toLowerCase().contains(query.toLowerCase()),
+            )
+            .toList();
 
     return ListView.builder(
       itemCount: suggestions.length,
@@ -1037,4 +1084,4 @@ class CampsiteSearchDelegate extends SearchDelegate {
       },
     );
   }
-} 
+}

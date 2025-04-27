@@ -29,11 +29,11 @@
 	<key>NSCameraUsageDescription</key>
 	<string>We need access to your camera to let you take photos for reviews</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Ứng dụng cần quyền truy cập vị trí để cung cấp thông tin chính xác về các địa điểm cắm trại xung quanh bạn</string>
+	<string>Ứng dụng cần truy cập vị trí của bạn để hiển thị trên bản đồ</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Ứng dụng cần quyền truy cập vị trí để cung cấp thông tin chính xác về các địa điểm cắm trại xung quanh bạn</string>
+	<string>Ứng dụng cần truy cập vị trí của bạn để hiển thị trên bản đồ</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Ứng dụng cần quyền truy cập vị trí của bạn để hiển thị các địa điểm cắm trại gần đây</string>
+	<string>Ứng dụng cần truy cập vị trí của bạn để hiển thị trên bản đồ</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>We need access to your photo library to let you select images for reviews</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

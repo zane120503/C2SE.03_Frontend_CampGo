@@ -3,6 +3,9 @@ import 'package:CampGo/pages/ForgotPassword/ForgotPasswordPage.dart';
 import 'package:flutter/material.dart';
 import 'package:CampGo/pages/SignUp/SignUpPage.dart';
 import 'package:CampGo/pages/NewProfile/NewProfilePage.dart';
+import 'package:provider/provider.dart';
+import 'package:CampGo/providers/auth_provider.dart';
+import 'package:CampGo/models/user_model.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -68,22 +71,43 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response['success'] == true) {
         if (!mounted) return;
-        
+
         bool isProfileCompleted = response['isProfileCompleted'] ?? false;
         print('isProfileCompleted: $isProfileCompleted');
 
         final userData = response['data']?['user'] ?? {};
         final userName = userData['user_name'] ?? '';
         final userEmail = userData['email'] ?? '';
+        final userId = userData['_id'] ?? '';
+        final firstName = userData['first_name'] ?? '';
+        final lastName = userData['last_name'] ?? '';
+        final phoneNumber = userData['phone_number'] ?? '';
+        final gender = userData['gender'] ?? 'male';
+        final profileImage = userData['profileImage'];
+
+        // Lưu thông tin người dùng vào AuthProvider
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final userProfile = UserProfile(
+          id: userId,
+          firstName: firstName,
+          lastName: lastName,
+          email: userEmail,
+          phoneNumber: phoneNumber,
+          profileImage: profileImage != null ? {'url': profileImage} : null,
+          isProfileCompleted: isProfileCompleted,
+          gender: gender,
+        );
+        authProvider.setUser(userProfile);
 
         print('User data from login: $userData');
+        print(
+          'User profile saved to provider: ${userProfile.id}, ${userProfile.fullName}',
+        );
 
         if (isProfileCompleted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Login Success!',
-              textAlign: TextAlign.center,
-              ),
+              content: Text('Login Success!', textAlign: TextAlign.center),
               backgroundColor: Colors.green,
             ),
           );
@@ -91,8 +115,9 @@ class _LoginPageState extends State<LoginPage> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Please Update Your Personal Information',  
-              textAlign: TextAlign.center,
+              content: Text(
+                'Please Update Your Personal Information',
+                textAlign: TextAlign.center,
               ),
               backgroundColor: Colors.blue,
             ),
@@ -100,17 +125,18 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => NewProfilePage(
-                initialName: userName,
-                initialEmail: userEmail,
-              ),
+              builder:
+                  (context) => NewProfilePage(
+                    initialName: userName,
+                    initialEmail: userEmail,
+                  ),
             ),
           );
         }
       } else {
         if (!mounted) return;
         String errorMessage = 'Account or password is incorrect';
-        
+
         // Kiểm tra status code hoặc error code từ response
         if (response['statusCode'] != null) {
           switch (response['statusCode']) {
@@ -139,12 +165,10 @@ class _LoginPageState extends State<LoginPage> {
 
         // In ra console để debug
         print('Login error response: $response');
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage,
-            textAlign: TextAlign.center,
-            ),
+            content: Text(errorMessage, textAlign: TextAlign.center),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -153,10 +177,10 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       if (!mounted) return;
       String errorMessage = 'An Error Occurred While Logging In';
-      
+
       // In ra console để debug
       print('Login exception: $e');
-      
+
       if (e.toString().contains('400')) {
         errorMessage = 'Invalid Email Or Password';
       } else if (e.toString().contains('404')) {
@@ -167,9 +191,7 @@ class _LoginPageState extends State<LoginPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(errorMessage,
-          textAlign: TextAlign.center,
-          ),
+          content: Text(errorMessage, textAlign: TextAlign.center),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
@@ -202,7 +224,10 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               // Background Image
               SizedBox.expand(
-                child: Image.asset('assets/images/StartNow.jpg', fit: BoxFit.cover),
+                child: Image.asset(
+                  'assets/images/StartNow.jpg',
+                  fit: BoxFit.cover,
+                ),
               ),
               Container(color: Colors.black.withOpacity(0.5)),
 
@@ -298,7 +323,9 @@ class _LoginPageState extends State<LoginPage> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (context) => const ForgotPasswordPage()),
+                                  builder:
+                                      (context) => const ForgotPasswordPage(),
+                                ),
                               );
                             },
                             child: const Text(
@@ -314,26 +341,33 @@ class _LoginPageState extends State<LoginPage> {
                         _isLoading
                             ? const CircularProgressIndicator()
                             : SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: loginUser,
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 15),
-                                    backgroundColor: const Color.fromARGB(255, 215, 159, 54),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: loginUser,
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 15,
                                   ),
-                                  child: const Text(
-                                    'Sign In',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  backgroundColor: const Color.fromARGB(
+                                    255,
+                                    215,
+                                    159,
+                                    54,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Sign In',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
+                            ),
                         const SizedBox(height: 20),
                         TextButton(
                           onPressed: () {
