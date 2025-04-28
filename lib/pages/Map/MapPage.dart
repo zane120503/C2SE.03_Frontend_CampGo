@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:CampGo/services/api_service.dart';
 import 'package:CampGo/models/campsite.dart';
 import 'package:http/http.dart' as http;
@@ -78,6 +78,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   LatLng? _destinationPoint;
   double _remainingDistance = 0;
   Timer? _updateTimer;
+  String? _avatarUrl;
 
   // Vị trí mặc định (Đà Nẵng)
   static const LatLng _defaultLocation = LatLng(16.0544, 108.2022);
@@ -94,7 +95,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       parent: _animationController,
       curve: Curves.easeOut,
     );
-    // Tự động lấy vị trí khi mở bản đồ
+    _loadAvatar();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _getCurrentLocation();
     });
@@ -134,6 +135,27 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     }
   }
 
+  Future<void> _loadAvatar() async {
+    String? avatarUrl;
+    try {
+      final response = await APIService.getUserProfile();
+      if (response['success'] == true && response['userData'] != null) {
+        final userData = response['userData'];
+        var profileImage = userData['profileImage'];
+        if (profileImage is String) {
+          avatarUrl = profileImage;
+        } else if (profileImage is Map && profileImage['url'] != null) {
+          avatarUrl = profileImage['url'];
+        }
+      }
+    } catch (e) {
+      print('Error loading avatar from API: $e');
+    }
+    setState(() {
+      _avatarUrl = avatarUrl;
+    });
+  }
+
   void _addCampsiteMarkers() {
     _markers.clear();
     for (var spot in _campsites) {
@@ -153,43 +175,54 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
         ),
       );
     }
-    // Thêm marker vị trí hiện tại nếu có
-    if (_currentPosition != null) {
+    // Thêm marker vị trí hiện tại nếu có và KHÔNG ở group mode
+    if (_currentPosition != null && !_isGroupMode) {
       _markers.add(
         Marker(
           point: _currentPosition!,
-          width: 40.0,
-          height: 40.0,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.8),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-            ),
-            child: const Icon(Icons.my_location, color: Colors.white, size: 24),
-          ),
+          width: 44.0,
+          height: 44.0,
+          child: _avatarUrl != null
+              ? CircleAvatar(
+                  backgroundImage: NetworkImage(_avatarUrl!),
+                  radius: 22,
+                )
+              : Container(
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.8),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Icon(Icons.person, color: Colors.white, size: 24),
+                ),
         ),
       );
     }
     setState(() {});
   }
 
-  void _updateGroupMarkers(List<LatLng> memberLocations) {
+  void _updateGroupMarkers(List<LatLng> memberLocations, [List<String?>? avatarUrls]) {
     _groupMarkers.clear();
-    for (var location in memberLocations) {
+    for (int i = 0; i < memberLocations.length; i++) {
+      final avatarUrl = avatarUrls != null && avatarUrls.length > i ? avatarUrls[i] : null;
       _groupMarkers.add(
         Marker(
-          point: location,
-          width: 40.0,
-          height: 40.0,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.8),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-            ),
-            child: const Icon(Icons.person, color: Colors.white, size: 24),
-          ),
+          point: memberLocations[i],
+          width: 44.0,
+          height: 44.0,
+          child: avatarUrl != null && avatarUrl.isNotEmpty
+              ? CircleAvatar(
+                  backgroundImage: NetworkImage(avatarUrl),
+                  radius: 22,
+                )
+              : Container(
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.8),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Icon(Icons.person, color: Colors.white, size: 24),
+                ),
         ),
       );
     }
@@ -340,7 +373,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
         _addCampsiteMarkers(); // Cập nhật lại tất cả markers
       });
 
-      _mapController.move(currentLocation, 15.0);
+      _mapController.move(currentLocation, 20.0); // Zoom lớn hơn khi về vị trí hiện tại
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -532,12 +565,6 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                 context: context,
                 delegate: CampsiteSearchDelegate(_campsites),
               );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () {
-              _showFilterDialog();
             },
           ),
         ],
@@ -902,86 +929,35 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
               ),
             ),
           Positioned(
-            right: 16,
-            bottom: 96,
-            child: Column(
-              children: [
-                FloatingActionButton(
-                  heroTag: 'zoomIn',
-                  onPressed: _zoomIn,
-                  child: const Icon(Icons.add),
-                ),
-                const SizedBox(height: 8),
-                FloatingActionButton(
-                  heroTag: 'zoomOut',
-                  onPressed: _zoomOut,
-                  child: const Icon(Icons.remove),
-                ),
-              ],
+            left: 16,
+            top: 16,
+            child: FloatingActionButton(
+              heroTag: 'location',
+              onPressed: _getCurrentLocation,
+              backgroundColor: Colors.white,
+              child: const Icon(
+                Icons.my_location,
+                color: Colors.blue,
+              ),
             ),
           ),
           Positioned(
             right: 16,
-            bottom: 16,
-            child: Column(
-              children: [
-                FloatingActionButton(
-                  heroTag: 'createGroup',
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/group-tracking');
-                  },
-                  child: const Icon(Icons.group_add),
-                ),
-                const SizedBox(height: 8),
-                FloatingActionButton(
-                  heroTag: 'location',
-                  onPressed: _getCurrentLocation,
-                  child: const Icon(Icons.my_location),
-                ),
-              ],
+            top: 16,
+            child: FloatingActionButton(
+              heroTag: 'createGroup',
+              onPressed: () {
+                Navigator.pushNamed(context, '/group-tracking');
+              },
+              backgroundColor: Colors.blue,
+              child: const Icon(
+                Icons.group_add,
+                color: Colors.white,
+              ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  void _showFilterDialog() {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Lọc địa điểm'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.star),
-                  title: const Text('Đánh giá cao'),
-                  onTap: () {
-                    // TODO: Implement rating filter
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.attach_money),
-                  title: const Text('Giá thấp'),
-                  onTap: () {
-                    // TODO: Implement price filter
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.pool),
-                  title: const Text('Có hồ bơi'),
-                  onTap: () {
-                    // TODO: Implement facility filter
-                    Navigator.pop(context);
-                  },
-                ),
-              ],
-            ),
-          ),
     );
   }
 

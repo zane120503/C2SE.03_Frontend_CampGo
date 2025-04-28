@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:CampGo/pages/Login/LoginPage.dart';
+import 'package:CampGo/pages/SignUp/SignUpPage.dart';
 import 'package:CampGo/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
@@ -260,10 +261,15 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
                         IconButton(
                           icon: const Icon(Icons.arrow_back, color: Colors.black),
                           onPressed: () {
-                            Navigator.pop(context);
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SignUpPage(),
+                              ),
+                            );
                           },
                         ),
-                        const SizedBox(width: 80),
+                        const SizedBox(width: 40),
                         const Text(
                           'Email Verification',
                           style: TextStyle(

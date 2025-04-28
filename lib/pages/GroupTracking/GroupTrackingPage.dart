@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../services/realtime_tracking_service.dart';
 import '../../widgets/group_tracking_map.dart';
 import '../../providers/auth_provider.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 class GroupTrackingPage extends StatefulWidget {
   const GroupTrackingPage({super.key});
@@ -19,6 +21,9 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
   String? _currentGroupId;
   bool _isCreator = false;
   Map<String, dynamic>? _groupInfo;
+  final GlobalKey _menuKey = GlobalKey();
+  OverlayEntry? _menuOverlayEntry;
+  final GlobalKey<State<GroupTrackingMap>> _mapKey = GlobalKey<State<GroupTrackingMap>>();
 
   @override
   void initState() {
@@ -50,6 +55,14 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
     }
   }
 
+  // Hàm chuyển groupId thành mã phòng 6 ký tự
+  String shortRoomCode(String longId) {
+    var bytes = utf8.encode(longId);
+    var digest = sha1.convert(bytes);
+    String base36 = BigInt.parse(digest.toString(), radix: 16).toRadixString(36);
+    return base36.substring(0, 6).toUpperCase();
+  }
+
   Future<void> _createGroup() async {
     if (_groupNameController.text.isEmpty) return;
 
@@ -79,8 +92,9 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
     _loadGroupInfo();
 
     if (mounted) {
+      final shortCode = shortRoomCode(groupId);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nhóm đã được tạo với ID: $groupId')),
+        SnackBar(content: Text('Nhóm đã được tạo với mã: $shortCode')),
       );
     }
   }
@@ -196,11 +210,10 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
 
   void _copyGroupId() {
     if (_currentGroupId == null) return;
-
-    Clipboard.setData(ClipboardData(text: _currentGroupId!));
-
+    final shortCode = shortRoomCode(_currentGroupId!);
+    Clipboard.setData(ClipboardData(text: shortCode));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã sao chép mã nhóm vào clipboard')),
+      SnackBar(content: Text('Đã sao chép mã nhóm: $shortCode vào clipboard')),
     );
   }
 
@@ -242,6 +255,69 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
     );
   }
 
+  void _showCustomMenu(BuildContext context, double top) {
+    final double menuWidth = 280;
+    final double right = 0; // Sát lề phải, có thể chỉnh về 0 nếu muốn sát hẳn
+    _menuOverlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: top,
+        right: right,
+        child: Material(
+          color: Colors.transparent,
+          child: Card(
+            elevation: 8,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: SizedBox(
+              width: menuWidth,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: () {
+                      _menuOverlayEntry?.remove();
+                      _menuOverlayEntry = null;
+                      _copyGroupId();
+                    },
+                    child: ListTile(
+                      leading: const Icon(Icons.copy),
+                      title: Text('Sao chép mã: ${_currentGroupId != null ? shortRoomCode(_currentGroupId!) : ''}'),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      _menuOverlayEntry?.remove();
+                      _menuOverlayEntry = null;
+                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                      final user = authProvider.user;
+                      if (user != null) _leaveGroup(user.id);
+                    },
+                    child: const ListTile(
+                      leading: Icon(Icons.exit_to_app),
+                      title: Text('Rời nhóm'),
+                    ),
+                  ),
+                  if (_isCreator)
+                    InkWell(
+                      onTap: () {
+                        _menuOverlayEntry?.remove();
+                        _menuOverlayEntry = null;
+                        _deleteGroup();
+                      },
+                      child: const ListTile(
+                        leading: Icon(Icons.delete, color: Colors.red),
+                        title: Text('Xóa nhóm', style: TextStyle(color: Colors.red)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    Overlay.of(context).insert(_menuOverlayEntry!);
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -258,10 +334,11 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Text(
           _currentGroupId != null
-              ? 'Nhóm: ${_groupInfo?['name'] ?? 'Đang tải...'}'
-              : 'Theo dõi nhóm',
+              ? ' ${_groupNameController.text}'
+              : '',
         ),
         actions: [
           if (_currentGroupId != null) ...[
@@ -270,53 +347,25 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
               tooltip: 'Danh sách thành viên',
               onPressed: _showMembersDialog,
             ),
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'copy') {
-                  _copyGroupId();
-                } else if (value == 'leave') {
-                  _leaveGroup(user.id);
-                } else if (value == 'delete' && _isCreator) {
-                  _deleteGroup();
-                }
+            Builder(
+              builder: (context) {
+                return IconButton(
+                  key: _menuKey,
+                  icon: const Icon(Icons.more_vert),
+                  tooltip: 'Menu',
+                  onPressed: () {
+                    if (_menuOverlayEntry != null) {
+                      _menuOverlayEntry?.remove();
+                      _menuOverlayEntry = null;
+                    } else {
+                      final RenderBox button = _menuKey.currentContext!.findRenderObject() as RenderBox;
+                      final Offset position = button.localToGlobal(Offset.zero);
+                      final double top = position.dy + button.size.height + 3;
+                      _showCustomMenu(context, top);
+                    }
+                  },
+                );
               },
-              itemBuilder:
-                  (context) => [
-                    PopupMenuItem(
-                      value: 'copy',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.copy),
-                          const SizedBox(width: 8),
-                          Text('Sao chép mã: $_currentGroupId'),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'leave',
-                      child: Row(
-                        children: [
-                          Icon(Icons.exit_to_app),
-                          SizedBox(width: 8),
-                          Text('Rời nhóm'),
-                        ],
-                      ),
-                    ),
-                    if (_isCreator)
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text(
-                              'Xóa nhóm',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
             ),
           ],
         ],
@@ -354,6 +403,7 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
             )
           else
             GroupTrackingMap(
+              key: _mapKey,
               groupId: _currentGroupId!,
               userId: user.id,
               userName: user.fullName,
@@ -364,34 +414,16 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
               bottom: 16,
               child: Column(
                 children: [
-                  FloatingActionButton(
-                    heroTag: 'zoomIn',
-                    tooltip: 'Phóng to',
-                    onPressed: () {
-                      // TODO: Cần cập nhật GroupTrackingMap để hỗ trợ zoom
-                      // (_mapController?.zoomIn)
-                    },
-                    child: const Icon(Icons.add),
-                  ),
-                  const SizedBox(height: 8),
-                  FloatingActionButton(
-                    heroTag: 'zoomOut',
-                    tooltip: 'Thu nhỏ',
-                    onPressed: () {
-                      // TODO: Cần cập nhật GroupTrackingMap để hỗ trợ zoom
-                      // (_mapController?.zoomOut)
-                    },
-                    child: const Icon(Icons.remove),
-                  ),
                   const SizedBox(height: 8),
                   FloatingActionButton(
                     heroTag: 'location',
                     tooltip: 'Vị trí hiện tại',
+                    backgroundColor: Colors.white,
                     onPressed: () {
-                      // TODO: Cần cập nhật GroupTrackingMap để hỗ trợ di chuyển đến vị trí hiện tại
-                      // (_mapController?.moveToCurrentLocation)
+                      final state = _mapKey.currentState as dynamic;
+                      state?.moveToCurrentLocation();
                     },
-                    child: const Icon(Icons.my_location),
+                    child: const Icon(Icons.my_location, color: Colors.blue),
                   ),
                 ],
               ),

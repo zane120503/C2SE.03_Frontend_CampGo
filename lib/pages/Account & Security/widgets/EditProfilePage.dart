@@ -5,6 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:CampGo/api/api.service.dart';
 import 'package:CampGo/services/auth_service.dart';
 import 'package:CampGo/services/share_service.dart';
+import 'package:provider/provider.dart';
+import 'package:CampGo/providers/auth_provider.dart';
+import 'package:CampGo/models/user_model.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -103,6 +106,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
           'phone_number': _phoneController.text,
           'gender': _selectedGender,
           'isProfileCompleted': true,
+          'profileImage': userData['profileImage'] is String
+              ? {'url': userData['profileImage']}
+              : userData['profileImage'],
         });
 
         // Cập nhật thông tin user
@@ -112,6 +118,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
           userName: '${_firstNameController.text} ${_lastNameController.text}',
           isProfileCompleted: true
         );
+
+        // Cập nhật Provider AuthProvider với user mới
+        if (mounted) {
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          authProvider.setUser(UserProfile.fromJson(userData));
+        }
       } else {
         throw Exception('Cannot get user information');
       }
@@ -216,7 +228,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
           'last_name': userData['last_name']?.toString() ?? '',
           'phone_number': userData['phone_number']?.toString() ?? '',
           'gender': userData['gender']?.toString() ?? 'male',
+          'profileImage': userData['profileImage'] is String
+              ? {'url': userData['profileImage']}
+              : userData['profileImage'],
         });
+
+        // Cập nhật Provider AuthProvider với user mới
+        if (mounted) {
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          authProvider.setUser(UserProfile.fromJson(userData));
+        }
 
         if (!mounted) return;
 
