@@ -420,6 +420,41 @@ class APIService {
     }
   }
 
+  static Future<Map<String, dynamic>> getUserProfileById(String userId) async {
+    try {
+      final token = await _getAuthToken();
+      print('Token for get user profile by id: $token');
+      
+      if (token == null || token.isEmpty) {
+        print('No token found for get user profile by id');
+        return {
+          'success': false,
+          'message': 'Không có token xác thực. Vui lòng đăng nhập lại.'
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/data-users/$userId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('Get profile by id API response status: ${response.statusCode}');
+      print('Get profile by id API response body: ${response.body}');
+
+      final responseData = json.decode(response.body);
+      return responseData;
+    } catch (e) {
+      print('Error in getUserProfileById: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi lấy thông tin người dùng: ${e.toString()}'
+      };
+    }
+  }
+
   // Address APIs
   Future<Map<String, dynamic>> getAddresses() async {
     try {

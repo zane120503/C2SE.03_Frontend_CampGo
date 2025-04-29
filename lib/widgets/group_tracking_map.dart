@@ -30,7 +30,9 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
   final MapController _mapController = MapController();
   LatLng? _currentPosition;
   Map<String, LatLng> _memberPositions = {};
-  Map<String, String?> _memberAvatars = {}; // userId -> avatarUrl
+  final Map<String, String> _memberAvatars = {};
+  final Map<String, bool> _fetchingAvatars = {};
+  Timer? _debounceTimer;
   List<Campsite> _campsites = [];
   Campsite? _selectedCampsite;
   bool _showSpotDetails = false;
@@ -76,6 +78,30 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
     });
   }
 
+  Future<void> _fetchAvatarUrl(String userId) async {
+    // Kiểm tra nếu đang fetch hoặc đã có avatar thì bỏ qua
+    if (_fetchingAvatars[userId] == true || _memberAvatars.containsKey(userId)) {
+      return;
+    }
+
+    _fetchingAvatars[userId] = true;
+    try {
+      final response = await APIService.getUserProfileById(userId);
+      if (mounted && response['success'] == true) {
+        final userData = response['userData'];
+        if (userData != null && userData['profileImage'] != null) {
+          setState(() {
+            _memberAvatars[userId] = userData['profileImage']['url'];
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching avatar for user $userId: $e');
+    } finally {
+      _fetchingAvatars[userId] = false;
+    }
+  }
+
   void _listenToGroupLocations() {
     _trackingService.listenToGroupLocations(widget.groupId).listen((event) {
       if (event.snapshot.value != null) {
@@ -92,40 +118,24 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
           }
         });
 
-        // Lấy avatar cho từng thành viên nếu chưa có
-        for (var userId in newPositions.keys) {
-          if (!_memberAvatars.containsKey(userId)) {
-            _fetchAvatarUrl(userId).then((url) {
-              setState(() {
-                _memberAvatars[userId] = url;
-              });
-            });
+        // Debounce the avatar fetching
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            for (var userId in newPositions.keys) {
+              _fetchAvatarUrl(userId);
+            }
+            _fetchAvatarUrl(widget.userId);
           }
-        }
-
-        setState(() {
-          _memberPositions = newPositions;
         });
+
+        if (mounted) {
+          setState(() {
+            _memberPositions = newPositions;
+          });
+        }
       }
     });
-  }
-
-  Future<String?> _fetchAvatarUrl(String userId) async {
-    try {
-      final response = await APIService.getUserProfile(); // Bạn cần có API này 
-      if (response['success'] == true && response['userData'] != null) {
-        final userData = response['userData'];
-        var profileImage = userData['profileImage'];
-        if (profileImage is String) {
-          return profileImage;
-        } else if (profileImage is Map && profileImage['url'] != null) {
-          return profileImage['url'];
-        }
-      }
-    } catch (e) {
-      print('Error fetching avatar for $userId: $e');
-    }
-    return null;
   }
 
   Future<void> _loadCampsites() async {
@@ -648,5 +658,11 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
         Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 }
