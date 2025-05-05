@@ -15,10 +15,18 @@ class RealtimeTrackingService {
     final groupRef = _database.child('groups').push();
     final groupId = groupRef.key!;
 
+    // Tạo mã ngắn
+    var bytes = utf8.encode(groupId);
+    var digest = sha1.convert(bytes);
+    String base36 = BigInt.parse(digest.toString(), radix: 16).toRadixString(36);
+    String shortCode = base36.substring(0, 6).toUpperCase();
+
+    // Lưu thông tin nhóm
     await groupRef.set({
       'name': groupName,
       'created_at': ServerValue.timestamp,
       'created_by': userId,
+      'short_code': shortCode,
       'members': {
         userId: {
           'name': userName,
@@ -29,6 +37,12 @@ class RealtimeTrackingService {
           },
         },
       },
+    });
+
+    // Lưu mapping giữa mã ngắn và ID dài
+    await _database.child('group_codes/$shortCode').set({
+      'group_id': groupId,
+      'created_at': ServerValue.timestamp,
     });
 
     return groupId;
@@ -85,7 +99,28 @@ class RealtimeTrackingService {
 
   // Xóa nhóm
   Future<void> deleteGroup(String groupId) async {
-    await _database.child('groups/$groupId').remove();
+    print('Bắt đầu xóa nhóm: ' + groupId);
+    // Lấy mã ngắn của nhóm
+    final groupSnapshot = await _database.child('groups/$groupId').get();
+    if (groupSnapshot.exists) {
+      final groupData = groupSnapshot.value as Map<dynamic, dynamic>;
+      final shortCode = groupData['short_code'] as String?;
+      print('shortCode của nhóm: ' + (shortCode ?? 'null'));
+      // Xóa mapping nếu có
+      if (shortCode != null) {
+        await _database.child('group_codes/$shortCode').remove();
+        print('Đã xóa mapping group_codes/$shortCode');
+      }
+    } else {
+      print('Không tìm thấy nhóm với groupId này!');
+    }
+    // Xóa nhóm, thêm try-catch để log lỗi
+    try {
+      await _database.child('groups/$groupId').remove();
+      print('Đã xóa nhóm groups/$groupId');
+    } catch (e) {
+      print('LỖI khi xóa nhóm groups/$groupId: $e');
+    }
   }
 
   // Kiểm tra người tạo nhóm
@@ -108,23 +143,14 @@ class RealtimeTrackingService {
 
   // Tìm groupId từ mã 6 ký tự
   Future<String?> findGroupIdByShortCode(String shortCode) async {
-    final allGroups = await getAllGroups();
-    if (allGroups == null) return null;
-
     // Chuyển shortCode về chữ hoa để so sánh
     shortCode = shortCode.toUpperCase();
-
-    for (var entry in allGroups.entries) {
-      final groupId = entry.key;
-      // Tính toán shortCode cho groupId này
-      var bytes = utf8.encode(groupId);
-      var digest = sha1.convert(bytes);
-      String base36 = BigInt.parse(digest.toString(), radix: 16).toRadixString(36);
-      String calculatedShortCode = base36.substring(0, 6).toUpperCase();
-      
-      if (calculatedShortCode == shortCode) {
-        return groupId;
-      }
+    
+    // Tìm trong bảng mapping
+    final snapshot = await _database.child('group_codes/$shortCode').get();
+    if (snapshot.exists) {
+      final data = snapshot.value as Map<dynamic, dynamic>;
+      return data['group_id'] as String;
     }
     return null;
   }

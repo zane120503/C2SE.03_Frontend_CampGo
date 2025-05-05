@@ -125,9 +125,21 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
       return;
     }
 
+    // Hiển thị loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
     try {
       // Tìm groupId từ mã 6 ký tự
       final fullGroupId = await _trackingService.findGroupIdByShortCode(_groupIdController.text);
+      
+      // Đóng loading
+      Navigator.of(context).pop();
       
       if (fullGroupId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -169,6 +181,9 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
         );
       }
     } catch (e) {
+      // Đóng loading nếu có lỗi
+      Navigator.of(context).pop();
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Không thể tham gia nhóm')),
@@ -427,6 +442,15 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                     maxLength: 6,
                     textCapitalization: TextCapitalization.characters,
                     style: const TextStyle(letterSpacing: 8.0),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]')),
+                      TextInputFormatter.withFunction((oldValue, newValue) {
+                        return TextEditingValue(
+                          text: newValue.text.toUpperCase(),
+                          selection: newValue.selection,
+                        );
+                      }),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
