@@ -6,7 +6,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:CampGo/services/api_service.dart';
 import 'package:CampGo/models/campsite.dart';
+import 'package:CampGo/models/campsite_review.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:dio/dio.dart';
 
 class CampingSpot {
   final String id;
@@ -79,6 +83,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   double _remainingDistance = 0;
   Timer? _updateTimer;
   String? _avatarUrl;
+  final ImagePicker _picker = ImagePicker();
 
   // Vị trí mặc định (Đà Nẵng)
   static const LatLng _defaultLocation = LatLng(16.0544, 108.2022);
@@ -247,25 +252,42 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     try {
       setState(() => _isLoading = true);
       final updatedSpot = await APIService.getCampsiteDetails(spot.id);
+      final reviewsData = await APIService.getCampsiteReviews(spot.id);
 
       if (mounted) {
         setState(() {
           _selectedSpot = updatedSpot;
+          if (reviewsData['success'] == true && reviewsData['data'] != null) {
+            final reviews = reviewsData['data']['reviews'] as List<dynamic>;
+            _selectedSpot = Campsite(
+              id: _selectedSpot!.id,
+              name: _selectedSpot!.name,
+              location: _selectedSpot!.location,
+              coordinates: _selectedSpot!.coordinates,
+              description: _selectedSpot!.description,
+              rating: _selectedSpot!.rating,
+              reviews: reviews.map((review) => CampsiteReview.fromJson(review)).toList(),
+              facilities: _selectedSpot!.facilities,
+              images: _selectedSpot!.images,
+              priceRange: _selectedSpot!.priceRange,
+              contactInfo: _selectedSpot!.contactInfo,
+              openingHours: _selectedSpot!.openingHours,
+              isActive: _selectedSpot!.isActive,
+              createdAt: _selectedSpot!.createdAt,
+              updatedAt: _selectedSpot!.updatedAt,
+            );
+          }
           _showSpotDetails = true;
+          _isLoading = false;
         });
-        _animationController.forward();
-        _mapController.move(spot.coordinates, 15);
       }
     } catch (e) {
       print('Error loading spot details: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải chi tiết địa điểm: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
         setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải thông tin địa điểm: $e')),
+        );
       }
     }
   }
@@ -834,6 +856,132 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                   ),
                                 ),
                               ],
+                              const Divider(height: 1),
+                              Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Đánh giá',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    if (_selectedSpot!.reviews.isEmpty)
+                                      const Text(
+                                        'Chưa có đánh giá nào',
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                        ),
+                                      )
+                                    else
+                                      ListView.builder(
+                                        shrinkWrap: true,
+                                        physics: const NeverScrollableScrollPhysics(),
+                                        itemCount: _selectedSpot!.reviews.length,
+                                        itemBuilder: (context, index) {
+                                          final review = _selectedSpot!.reviews[index] as CampsiteReview;
+                                          return Card(
+                                            margin: const EdgeInsets.only(bottom: 8),
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(8),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      CircleAvatar(
+                                                        backgroundImage: review.userProfileImageUrl != null
+                                                            ? NetworkImage(review.userProfileImageUrl!)
+                                                            : null,
+                                                        child: review.userProfileImageUrl == null
+                                                            ? Text(review.userName.isNotEmpty ? review.userName[0].toUpperCase() : '?')
+                                                            : null,
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Text(
+                                                            review.userName,
+                                                            style: const TextStyle(
+                                                              fontWeight: FontWeight.bold,
+                                                            ),
+                                                          ),
+                                                          Row(
+                                                            children: [
+                                                              ...List.generate(5, (i) {
+                                                                return Icon(
+                                                                  i < review.rating
+                                                                      ? Icons.star
+                                                                      : Icons.star_border,
+                                                                  color: Colors.amber,
+                                                                  size: 16,
+                                                                );
+                                                              }),
+                                                              const SizedBox(width: 8),
+                                                              Text(
+                                                                '${review.createdAt.day}/${review.createdAt.month}/${review.createdAt.year}',
+                                                                style: const TextStyle(
+                                                                  fontSize: 12,
+                                                                  color: Colors.grey,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(review.comment),
+                                                  if (review.images.isNotEmpty) ...[
+                                                    const SizedBox(height: 8),
+                                                    SizedBox(
+                                                      height: 100,
+                                                      child: ListView.builder(
+                                                        scrollDirection: Axis.horizontal,
+                                                        itemCount: review.images.length,
+                                                        itemBuilder: (context, imageIndex) {
+                                                          return Padding(
+                                                            padding: const EdgeInsets.only(right: 8),
+                                                            child: ClipRRect(
+                                                              borderRadius: BorderRadius.circular(8),
+                                                              child: Image.network(
+                                                                review.images[imageIndex],
+                                                                height: 100,
+                                                                width: 100,
+                                                                fit: BoxFit.cover,
+                                                              ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              ElevatedButton.icon(
+                                icon: Icon(Icons.rate_review),
+                                label: Text('Viết đánh giá'),
+                                onPressed: () {
+                                  _showReviewDialog(_selectedSpot!);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green[700],
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -977,6 +1125,139 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
           Text(label, style: TextStyle(color: color, fontSize: 12)),
         ],
       ),
+    );
+  }
+
+  void _showReviewDialog(Campsite spot) {
+    double rating = 5;
+    TextEditingController commentController = TextEditingController();
+    List<XFile> selectedImages = [];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16, right: 16, top: 24,
+          ),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Đánh giá địa điểm', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) => IconButton(
+                      icon: Icon(
+                        index < rating ? Icons.star : Icons.star_border,
+                        color: Colors.amber,
+                        size: 32,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          rating = index + 1.0;
+                        });
+                      },
+                    )),
+                  ),
+                  TextField(
+                    controller: commentController,
+                    decoration: InputDecoration(
+                      labelText: 'Nội dung đánh giá',
+                      border: OutlineInputBorder(),
+                    ),
+                    minLines: 2,
+                    maxLines: 5,
+                    textInputAction: TextInputAction.done,
+                    onEditingComplete: () {
+                      FocusScope.of(context).unfocus();
+                    },
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        icon: Icon(Icons.photo),
+                        label: Text('Chọn ảnh'),
+                        onPressed: () async {
+                          final images = await _picker.pickMultiImage();
+                          if (images != null) {
+                            setState(() {
+                              selectedImages = images;
+                            });
+                          }
+                        },
+                      ),
+                      SizedBox(width: 8),
+                      Text('${selectedImages.length} ảnh đã chọn'),
+                    ],
+                  ),
+                  if (selectedImages.isNotEmpty)
+                    SizedBox(
+                      height: 80,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: selectedImages.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Image.file(
+                              File(selectedImages[index].path),
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () async {
+                      List<File> imageFiles = selectedImages.map((xfile) => File(xfile.path)).toList();
+                      print('Gửi review với files: ${imageFiles.map((x) => x.path).toList()}');
+                      final result = await APIService.addCampsiteReviewWithFiles(
+                        spot.id,
+                        rating,
+                        commentController.text,
+                        imageFiles,
+                      );
+                      print('Kết quả gửi review: $result');
+                      if (result['success'] == false) {
+                        print('Lỗi gửi review: \\${result['message']}');
+                      }
+                      Navigator.pop(context);
+                      if (result['success'] == true) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Đánh giá thành công!')),
+                        );
+                        _showSpotInfo(spot);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Gửi đánh giá thất bại!')),
+                        );
+                      }
+                    },
+                    child: Text('Gửi đánh giá'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[700],
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

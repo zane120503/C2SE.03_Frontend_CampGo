@@ -1,5 +1,7 @@
 import 'package:firebase_database/firebase_database.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 class RealtimeTrackingService {
   final DatabaseReference _database = FirebaseDatabase.instance.ref();
@@ -90,5 +92,40 @@ class RealtimeTrackingService {
   Future<bool> isGroupCreator(String groupId, String userId) async {
     final snapshot = await _database.child('groups/$groupId/created_by').get();
     return snapshot.value == userId;
+  }
+
+  // Kiểm tra nhóm có tồn tại không
+  Future<bool> checkGroupExists(String groupId) async {
+    final snapshot = await _database.child('groups/$groupId').get();
+    return snapshot.exists;
+  }
+
+  // Lấy danh sách tất cả các nhóm
+  Future<Map<String, dynamic>?> getAllGroups() async {
+    final snapshot = await _database.child('groups').get();
+    return snapshot.value as Map<String, dynamic>?;
+  }
+
+  // Tìm groupId từ mã 6 ký tự
+  Future<String?> findGroupIdByShortCode(String shortCode) async {
+    final allGroups = await getAllGroups();
+    if (allGroups == null) return null;
+
+    // Chuyển shortCode về chữ hoa để so sánh
+    shortCode = shortCode.toUpperCase();
+
+    for (var entry in allGroups.entries) {
+      final groupId = entry.key;
+      // Tính toán shortCode cho groupId này
+      var bytes = utf8.encode(groupId);
+      var digest = sha1.convert(bytes);
+      String base36 = BigInt.parse(digest.toString(), radix: 16).toRadixString(36);
+      String calculatedShortCode = base36.substring(0, 6).toUpperCase();
+      
+      if (calculatedShortCode == shortCode) {
+        return groupId;
+      }
+    }
+    return null;
   }
 }

@@ -1,4 +1,5 @@
 import 'package:latlong2/latlong.dart';
+import 'campsite_review.dart';
 
 class Campsite {
   final String id;
@@ -9,7 +10,7 @@ class Campsite {
   final List<CampsiteImage> images;
   final List<String> facilities;
   final double rating;
-  final List<String> reviews;
+  final List<CampsiteReview> reviews;
   final PriceRange priceRange;
   final ContactInfo contactInfo;
   final OpeningHours openingHours;
@@ -75,7 +76,9 @@ class Campsite {
           .toList() ?? [],
       facilities: List<String>.from(json['facilities'] ?? []),
       rating: (json['rating'] ?? 0.0).toDouble(),
-      reviews: List<String>.from(json['reviews'] ?? []),
+      reviews: (json['reviews'] as List<dynamic>?)
+          ?.map((review) => CampsiteReview.fromJson(review))
+          .toList() ?? [],
       priceRange: PriceRange.fromJson(json['priceRange'] ?? {}),
       contactInfo: ContactInfo.fromJson(json['contactInfo'] ?? {}),
       openingHours: OpeningHours.fromJson(json['openingHours'] ?? {}),

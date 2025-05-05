@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:image/image.dart' as img;
+import 'package:path_provider/path_provider.dart';
 import 'package:CampGo/config/config.dart';
 import 'package:CampGo/services/auth_service.dart';
 import 'package:CampGo/services/share_service.dart';
@@ -1719,6 +1721,163 @@ class APIService {
         'success': false,
         'message': 'Lỗi khi xóa sản phẩm khỏi giỏ hàng: $e'
       };
+    }
+  }
+
+  // Phương thức lấy đánh giá của campsite
+  static Future<Map<String, dynamic>> getCampsiteReviews(String campsiteId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/campsite/$campsiteId/reviews'),
+        headers: await _getHeaders(),
+      );
+
+      print('Campsite Reviews API Response status: ${response.statusCode}');
+      print('Campsite Reviews API Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return {
+          'success': true,
+          'data': {
+            'reviews': data['data']['reviews'] ?? [],
+            'summary': {
+              'averageRating': data['data']['summary']['averageRating'] ?? 0.0,
+              'totalReviews': data['data']['summary']['totalReviews'] ?? 0,
+            }
+          }
+        };
+      } else {
+        print('Failed to load campsite reviews. Status code: ${response.statusCode}');
+        return {
+          'success': false,
+          'data': {
+            'reviews': [],
+            'summary': {
+              'averageRating': 0.0,
+              'totalReviews': 0,
+            }
+          }
+        };
+      }
+    } catch (e) {
+      print('Error getting campsite reviews: $e');
+      return {
+        'success': false,
+        'data': {
+          'reviews': [],
+          'summary': {
+            'averageRating': 0.0,
+            'totalReviews': 0,
+          }
+        }
+      };
+    }
+  }
+
+  // Phương thức thêm đánh giá cho campsite
+  static Future<Map<String, dynamic>> addCampsiteReviewWithDetails(
+    String campsiteId,
+    double rating,
+    String comment,
+    List<String> images,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/campsite/$campsiteId/review'),
+        headers: await _getHeaders(),
+        body: json.encode({
+          'rating': rating,
+          'comment': comment,
+          'images': images,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return {
+          'success': true,
+          'message': 'Thêm đánh giá thành công',
+          'data': data['data'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Không thể thêm đánh giá',
+        };
+      }
+    } catch (e) {
+      print('Error adding campsite review: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi khi thêm đánh giá: $e',
+      };
+    }
+  }
+
+  // Hàm nén ảnh
+  static Future<File> compressImage(File file) async {
+    final bytes = await file.readAsBytes();
+    final image = img.decodeImage(bytes);
+    
+    if (image == null) return file;
+    
+    // Nén ảnh với chất lượng 70% và giảm kích thước xuống 50%
+    final compressedImage = img.copyResize(
+      image,
+      width: (image.width * 0.5).round(),
+      height: (image.height * 0.5).round(),
+    );
+    
+    final compressedBytes = img.encodeJpg(compressedImage, quality: 70);
+    
+    // Lưu ảnh đã nén vào thư mục tạm
+    final tempDir = await getTemporaryDirectory();
+    final tempFile = File('${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
+    await tempFile.writeAsBytes(compressedBytes);
+    
+    return tempFile;
+  }
+
+  static Future<Map<String, dynamic>> addCampsiteReviewWithFiles(
+    String campsiteId,
+    double rating,
+    String comment,
+    List<File> images,
+  ) async {
+    final uri = Uri.parse('$baseUrl/api/campsite/$campsiteId/review');
+    var request = http.MultipartRequest('POST', uri);
+    request.fields['rating'] = rating.toString();
+    request.fields['comment'] = comment;
+
+    // Nén từng ảnh trước khi gửi
+    for (var file in images) {
+      final compressedFile = await compressImage(file);
+      final mimeTypeData = lookupMimeType(compressedFile.path)?.split('/');
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'images',
+          compressedFile.path,
+          contentType: mimeTypeData != null
+              ? MediaType(mimeTypeData[0], mimeTypeData[1])
+              : MediaType('image', 'jpeg'),
+        ),
+      );
+    }
+
+    // Lấy token từ local storage
+    final token = await ShareService.getToken();
+    if (token != null && token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 201) {
+      return {'success': true, 'data': json.decode(response.body)};
+    } else {
+      return {'success': false, 'message': response.body};
     }
   }
 } 

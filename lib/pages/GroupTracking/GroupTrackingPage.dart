@@ -100,35 +100,64 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
   }
 
   Future<void> _joinGroup() async {
-    if (_groupIdController.text.isEmpty) return;
+    if (_groupIdController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập mã nhóm')),
+      );
+      return;
+    }
+
+    // Kiểm tra độ dài mã nhóm
+    if (_groupIdController.text.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mã nhóm phải có 6 ký tự')),
+      );
+      return;
+    }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.user;
 
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng đăng nhập để sử dụng tính năng này'),
-        ),
+        const SnackBar(content: Text('Vui lòng đăng nhập để sử dụng tính năng này')),
       );
       return;
     }
 
     try {
+      // Tìm groupId từ mã 6 ký tự
+      final fullGroupId = await _trackingService.findGroupIdByShortCode(_groupIdController.text);
+      
+      if (fullGroupId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không tìm thấy nhóm với mã này')),
+        );
+        return;
+      }
+
+      // Kiểm tra xem nhóm có tồn tại không
+      final groupExists = await _trackingService.checkGroupExists(fullGroupId);
+      if (!groupExists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nhóm này không còn tồn tại')),
+        );
+        return;
+      }
+
       await _trackingService.joinGroup(
-        _groupIdController.text,
+        fullGroupId,
         user.id,
         user.fullName,
       );
 
-      // Kiểm tra xem người dùng có phải là người tạo nhóm không
       final isCreator = await _trackingService.isGroupCreator(
-        _groupIdController.text,
+        fullGroupId,
         user.id,
       );
 
       setState(() {
-        _currentGroupId = _groupIdController.text;
+        _currentGroupId = fullGroupId;
         _isCreator = isCreator;
       });
 
@@ -391,7 +420,13 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                   const SizedBox(height: 32),
                   TextField(
                     controller: _groupIdController,
-                    decoration: const InputDecoration(labelText: 'Mã nhóm'),
+                    decoration: const InputDecoration(
+                      labelText: 'Mã nhóm (6 ký tự)',
+                      hintText: 'Nhập mã 6 ký tự để tham gia nhóm',
+                    ),
+                    maxLength: 6,
+                    textCapitalization: TextCapitalization.characters,
+                    style: const TextStyle(letterSpacing: 8.0),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
