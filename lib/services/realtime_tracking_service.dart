@@ -86,6 +86,7 @@ class RealtimeTrackingService {
 
   // Rời nhóm
   Future<void> leaveGroup(String groupId, String userId) async {
+    print('Rời nhóm: $groupId, userId: $userId');
     await _database.child('groups/$groupId/members/$userId').remove();
 
     // Kiểm tra xem còn thành viên nào trong nhóm không
@@ -114,10 +115,27 @@ class RealtimeTrackingService {
     } else {
       print('Không tìm thấy nhóm với groupId này!');
     }
-    // Xóa nhóm, thêm try-catch để log lỗi
+    // Xóa node members nếu còn
+    try {
+      await _database.child('groups/$groupId/members').remove();
+      print('Đã xóa node members của nhóm $groupId');
+    } catch (e) {
+      print('LỖI khi xóa node members: $e');
+    }
+    // Xóa lại node group để đảm bảo không còn key rỗng
     try {
       await _database.child('groups/$groupId').remove();
       print('Đã xóa nhóm groups/$groupId');
+      // Kiểm tra lại node members
+      final checkMembers = await _database.child('groups/$groupId/members').get();
+      print('Kiểm tra lại node members sau khi xóa: ${checkMembers.value}');
+      if (checkMembers.exists) {
+        await _database.child('groups/$groupId/members').remove();
+        print('Đã xóa lại node members của nhóm $groupId (lần 2)');
+        // Thử xóa lại node group lần nữa
+        await _database.child('groups/$groupId').remove();
+        print('Đã xóa lại nhóm groups/$groupId (lần 2)');
+      }
     } catch (e) {
       print('LỖI khi xóa nhóm groups/$groupId: $e');
     }

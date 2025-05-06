@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:CampGo/pages/TaskBar/TaskBarPage.dart';
+import 'package:CampGo/pages/ChatBot/ChatBotPage.dart';
 
 class HomeAppBar extends StatefulWidget implements PreferredSizeWidget {
   final Function(String?, double?, double?) onFiltersApplied;
@@ -117,7 +118,7 @@ class _HomeAppBarState extends State<HomeAppBar> with SingleTickerProviderStateM
       actions: [
         IconButton(
           icon: const Icon(
-            Icons.notifications,
+            Icons.smart_toy,
             size: 30,
             color: Color(0xFF2B2321),
           ),
@@ -125,6 +126,10 @@ class _HomeAppBarState extends State<HomeAppBar> with SingleTickerProviderStateM
             if (_overlayEntry != null) {
               _hideTaskbarOverlay();
             }
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ChatBotPage()),
+            );
           },
         ),
       ],

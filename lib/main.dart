@@ -1,7 +1,7 @@
 import 'package:CampGo/pages/Home/HomePage.dart';
 import 'package:CampGo/pages/Home/widgets/HomeMainNavigationBar.dart';
 import 'package:CampGo/pages/Login/LoginPage.dart';
-import 'package:CampGo/pages/Notification/NotificationPage.dart';
+import 'package:CampGo/pages/ChatBot/ChatBotPage.dart';
 import 'package:CampGo/pages/Product/ProductPage.dart';
 import 'package:CampGo/pages/Search/SearchPage.dart';
 import 'package:CampGo/pages/SignUp/SignUpPage.dart';

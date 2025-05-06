@@ -52,6 +52,7 @@ dependencies:
   dropdown_search: ^5.0.6
   firebase_core: ^3.13.0
   firebase_database: ^11.3.5
+  google_generative_ai: ^0.2.0
 
 dev_dependencies:
   flutter_test:
@@ -79,3 +80,4 @@ flutter:
     - assets/data/Wishlist.json
     - assets/data/UserProfile.json
     - assets/data/AddressUser.json
+    - assets/data/campgoc-test-6055b6c0d19d.json
