@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CampingSpot {
   final String id;
@@ -816,7 +817,14 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                       icon: Icons.phone,
                                       label: 'Call',
                                       onTap: () {
-                                        // TODO: Implement call
+                                        final phone = _selectedSpot?.contactInfo.phone ?? '';
+                                        if (phone.isNotEmpty) {
+                                          _showCallDialog(phone);
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Không có số điện thoại!')),
+                                          );
+                                        }
                                       },
                                       color: Colors.blue,
                                     ),
@@ -875,19 +883,23 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'Reviews',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                                    Center(
+                                      child: const Text(
+                                        'Reviews',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(height: 8),
                                     if (_selectedSpot!.reviews.isEmpty)
-                                      const Text(
-                                        'No reviews yet',
-                                        style: TextStyle(
-                                          color: Colors.grey,
+                                      Center(
+                                        child: const Text(
+                                          'No reviews yet',
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                          ),
                                         ),
                                       )
                                     else
@@ -1279,6 +1291,32 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
           ),
         );
       },
+    );
+  }
+
+  void _showCallDialog(String phoneNumber) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Gọi điện'),
+        content: Text(phoneNumber, style: const TextStyle(fontSize: 20, color: Colors.blue)),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              final uri = Uri(scheme: 'tel', path: phoneNumber);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
+              Navigator.of(context).pop();
+            },
+            child: Text('Gọi $phoneNumber'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Hủy'),
+          ),
+        ],
+      ),
     );
   }
 }

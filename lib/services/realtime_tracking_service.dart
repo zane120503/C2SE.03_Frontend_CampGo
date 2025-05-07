@@ -87,14 +87,24 @@ class RealtimeTrackingService {
   // Rời nhóm
   Future<void> leaveGroup(String groupId, String userId) async {
     print('Rời nhóm: $groupId, userId: $userId');
-    await _database.child('groups/$groupId/members/$userId').remove();
+    try {
+      await _database.child('groups/$groupId/members/$userId').remove();
+      print('Đã xóa user $userId khỏi group $groupId');
+    } catch (e) {
+      print('Lỗi khi xóa user khỏi group: $e');
+    }
 
     // Kiểm tra xem còn thành viên nào trong nhóm không
-    final snapshot = await _database.child('groups/$groupId/members').get();
-    if (snapshot.value == null ||
-        (snapshot.value is Map && (snapshot.value as Map).isEmpty)) {
-      // Nếu không còn thành viên nào, xóa nhóm
-      await deleteGroup(groupId);
+    try {
+      final snapshot = await _database.child('groups/$groupId/members').get();
+      if (snapshot.value == null ||
+          (snapshot.value is Map && (snapshot.value as Map).isEmpty)) {
+        // Nếu không còn thành viên nào, xóa nhóm
+        await deleteGroup(groupId);
+        print('Đã xóa group $groupId vì không còn thành viên nào');
+      }
+    } catch (e) {
+      print('Lỗi khi kiểm tra/xóa group sau khi rời nhóm: $e');
     }
   }
 

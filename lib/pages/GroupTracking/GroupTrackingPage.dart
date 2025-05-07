@@ -428,7 +428,9 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
         centerTitle: true,
         title: Text(
           _currentGroupId != null
-              ? ' ${_groupNameController.text}'
+              ? _groupInfo != null && _groupInfo!['name'] != null
+                  ? _groupInfo!['name']
+                  : 'Group Tracking'
               : 'Group Tracking',
         ),
         actions: [
@@ -515,8 +517,8 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
             ),
           if (_currentGroupId != null)
             Positioned(
-              right: 16,
-              bottom: 16,
+              left: 16,
+              top: 16,
               child: Column(
                 children: [
                   const SizedBox(height: 8),

@@ -8,6 +8,10 @@ import 'package:CampGo/models/campsite.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:CampGo/models/campsite_review.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class GroupTrackingMap extends StatefulWidget {
   final String groupId;
@@ -44,6 +48,9 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
   StreamSubscription<Position>? _positionStreamSubscription;
   bool _isShowingNavigationSheet = false;
   bool _showNavigationSheet = false;
+  List<CampsiteReview> _reviews = [];
+  final ImagePicker _picker = ImagePicker();
+  int _totalReviews = 0;
 
   @override
   void initState() {
@@ -264,6 +271,62 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
     });
   }
 
+  Future<void> _showSpotInfo(Campsite spot) async {
+    try {
+      setState(() => _showSpotDetails = false);
+      final updatedSpot = await APIService.getCampsiteDetails(spot.id);
+      final reviewsData = await APIService.getCampsiteReviews(spot.id);
+      if (mounted) {
+        setState(() {
+          _selectedCampsite = updatedSpot;
+          if (reviewsData['success'] == true && reviewsData['data'] != null) {
+            final reviews = reviewsData['data']['reviews'] as List<dynamic>;
+            _reviews = reviews.map((review) => CampsiteReview.fromJson(review)).toList();
+            _totalReviews = reviewsData['data']['summary']?['totalReviews'] ?? _reviews.length;
+          } else {
+            _reviews = [];
+            _totalReviews = 0;
+          }
+          _showSpotDetails = true;
+        });
+      }
+    } catch (e) {
+      print('Error loading spot details: $e');
+      if (mounted) {
+        setState(() => _showSpotDetails = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading spot details: $e', textAlign: TextAlign.center), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _showCallDialog(String phoneNumber) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Gọi điện'),
+        content: Text(phoneNumber, style: const TextStyle(fontSize: 20, color: Colors.blue)),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              final uri = Uri(scheme: 'tel', path: phoneNumber);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
+              Navigator.of(context).pop();
+            },
+            child: Text('Gọi $phoneNumber'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Hủy'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_currentPosition == null) {
@@ -289,14 +352,11 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                   height: 60.0,
                   child: GestureDetector(
                     onTap: () {
-                      setState(() {
-                        _selectedCampsite = spot;
-                        _showSpotDetails = true;
-                      });
+                      _showSpotInfo(spot);
                     },
                     child: Icon(
                       Icons.location_on,
-                      color: Colors.green,
+                      color: _getMarkerColor(spot.rating),
                       size: 40,
                     ),
                   ),
@@ -420,7 +480,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      '(${_selectedCampsite!.reviews.length} Reviews)',
+                                      '($_totalReviews Reviews)',
                                       style: TextStyle(
                                         color: Colors.grey[600],
                                         fontSize: 14,
@@ -474,16 +534,13 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                           Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.spaceAround,
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 _buildActionButton(
                                   icon: Icons.directions,
                                   label: 'Route',
                                   onTap: () {
-                                    _getDirections(
-                                      _selectedCampsite!.coordinates,
-                                    );
+                                    _getDirections(_selectedCampsite!.coordinates);
                                     setState(() {
                                       _showSpotDetails = false;
                                     });
@@ -494,9 +551,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                   icon: Icons.navigation,
                                   label: 'Start',
                                   onTap: () {
-                                    _startNavigation(
-                                      _selectedCampsite!.coordinates,
-                                    );
+                                    _startNavigation(_selectedCampsite!.coordinates);
                                     setState(() {
                                       _showSpotDetails = false;
                                       _showNavigationSheet = true;
@@ -508,7 +563,14 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                   icon: Icons.phone,
                                   label: 'Call',
                                   onTap: () {
-                                    // TODO: Implement call
+                                    final phone = _selectedCampsite?.contactInfo.phone ?? '';
+                                    if (phone.isNotEmpty) {
+                                      _showCallDialog(phone);
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Không có số điện thoại!')),
+                                      );
+                                    }
                                   },
                                   color: Colors.blue,
                                 ),
@@ -524,30 +586,110 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                             ),
                           ),
                           const Divider(height: 1),
-                          if (_selectedCampsite!.images.isNotEmpty) ...[
-                            SizedBox(
-                              height: 120,
-                              child: ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: _selectedCampsite!.images.length,
-                                itemBuilder: (context, index) {
-                                  final img = _selectedCampsite!.images[index];
-                                  return Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.network(
-                                        img.url,
-                                        width: 160,
-                                        height: 120,
-                                        fit: BoxFit.cover,
-                                      ),
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'Reviews',
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                if (_reviews.isEmpty)
+                                  const Text(
+                                    'No reviews yet',
+                                    style: TextStyle(color: Colors.grey),
+                                    textAlign: TextAlign.center,
+                                  )
+                                else
+                                  ListView.builder(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: _reviews.length,
+                                    itemBuilder: (context, index) {
+                                      final review = _reviews[index];
+                                      return Card(
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  CircleAvatar(
+                                                    backgroundImage: review.userProfileImageUrl != null ? NetworkImage(review.userProfileImageUrl!) : null,
+                                                    child: review.userProfileImageUrl == null ? Text(review.userName.isNotEmpty ? review.userName[0].toUpperCase() : '?') : null,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(review.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                                      Row(
+                                                        children: [
+                                                          ...List.generate(5, (i) {
+                                                            return Icon(i < review.rating ? Icons.star : Icons.star_border, color: Colors.amber, size: 16);
+                                                          }),
+                                                          const SizedBox(width: 8),
+                                                          Text('${review.createdAt.day}/${review.createdAt.month}/${review.createdAt.year}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(review.comment),
+                                              if (review.images.isNotEmpty) ...[
+                                                const SizedBox(height: 8),
+                                                SizedBox(
+                                                  height: 100,
+                                                  child: ListView.builder(
+                                                    scrollDirection: Axis.horizontal,
+                                                    itemCount: review.images.length,
+                                                    itemBuilder: (context, imageIndex) {
+                                                      return Padding(
+                                                        padding: const EdgeInsets.only(right: 8),
+                                                        child: ClipRRect(
+                                                          borderRadius: BorderRadius.circular(8),
+                                                          child: Image.network(
+                                                            review.images[imageIndex],
+                                                            height: 100,
+                                                            width: 100,
+                                                            fit: BoxFit.cover,
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                const SizedBox(height: 12),
+                                Center(
+                                  child: ElevatedButton.icon(
+                                    icon: Icon(Icons.rate_review),
+                                    label: Text('Write a review'),
+                                    onPressed: () {
+                                      _showReviewDialog(_selectedCampsite!);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green[700],
+                                      foregroundColor: Colors.white,
                                     ),
-                                  );
-                                },
-                              ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ],
                       ),
                     ),
@@ -660,9 +802,149 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
     );
   }
 
+  void _showReviewDialog(Campsite spot) {
+    double rating = 5;
+    TextEditingController commentController = TextEditingController();
+    List<XFile> selectedImages = [];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16, right: 16, top: 24,
+          ),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Review campsite', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) => IconButton(
+                      icon: Icon(
+                        index < rating ? Icons.star : Icons.star_border,
+                        color: Colors.amber,
+                        size: 32,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          rating = index + 1.0;
+                        });
+                      },
+                    )),
+                  ),
+                  TextField(
+                    controller: commentController,
+                    decoration: InputDecoration(
+                      labelText: 'Review content',
+                      border: OutlineInputBorder(),
+                    ),
+                    minLines: 2,
+                    maxLines: 5,
+                    textInputAction: TextInputAction.done,
+                    onEditingComplete: () {
+                      FocusScope.of(context).unfocus();
+                    },
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        icon: Icon(Icons.photo),
+                        label: Text('Select images'),
+                        onPressed: () async {
+                          final images = await _picker.pickMultiImage();
+                          if (images != null) {
+                            setState(() {
+                              selectedImages = images;
+                            });
+                          }
+                        },
+                      ),
+                      SizedBox(width: 8),
+                      Text('${selectedImages.length} images selected'),
+                    ],
+                  ),
+                  if (selectedImages.isNotEmpty)
+                    SizedBox(
+                      height: 80,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: selectedImages.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Image.file(
+                              File(selectedImages[index].path),
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () async {
+                      List<File> imageFiles = selectedImages.map((xfile) => File(xfile.path)).toList();
+                      print('Sending review with files: ${imageFiles.map((x) => x.path).toList()}');
+                      final result = await APIService.addCampsiteReviewWithFiles(
+                        spot.id,
+                        rating,
+                        commentController.text,
+                        imageFiles,
+                      );
+                      print('Result of sending review: $result');
+                      if (result['success'] == false) {
+                        print('Error sending review: ${result['message']}');
+                      }
+                      Navigator.pop(context);
+                      if (result['success'] == true) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Review successfully!', textAlign: TextAlign.center), backgroundColor: Colors.green),
+                        );
+                        _showSpotInfo(spot); // Load lại review
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to send review!', textAlign: TextAlign.center), backgroundColor: Colors.red),
+                        );
+                      }
+                    },
+                    child: Text('Send review'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[700],
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _debounceTimer?.cancel();
     super.dispose();
+  }
+
+  Color _getMarkerColor(double rating) {
+    if (rating >= 4.5) return Colors.green[700]!;
+    if (rating >= 4.0) return Colors.green[500]!;
+    if (rating >= 3.5) return Colors.orange;
+    return Colors.red;
   }
 }
