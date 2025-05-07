@@ -585,7 +585,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
             onPressed: () {
               showSearch(
                 context: context,
-                delegate: CampsiteSearchDelegate(_campsites),
+                delegate: CampsiteSearchDelegate(_campsites, _mapController, _showSpotInfo),
               );
             },
           ),
@@ -1264,8 +1264,10 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
 
 class CampsiteSearchDelegate extends SearchDelegate {
   final List<Campsite> campsites;
+  final MapController mapController;
+  final Function(Campsite) onSpotSelected;
 
-  CampsiteSearchDelegate(this.campsites);
+  CampsiteSearchDelegate(this.campsites, this.mapController, this.onSpotSelected);
 
   @override
   List<Widget>? buildActions(BuildContext context) {
@@ -1309,6 +1311,10 @@ class CampsiteSearchDelegate extends SearchDelegate {
           subtitle: Text(spot.description),
           onTap: () {
             close(context, spot);
+            // Di chuyển bản đồ đến vị trí của địa điểm được chọn
+            mapController.move(spot.coordinates, 15.0);
+            // Hiển thị thông tin chi tiết của địa điểm
+            onSpotSelected(spot);
           },
         );
       },
@@ -1336,6 +1342,10 @@ class CampsiteSearchDelegate extends SearchDelegate {
           onTap: () {
             query = spot.name;
             showResults(context);
+            // Di chuyển bản đồ đến vị trí của địa điểm được chọn
+            mapController.move(spot.coordinates, 15.0);
+            // Hiển thị thông tin chi tiết của địa điểm
+            onSpotSelected(spot);
           },
         );
       },
