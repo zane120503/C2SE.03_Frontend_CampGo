@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../services/realtime_tracking_service.dart';
-import '../../widgets/group_tracking_map.dart';
+import 'widgets/group_tracking_map.dart';
 import '../../providers/auth_provider.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
@@ -72,7 +72,10 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Vui lòng đăng nhập để sử dụng tính năng này'),
+          content: Text('Please login to use this feature',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
         ),
       );
       return;
@@ -94,7 +97,11 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
     if (mounted) {
       final shortCode = shortRoomCode(groupId);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nhóm đã được tạo với mã: $shortCode')),
+        SnackBar(content: Text('Group created with code: $shortCode',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.green,
+        ),
       );
     }
   }
@@ -102,7 +109,11 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
   Future<void> _joinGroup() async {
     if (_groupIdController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập mã nhóm')),
+        const SnackBar(content: Text('Please enter a group code',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -110,7 +121,11 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
     // Kiểm tra độ dài mã nhóm
     if (_groupIdController.text.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mã nhóm phải có 6 ký tự')),
+        const SnackBar(content: Text('Group code must be 6 characters',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -120,7 +135,11 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
 
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng đăng nhập để sử dụng tính năng này')),
+        const SnackBar(content: Text('Please login to use this feature',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -143,7 +162,11 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
       
       if (fullGroupId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không tìm thấy nhóm với mã này')),
+          const SnackBar(content: Text('Group not found',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
+          ),
         );
         return;
       }
@@ -152,7 +175,11 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
       final groupExists = await _trackingService.checkGroupExists(fullGroupId);
       if (!groupExists) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nhóm này không còn tồn tại')),
+          const SnackBar(content: Text('Group does not exist',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
+          ),
         );
         return;
       }
@@ -177,7 +204,11 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã tham gia nhóm thành công')),
+          const SnackBar(content: Text('Successfully joined group',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
@@ -186,7 +217,11 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể tham gia nhóm')),
+          const SnackBar(content: Text('Unable to join group',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -205,7 +240,12 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
 
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Đã rời khỏi nhóm')));
+    ).showSnackBar(const SnackBar(content: Text('Successfully left group',
+    textAlign: TextAlign.center,
+    ),
+    backgroundColor: Colors.green,
+    ),
+    );
   }
 
   Future<void> _deleteGroup() async {
@@ -216,19 +256,19 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
           context: context,
           builder:
               (context) => AlertDialog(
-                title: const Text('Xóa nhóm'),
+                title: const Text('Delete group'),
                 content: const Text(
-                  'Bạn có chắc chắn muốn xóa nhóm này không? Tất cả thành viên sẽ bị rời khỏi nhóm.',
+                  'Are you sure you want to delete this group? All members will be removed from the group.',
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Hủy'),
+                    child: const Text('Cancel'),
                   ),
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(true),
                     child: const Text(
-                      'Xóa',
+                      'Delete',
                       style: TextStyle(color: Colors.red),
                     ),
                   ),
@@ -248,7 +288,12 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Đã xóa nhóm')));
+      ).showSnackBar(const SnackBar(content: Text('Group deleted',
+      textAlign: TextAlign.center,
+      ),
+      backgroundColor: Colors.green,
+      ),
+    );
     }
   }
 
@@ -257,7 +302,9 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
     final shortCode = shortRoomCode(_currentGroupId!);
     Clipboard.setData(ClipboardData(text: shortCode));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Đã sao chép mã nhóm: $shortCode vào clipboard')),
+      SnackBar(content: Text('Group code copied to clipboard: $shortCode'),
+      backgroundColor: Colors.green,
+      ),
     );
   }
 
@@ -270,7 +317,7 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
       context: context,
       builder:
           (context) => AlertDialog(
-            title: const Text('Thành viên trong nhóm'),
+            title: const Text('Members in group'),
             content: SizedBox(
               width: double.maxFinite,
               child: ListView.builder(
@@ -292,7 +339,7 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Đóng'),
+                child: const Text('Close'),
               ),
             ],
           ),
@@ -324,7 +371,7 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                     },
                     child: ListTile(
                       leading: const Icon(Icons.copy),
-                      title: Text('Sao chép mã: ${_currentGroupId != null ? shortRoomCode(_currentGroupId!) : ''}'),
+                      title: Text('Copy code: ${_currentGroupId != null ? shortRoomCode(_currentGroupId!) : ''}'),
                     ),
                   ),
                   InkWell(
@@ -337,7 +384,7 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                     },
                     child: const ListTile(
                       leading: Icon(Icons.exit_to_app),
-                      title: Text('Rời nhóm'),
+                      title: Text('Leave group'),
                     ),
                   ),
                   if (_isCreator)
@@ -349,7 +396,7 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                       },
                       child: const ListTile(
                         leading: Icon(Icons.delete, color: Colors.red),
-                        title: Text('Xóa nhóm', style: TextStyle(color: Colors.red)),
+                        title: Text('Delete group', style: TextStyle(color: Colors.red)),
                       ),
                     ),
                 ],
@@ -369,9 +416,9 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
 
     if (user == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Theo dõi nhóm')),
+        appBar: AppBar(title: const Text('Group tracking')),
         body: const Center(
-          child: Text('Vui lòng đăng nhập để sử dụng tính năng này'),
+          child: Text('Please login to use this feature'),
         ),
       );
     }
@@ -382,13 +429,13 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
         title: Text(
           _currentGroupId != null
               ? ' ${_groupNameController.text}'
-              : '',
+              : 'Group Tracking',
         ),
         actions: [
           if (_currentGroupId != null) ...[
             IconButton(
               icon: const Icon(Icons.people),
-              tooltip: 'Danh sách thành viên',
+              tooltip: 'Members list',
               onPressed: _showMembersDialog,
             ),
             Builder(
@@ -424,20 +471,19 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                   TextField(
                     controller: _groupNameController,
                     decoration: const InputDecoration(
-                      labelText: 'Tên nhóm mới',
+                      labelText: 'New group name',
                     ),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _createGroup,
-                    child: const Text('Tạo nhóm mới'),
+                    child: const Text('Create new group'),
                   ),
                   const SizedBox(height: 32),
                   TextField(
                     controller: _groupIdController,
                     decoration: const InputDecoration(
-                      labelText: 'Mã nhóm (6 ký tự)',
-                      hintText: 'Nhập mã 6 ký tự để tham gia nhóm',
+                      labelText: 'Group Code',  
                     ),
                     maxLength: 6,
                     textCapitalization: TextCapitalization.characters,
@@ -455,7 +501,7 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _joinGroup,
-                    child: const Text('Tham gia nhóm'),
+                    child: const Text('Join group'),
                   ),
                 ],
               ),
@@ -476,7 +522,7 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                   const SizedBox(height: 8),
                   FloatingActionButton(
                     heroTag: 'location',
-                    tooltip: 'Vị trí hiện tại',
+                    tooltip: 'Current location',
                     backgroundColor: Colors.white,
                     onPressed: () {
                       final state = _mapKey.currentState as dynamic;

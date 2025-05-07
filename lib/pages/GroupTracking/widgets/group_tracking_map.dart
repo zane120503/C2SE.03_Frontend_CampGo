@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import '../services/realtime_tracking_service.dart';
+import '../../../services/realtime_tracking_service.dart';
 import 'package:CampGo/services/api_service.dart';
 import 'package:CampGo/models/campsite.dart';
 import 'package:http/http.dart' as http;
@@ -228,7 +228,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
         _stopNavigation();
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Bạn đã đến nơi!')));
+        ).showSnackBar(const SnackBar(content: Text('You have arrived!')));
         return;
       }
       _getDirections(destination);
@@ -420,7 +420,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      '(${_selectedCampsite!.reviews.length} đánh giá)',
+                                      '(${_selectedCampsite!.reviews.length} Reviews)',
                                       style: TextStyle(
                                         color: Colors.grey[600],
                                         fontSize: 14,
@@ -430,7 +430,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Địa điểm cắm trại • ${_selectedCampsite!.priceRange.min}-${_selectedCampsite!.priceRange.max}K VNĐ',
+                                  'Camping site • ${_selectedCampsite!.priceRange.min}-${_selectedCampsite!.priceRange.max}K VNĐ',
                                   style: TextStyle(
                                     color: Colors.grey[800],
                                     fontSize: 14,
@@ -451,7 +451,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                         ),
                                       ),
                                       child: Text(
-                                        'Đang mở cửa',
+                                        'Open now',
                                         style: TextStyle(
                                           color: Colors.green[700],
                                           fontWeight: FontWeight.w500,
@@ -460,7 +460,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      'Đóng cửa lúc ${_selectedCampsite!.openingHours.close}',
+                                      'Closing time ${_selectedCampsite!.openingHours.close}',
                                       style: TextStyle(
                                         color: Colors.grey[600],
                                       ),
@@ -479,7 +479,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                               children: [
                                 _buildActionButton(
                                   icon: Icons.directions,
-                                  label: 'Đường đi',
+                                  label: 'Route',
                                   onTap: () {
                                     _getDirections(
                                       _selectedCampsite!.coordinates,
@@ -492,7 +492,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                 ),
                                 _buildActionButton(
                                   icon: Icons.navigation,
-                                  label: 'Bắt đầu',
+                                  label: 'Start',
                                   onTap: () {
                                     _startNavigation(
                                       _selectedCampsite!.coordinates,
@@ -506,7 +506,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                 ),
                                 _buildActionButton(
                                   icon: Icons.phone,
-                                  label: 'Gọi',
+                                  label: 'Call',
                                   onTap: () {
                                     // TODO: Implement call
                                   },
@@ -514,7 +514,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                 ),
                                 _buildActionButton(
                                   icon: Icons.bookmark_border,
-                                  label: 'Lưu',
+                                  label: 'Save',
                                   onTap: () {
                                     // TODO: Implement save
                                   },
@@ -590,7 +590,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Khoảng cách còn lại',
+                      'Remaining distance',
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 16,
@@ -624,7 +624,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                           ),
                           const SizedBox(height: 8),
                           const Text(
-                            'Dừng',
+                            'Stop',
                             style: TextStyle(
                               color: Colors.red,
                               fontWeight: FontWeight.bold,

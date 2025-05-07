@@ -25,11 +25,9 @@ class _ChatBotPageState extends State<ChatBotPage> {
 
   Future<void> _initializeChat() async {
     try {
-      // Sử dụng API key Gemini do user cung cấp
-      final String apiKey = 'AIzaSyD61bUy_3gbQh1nXcv_hzOdb-hema6dxyA';
-      
+      final String apiKey = 'AIzaSyAzhJ_WOybmDXuUMV-hkuR7FQ0fNFqedsQ';
       _model = GenerativeModel(
-        model: 'gemini-1.5-pro',
+        model: 'gemini-2.0-flash',
         apiKey: apiKey,
         generationConfig: GenerationConfig(
           temperature: 0.7,
@@ -40,12 +38,12 @@ class _ChatBotPageState extends State<ChatBotPage> {
       );
       _chat = _model.startChat(
         history: [
-          Content.text('Xin chào! Tôi là trợ lý ảo của CampGo. Tôi có thể giúp gì cho bạn?'),
+          Content.text('Hi! Im CampGos virtual assistant. How can I help you?'),
         ],
       );
     } catch (e) {
       print('Error initializing chat: $e');
-      _showErrorDialog('Không thể khởi tạo chatbot. Vui lòng thử lại sau.');
+      _showErrorDialog('Cannot initialize Chatbot. Please try again later.');
     }
   }
 
@@ -53,7 +51,7 @@ class _ChatBotPageState extends State<ChatBotPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Lỗi'),
+        title: const Text('Error'),
         content: Text(message),
         actions: [
           TextButton(
@@ -83,13 +81,8 @@ class _ChatBotPageState extends State<ChatBotPage> {
       final response = await _chat.sendMessage(
         Content.text(userMessage),
       );
-      
-      String botResponse = response.text ?? 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
-      
-      // Xử lý response để loại bỏ các tham chiếu hình ảnh không hợp lệ
+      String botResponse = response.text ?? 'Sorry, I cannot answer this question.';
       botResponse = botResponse.replaceAll(RegExp(r'https?://[^\s]+\.(jpg|jpeg|png|gif)'), '');
-      
-      // Xử lý response để loại bỏ các tham chiếu URL không hợp lệ
       botResponse = botResponse.replaceAll(RegExp(r'https?://[^\s]+'), '');
       
       setState(() {
@@ -103,7 +96,7 @@ class _ChatBotPageState extends State<ChatBotPage> {
       setState(() {
         _messages.add({
           'role': 'bot',
-          'content': 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.',
+          'content': 'Sorry, an error occurred. Please try again later.',
         });
       });
     } finally {
@@ -124,29 +117,38 @@ class _ChatBotPageState extends State<ChatBotPage> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(8),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                final isUser = message['role'] == 'user';
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
+                ),
+              ),
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _messages.length,
+                itemBuilder: (context, index) {
+                  final message = _messages[index];
+                  final isUser = message['role'] == 'user';
 
-                return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isUser ? Colors.blue[100] : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
+                  return Align(
+                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isUser ? Colors.blue[100] : Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        message['content']!,
+                        style: const TextStyle(fontSize: 16),
+                      ),
                     ),
-                    child: Text(
-                      message['content']!,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
           if (_isLoading)
@@ -155,33 +157,51 @@ class _ChatBotPageState extends State<ChatBotPage> {
               child: CircularProgressIndicator(),
             ),
           Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: const Offset(0, -1),
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: const Color(0xFFEDECF2),
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: const InputDecoration(
-                      hintText: 'Nhập tin nhắn...',
-                      border: OutlineInputBorder(),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 3,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
-                    onSubmitted: (_) => _sendMessage(),
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your message...',
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
+                const SizedBox(width: 8),
+                Container(
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.blue,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.send, color: Colors.white),
+                    onPressed: _sendMessage,
+                  ),
                 ),
               ],
             ),

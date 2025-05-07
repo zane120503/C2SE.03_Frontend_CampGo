@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-
 import 'package:CampGo/api/api.service.dart';
-import 'package:CampGo/services/data_service.dart';
-import 'package:CampGo/model/order_model.dart';
 import 'package:CampGo/pages/WaitForConfirmation/widgets/OrderInformationPage.dart';
 import 'package:flutter/services.dart';
 

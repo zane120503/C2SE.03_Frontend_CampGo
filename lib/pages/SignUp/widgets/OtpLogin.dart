@@ -237,143 +237,154 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
             child: Image.asset('assets/images/StartNow.jpg', fit: BoxFit.cover),
           ),
           Container(color: Colors.black.withOpacity(0.5)), 
-          Column(
-            children: [
-              const SizedBox(height: 300),
-              const Spacer(),
-
-              // White form container
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFFFFFF),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
-                  ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Row chứa nút back + title
-                    Row(
+          SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  const SizedBox(height: 300),
+                  // White form container
+                  Container(
+                    padding: EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      top: 20,
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFFFFF),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.black),
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const SignUpPage(),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 40),
-                        const Text(
-                          'Email Verification',
-                          style: TextStyle(
-                            color: Color(0xFF2B2321),
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 10),
-                    Text(
-                      'Please enter the 6-digit OTP sent to\n${widget.email}',
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // OTP Input
-                    PinCodeTextField(
-                      appContext: context,
-                      length: 6,
-                      controller: otpController,
-                      obscureText: false,
-                      animationType: AnimationType.fade,
-                      pinTheme: PinTheme(
-                        shape: PinCodeFieldShape.box,
-                        borderRadius: BorderRadius.circular(3),
-                        fieldHeight: 50,
-                        fieldWidth: 50,
-                        activeColor: const Color.fromARGB(255, 57, 57, 57),
-                        selectedColor: const Color.fromARGB(255, 57, 57, 57),
-                        inactiveColor: const Color.fromARGB(255, 57, 57, 57),
-                        activeFillColor: Colors.white,
-                        selectedFillColor: Colors.white,
-                        inactiveFillColor: Colors.white,
-                        borderWidth: 1.5,
-                      ),
-                      animationDuration: const Duration(milliseconds: 300),
-                      backgroundColor: const Color.fromARGB(0, 45, 44, 44),
-                      enableActiveFill: true,
-                      onCompleted: (v) {
-                        _verifyOTP();
-                      },
-                      onChanged: (value) {},
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    // Timer Countdown
-                    Text(
-                      _secondsRemaining > 0
-                          ? 'OTP will expire in $_secondsRemaining seconds'
-                          : 'OTP has expired',
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Submit button
-                    _isLoading
-                        ? const CircularProgressIndicator()
-                        : ElevatedButton(
-                            onPressed: _verifyOTP,
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: const Size(400, 55),
-                              backgroundColor: const Color.fromARGB(255, 215, 159, 54),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+                        // Row chứa nút back + title
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back, color: Colors.black),
+                              onPressed: () {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const SignUpPage(),
+                                  ),
+                                );
+                              },
                             ),
-                            child: const Text(
-                              'Verify OTP',
+                            const SizedBox(width: 35),
+                            const Text(
+                              'Email Verification',
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
+                                color: Color(0xFF2B2321),
+                                fontSize: 28,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ),
-
-                    const SizedBox(height: 10),
-
-                    // Resend OTP
-                    TextButton(
-                      onPressed: _secondsRemaining == 0 ? _resendOTP : null,
-                      child: const Text(
-                        'Resend OTP?',
-                        style: TextStyle(
-                          color: Color.fromARGB(255, 37, 39, 41),
+                          ],
                         ),
-                      ),
-                    ),
+                        
+                        const SizedBox(height: 10),
+                        Text(
+                          'Please enter the 6-digit OTP sent to\n${widget.email}',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
 
-                    const SizedBox(height: 10),
-                  ],
-                ),
+                        const SizedBox(height: 20),
+
+                        // OTP Input
+                        PinCodeTextField(
+                          appContext: context,
+                          length: 6,
+                          controller: otpController,
+                          obscureText: false,
+                          animationType: AnimationType.fade,
+                          pinTheme: PinTheme(
+                            shape: PinCodeFieldShape.box,
+                            borderRadius: BorderRadius.circular(3),
+                            fieldHeight: 50,
+                            fieldWidth: 50,
+                            activeColor: const Color.fromARGB(255, 57, 57, 57),
+                            selectedColor: const Color.fromARGB(255, 57, 57, 57),
+                            inactiveColor: const Color.fromARGB(255, 57, 57, 57),
+                            activeFillColor: Colors.white,
+                            selectedFillColor: Colors.white,
+                            inactiveFillColor: Colors.white,
+                            borderWidth: 1.5,
+                          ),
+                          animationDuration: const Duration(milliseconds: 300),
+                          backgroundColor: const Color.fromARGB(0, 45, 44, 44),
+                          enableActiveFill: true,
+                          onCompleted: (v) {
+                            _verifyOTP();
+                          },
+                          onChanged: (value) {},
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // Timer Countdown
+                        Text(
+                          _secondsRemaining > 0
+                              ? 'OTP will expire in $_secondsRemaining seconds'
+                              : 'OTP has expired',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Submit button
+                        _isLoading
+                            ? const CircularProgressIndicator()
+                            : ElevatedButton(
+                                onPressed: _verifyOTP,
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size(400, 55),
+                                  backgroundColor: const Color.fromARGB(255, 215, 159, 54),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Verify OTP',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+
+                        const SizedBox(height: 10),
+
+                        // Resend OTP
+                        TextButton(
+                          onPressed: _secondsRemaining == 0 ? _resendOTP : null,
+                          child: const Text(
+                            'Resend OTP?',
+                            style: TextStyle(
+                              color: Color.fromARGB(255, 37, 39, 41),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ],
       ),

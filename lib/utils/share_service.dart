@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:CampGo/model/login_response_model.dart';
+import 'package:CampGo/models/login_response_model.dart';
 import 'package:api_cache_manager/api_cache_manager.dart';
 import 'package:api_cache_manager/models/cache_db_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';

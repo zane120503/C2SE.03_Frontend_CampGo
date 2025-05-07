@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:CampGo/model/wishlist_model.dart';
+import 'package:CampGo/models/wishlist_model.dart';
 
 class MockDataService {
   // Load wishlist data from local JSON file

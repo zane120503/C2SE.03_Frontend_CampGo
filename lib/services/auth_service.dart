@@ -1,7 +1,7 @@
 import 'package:CampGo/models/user_model.dart';
 import 'package:CampGo/services/share_service.dart';
 import 'package:CampGo/config/config.dart';
-import 'package:CampGo/model/login_response_model.dart';
+import 'package:CampGo/models/login_response_model.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;

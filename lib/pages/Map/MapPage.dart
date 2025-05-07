@@ -130,7 +130,11 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       print('Error loading campsites: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải địa điểm cắm trại: $e')),
+          SnackBar(content: Text('Error loading camping sites: $e',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -241,13 +245,6 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     return Colors.red;
   }
 
-  IconData _getMarkerIcon(List<String> facilities) {
-    if (facilities.contains('Hồ bơi')) return Icons.pool;
-    if (facilities.contains('BBQ')) return Icons.outdoor_grill;
-    if (facilities.contains('Wifi')) return Icons.wifi;
-    return Icons.park;
-  }
-
   void _showSpotInfo(Campsite spot) async {
     try {
       setState(() => _isLoading = true);
@@ -286,7 +283,11 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải thông tin địa điểm: $e')),
+          SnackBar(content: Text('Error loading spot details: $e',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -305,7 +306,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
 
     setState(() => _isLoading = true);
     try {
-      print('Kiểm tra dịch vụ vị trí...');
+      print('Checking location service...');
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
@@ -313,20 +314,20 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
             context: context,
             builder: (BuildContext context) {
               return AlertDialog(
-                title: const Text('Dịch vụ vị trí đang tắt'),
+                title: const Text('Location service is disabled'),
                 content: const Text(
-                  'Vui lòng bật dịch vụ vị trí để sử dụng tính năng này',
+                  'Please enable location service to use this feature',
                 ),
                 actions: [
                   TextButton(
-                    child: const Text('Mở cài đặt'),
+                    child: const Text('Open settings'),
                     onPressed: () async {
                       await Geolocator.openLocationSettings();
                       Navigator.of(context).pop();
                     },
                   ),
                   TextButton(
-                    child: const Text('Đóng'),
+                    child: const Text('Close'),
                     onPressed: () {
                       Navigator.of(context).pop();
                     },
@@ -336,15 +337,15 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
             },
           );
         }
-        throw Exception('Dịch vụ vị trí đang tắt');
+        throw Exception('Location service is disabled');
       }
 
-      print('Kiểm tra quyền truy cập vị trí...');
+      print('Checking location permission...');
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          throw Exception('Quyền truy cập vị trí bị từ chối');
+          throw Exception('Location permission denied');
         }
       }
 
@@ -354,20 +355,20 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
             context: context,
             builder: (BuildContext context) {
               return AlertDialog(
-                title: const Text('Quyền truy cập vị trí bị từ chối'),
+                title: const Text('Location permission denied'),
                 content: const Text(
-                  'Vui lòng vào cài đặt để cấp quyền truy cập vị trí cho ứng dụng',
+                  'Please go to settings to grant location access to the app',
                 ),
                 actions: [
                   TextButton(
-                    child: const Text('Mở cài đặt'),
+                    child: const Text('Open settings'),
                     onPressed: () async {
                       await Geolocator.openAppSettings();
                       Navigator.of(context).pop();
                     },
                   ),
                   TextButton(
-                    child: const Text('Đóng'),
+                    child: const Text('Close'),
                     onPressed: () {
                       Navigator.of(context).pop();
                     },
@@ -377,10 +378,10 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
             },
           );
         }
-        throw Exception('Quyền truy cập vị trí bị từ chối vĩnh viễn');
+        throw Exception('Location permission denied permanently');
       }
 
-      print('Đang lấy vị trí hiện tại...');
+      print('Getting current location...');
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
         timeLimit: const Duration(seconds: 5),
@@ -399,7 +400,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đã cập nhật vị trí hiện tại'),
+          content: Text('Current location updated',
+          textAlign: TextAlign.center,
+          ),
           duration: Duration(seconds: 2),
         ),
       );
@@ -407,7 +410,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString()),
+          content: Text(e.toString(),
+          textAlign: TextAlign.center,
+          ),
           duration: const Duration(seconds: 3),
         ),
       );
@@ -470,7 +475,12 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
         _stopNavigation();
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Bạn đã đến nơi!')));
+        ).showSnackBar(const SnackBar(content: Text('You have arrived!',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.green,
+        ),
+        );
         return;
       }
 
@@ -505,7 +515,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     if (_currentPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Vui lòng bật vị trí để sử dụng tính năng chỉ đường'),
+          content: Text('Please enable location to use the route feature',
+          textAlign: TextAlign.center,
+          ),
         ),
       );
       return;
@@ -554,7 +566,8 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Không thể tải thông tin chỉ đường. Vui lòng thử lại sau.',
+            'Unable to load route information. Please try again later.',
+            textAlign: TextAlign.center,
           ),
         ),
       );
@@ -576,7 +589,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bản đồ Cắm trại'),
+        title: const Text('Camping Map'),
         centerTitle: true,
         backgroundColor: Colors.green[700],
         actions: [
@@ -716,7 +729,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          '(${_selectedSpot!.reviews.length} đánh giá)',
+                                          '(${_selectedSpot!.reviews.length} Reviews)',
                                           style: TextStyle(
                                             color: Colors.grey[600],
                                             fontSize: 14,
@@ -726,7 +739,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      'Địa điểm cắm trại • ${_selectedSpot!.priceRange.min}-${_selectedSpot!.priceRange.max}K VNĐ',
+                                      'Camping site • ${_selectedSpot!.priceRange.min}-${_selectedSpot!.priceRange.max}K VNĐ',
                                       style: TextStyle(
                                         color: Colors.grey[800],
                                         fontSize: 14,
@@ -747,7 +760,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                             ),
                                           ),
                                           child: Text(
-                                            'Đang mở cửa',
+                                            'Open now',
                                             style: TextStyle(
                                               color: Colors.green[700],
                                               fontWeight: FontWeight.w500,
@@ -756,7 +769,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          'Đóng cửa lúc ${_selectedSpot!.openingHours.close}',
+                                          'Closing time ${_selectedSpot!.openingHours.close}',
                                           style: TextStyle(
                                             color: Colors.grey[600],
                                           ),
@@ -775,7 +788,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                   children: [
                                     _buildActionButton(
                                       icon: Icons.directions,
-                                      label: 'Đường đi',
+                                      label: 'Route',
                                       onTap: () {
                                         _getDirections(
                                           _selectedSpot!.coordinates,
@@ -788,7 +801,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                     ),
                                     _buildActionButton(
                                       icon: Icons.navigation,
-                                      label: 'Bắt đầu',
+                                      label: 'Start',
                                       onTap: () {
                                         _startNavigation(
                                           _selectedSpot!.coordinates,
@@ -801,7 +814,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                     ),
                                     _buildActionButton(
                                       icon: Icons.phone,
-                                      label: 'Gọi',
+                                      label: 'Call',
                                       onTap: () {
                                         // TODO: Implement call
                                       },
@@ -809,7 +822,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                     ),
                                     _buildActionButton(
                                       icon: Icons.bookmark_border,
-                                      label: 'Lưu',
+                                      label: 'Save',
                                       onTap: () {
                                         // TODO: Implement save
                                       },
@@ -823,7 +836,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                 const Padding(
                                   padding: EdgeInsets.all(16.0),
                                   child: Text(
-                                    'Hình ảnh',
+                                    'Images',
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
@@ -863,7 +876,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
-                                      'Đánh giá',
+                                      'Reviews',
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
@@ -872,7 +885,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                     const SizedBox(height: 8),
                                     if (_selectedSpot!.reviews.isEmpty)
                                       const Text(
-                                        'Chưa có đánh giá nào',
+                                        'No reviews yet',
                                         style: TextStyle(
                                           color: Colors.grey,
                                         ),
@@ -973,7 +986,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                               ),
                               ElevatedButton.icon(
                                 icon: Icon(Icons.rate_review),
-                                label: Text('Viết đánh giá'),
+                                label: Text('Write a review'),
                                 onPressed: () {
                                   _showReviewDialog(_selectedSpot!);
                                 },
@@ -1038,7 +1051,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
-                                      'Khoảng cách còn lại',
+                                      'Remaining distance',
                                       style: TextStyle(
                                         fontSize: 16,
                                         color: Colors.grey,
@@ -1062,7 +1075,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                               children: [
                                 _buildActionButton(
                                   icon: Icons.stop_circle,
-                                  label: 'Dừng',
+                                  label: 'Stop',
                                   onTap: _stopNavigation,
                                   color: Colors.red,
                                 ),
@@ -1150,7 +1163,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Đánh giá địa điểm', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Review campsite', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1170,7 +1183,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                   TextField(
                     controller: commentController,
                     decoration: InputDecoration(
-                      labelText: 'Nội dung đánh giá',
+                      labelText: 'Review content',
                       border: OutlineInputBorder(),
                     ),
                     minLines: 2,
@@ -1185,7 +1198,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                     children: [
                       ElevatedButton.icon(
                         icon: Icon(Icons.photo),
-                        label: Text('Chọn ảnh'),
+                        label: Text('Select images'),
                         onPressed: () async {
                           final images = await _picker.pickMultiImage();
                           if (images != null) {
@@ -1196,7 +1209,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                         },
                       ),
                       SizedBox(width: 8),
-                      Text('${selectedImages.length} ảnh đã chọn'),
+                      Text('${selectedImages.length} images selected'),
                     ],
                   ),
                   if (selectedImages.isNotEmpty)
@@ -1222,30 +1235,38 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                   ElevatedButton(
                     onPressed: () async {
                       List<File> imageFiles = selectedImages.map((xfile) => File(xfile.path)).toList();
-                      print('Gửi review với files: ${imageFiles.map((x) => x.path).toList()}');
+                      print('Sending review with files: ${imageFiles.map((x) => x.path).toList()}');
                       final result = await APIService.addCampsiteReviewWithFiles(
                         spot.id,
                         rating,
                         commentController.text,
                         imageFiles,
                       );
-                      print('Kết quả gửi review: $result');
+                      print('Result of sending review: $result');
                       if (result['success'] == false) {
-                        print('Lỗi gửi review: \\${result['message']}');
+                        print('Error sending review: ${result['message']}');
                       }
                       Navigator.pop(context);
                       if (result['success'] == true) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Đánh giá thành công!')),
+                          SnackBar(content: Text('Review successfully!',
+                          textAlign: TextAlign.center,
+                          ),
+                          backgroundColor: Colors.green,
+                          ),
                         );
                         _showSpotInfo(spot);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Gửi đánh giá thất bại!')),
+                          SnackBar(content: Text('Failed to send review!',
+                          textAlign: TextAlign.center,
+                          ),
+                          backgroundColor: Colors.red,
+                          ),
                         );
                       }
                     },
-                    child: Text('Gửi đánh giá'),
+                    child: Text('Send review'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[700],
                       foregroundColor: Colors.white,
