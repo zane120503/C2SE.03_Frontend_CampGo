@@ -310,19 +310,22 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
               children: [
                 Stack(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                      child: imageUrl.isNotEmpty
-                          ? Image.network(
-                              imageUrl,
-                              height: 150,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return _buildPlaceholder();
-                              },
-                            )
-                          : _buildPlaceholder(),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                        child: imageUrl.isNotEmpty
+                            ? Image.network(
+                                imageUrl,
+                                height: 150,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return _buildPlaceholder();
+                                },
+                              )
+                            : _buildPlaceholder(),
+                      ),
                     ),
                     if (discount > 0)
                       Positioned(

@@ -514,20 +514,59 @@ class _WaitingForDeliveryState extends State<WaitingForDeliveryPage> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  product['product']['imageURL'] ?? '',
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
+                child: Builder(
+                  builder: (context) {
+                    String processedImageUrl = '';
+                    
+                    // Kiểm tra và lấy URL từ mảng images trước
+                    if (product['product']['images'] != null && 
+                        product['product']['images'] is List && 
+                        product['product']['images'].isNotEmpty) {
+                      var firstImage = product['product']['images'][0];
+                      if (firstImage is Map) {
+                        processedImageUrl = firstImage['url'] ?? '';
+                      } else {
+                        processedImageUrl = firstImage.toString();
+                      }
+                    }
+                    
+                    // Nếu không có trong mảng images, thử lấy từ imageURL
+                    if (processedImageUrl.isEmpty) {
+                      processedImageUrl = product['product']['imageURL'] ?? '';
+                    }
+                    
+                    processedImageUrl = processedImageUrl.trim();
+                    print('WaitingForDeliveryPage - Image URL: $processedImageUrl');
+                    
+                    if (processedImageUrl.isEmpty || !processedImageUrl.startsWith('http')) {
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[300],
+                        child: const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
+                        ),
+                      );
+                    }
+                    
+                    return Image.network(
+                      processedImageUrl,
                       width: 80,
                       height: 80,
-                      color: Colors.grey[300],
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        color: Colors.grey,
-                      ),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        print('WaitingForDeliveryPage - Image load error: $error');
+                        return Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.image_not_supported,
+                            color: Colors.grey,
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -664,36 +703,75 @@ class _WaitingForDeliveryState extends State<WaitingForDeliveryPage> {
             padding: const EdgeInsets.only(right: 8.0),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                product['product']['imageURL'] ?? '',
-                width: 80,
-                height: 80,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 80,
-                    height: 80,
-                    color: Colors.grey[300],
-                    child: const Icon(
-                      Icons.image_not_supported,
-                      color: Colors.grey,
-                    ),
-                  );
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    width: 80,
-                    height: 80,
-                    color: Colors.grey[300],
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
-                            : null,
+              child: Builder(
+                builder: (context) {
+                  String processedImageUrl = '';
+                  
+                  // Kiểm tra và lấy URL từ mảng images trước
+                  if (product['product']['images'] != null && 
+                      product['product']['images'] is List && 
+                      product['product']['images'].isNotEmpty) {
+                    var firstImage = product['product']['images'][0];
+                    if (firstImage is Map) {
+                      processedImageUrl = firstImage['url'] ?? '';
+                    } else {
+                      processedImageUrl = firstImage.toString();
+                    }
+                  }
+                  
+                  // Nếu không có trong mảng images, thử lấy từ imageURL
+                  if (processedImageUrl.isEmpty) {
+                    processedImageUrl = product['product']['imageURL'] ?? '';
+                  }
+                  
+                  processedImageUrl = processedImageUrl.trim();
+                  print('WaitingForDeliveryPage - Image URL: $processedImageUrl');
+                  
+                  if (processedImageUrl.isEmpty || !processedImageUrl.startsWith('http')) {
+                    return Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey[300],
+                      child: const Icon(
+                        Icons.image_not_supported,
+                        color: Colors.grey,
                       ),
-                    ),
+                    );
+                  }
+                  
+                  return Image.network(
+                    processedImageUrl,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      print('WaitingForDeliveryPage - Image load error: $error');
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[300],
+                        child: const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
+                        ),
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[300],
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),

@@ -300,25 +300,67 @@ class _EvaluateState extends State<EvaluatePage> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              product['product']['imageURL'] ?? '',
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                print('Error loading image: $error');
-                return Container(
+            child: Builder(
+              builder: (context) {
+                String processedImageUrl = '';
+                
+                // Kiểm tra và lấy URL từ mảng images trước
+                if (product['product']['images'] != null && 
+                    product['product']['images'] is List && 
+                    product['product']['images'].isNotEmpty) {
+                  var firstImage = product['product']['images'][0];
+                  if (firstImage is Map) {
+                    processedImageUrl = firstImage['url'] ?? '';
+                  } else {
+                    processedImageUrl = firstImage.toString();
+                  }
+                }
+                
+                // Nếu không có trong mảng images, thử lấy từ imageURL
+                if (processedImageUrl.isEmpty) {
+                  processedImageUrl = product['product']['imageURL'] ?? '';
+                }
+                
+                processedImageUrl = processedImageUrl.trim();
+                print('EvaluatePage - Image URL: $processedImageUrl');
+                
+                if (processedImageUrl.isEmpty || !processedImageUrl.startsWith('http')) {
+                  return Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.image_not_supported,
+                      color: Colors.grey,
+                      size: 30,
+                    ),
+                  );
+                }
+                
+                return Image.network(
+                  processedImageUrl,
                   width: 80,
                   height: 80,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.image_not_supported,
-                    color: Colors.grey,
-                    size: 30,
-                  ),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    print('EvaluatePage - Image load error: $error');
+                    return Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.image_not_supported,
+                        color: Colors.grey,
+                        size: 30,
+                      ),
+                    );
+                  },
                 );
               },
             ),

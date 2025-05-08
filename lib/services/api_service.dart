@@ -1630,7 +1630,7 @@ class APIService {
     try {
       _initDio();
       final response = await _dio!.get('/api/campsite/$id');
-      
+      print('Campsite Detail API Response: \\${response.data}');
       if (response.statusCode == 200 && response.data['data'] != null) {
         return Campsite.fromJson(response.data['data']);
       }

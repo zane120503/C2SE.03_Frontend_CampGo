@@ -111,13 +111,32 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
         'status': orderData['delivery_status']?.toString().toLowerCase() ?? 'pending',
         'payment_method': orderData['payment_method']?.toString() ?? 'Payment Upon Receipt',
         'products': (orderData['products'] as List?)?.map((product) {
+          // Lấy URL hình ảnh từ mảng images
+          String imageUrl = '';
+          if (product['product']?['images'] != null && 
+              product['product']?['images'] is List && 
+              product['product']?['images'].isNotEmpty) {
+            var firstImage = product['product']?['images'][0];
+            if (firstImage is Map) {
+              imageUrl = firstImage['url'] ?? '';
+            } else {
+              imageUrl = firstImage.toString();
+            }
+          }
+          
+          // Nếu không có trong mảng images, thử lấy từ imageURL
+          if (imageUrl.isEmpty) {
+            imageUrl = product['product']?['imageURL'] ?? '';
+          }
+
           return {
             'product': {
               'productName': product['product']?['productName']?.toString() ?? '',
               'description': product['product']?['description']?.toString() ?? '',
               'price': double.tryParse(product['product']?['price']?.toString() ?? '0') ?? 0.0,
               'discount': int.tryParse(product['product']?['discount']?.toString() ?? '0') ?? 0,
-              'imageURL': product['product']?['imageURL']?.toString() ?? '',
+              'imageURL': imageUrl,
+              'images': product['product']?['images'] ?? [],
             },
             'quantity': int.tryParse(product['quantity']?.toString() ?? '1') ?? 1,
           };  
@@ -258,6 +277,24 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
       productDetail = 'Price: \$${price.toStringAsFixed(2)}';
     }
 
+    // Lấy URL hình ảnh
+    String imageUrl = '';
+    if (firstProduct['product']['images'] != null && 
+        firstProduct['product']['images'] is List && 
+        firstProduct['product']['images'].isNotEmpty) {
+      var firstImage = firstProduct['product']['images'][0];
+      if (firstImage is Map) {
+        imageUrl = firstImage['url'] ?? '';
+      } else {
+        imageUrl = firstImage.toString();
+      }
+    }
+    
+    // Nếu không có trong mảng images, thử lấy từ imageURL
+    if (imageUrl.isEmpty) {
+      imageUrl = firstProduct['product']['imageURL'] ?? '';
+    }
+
     return Padding(
       padding: const EdgeInsets.only(top: 8, right: 10, left: 10),
       child: InkWell(
@@ -268,7 +305,7 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
           color: Colors.white,
           child: _buildProductContent(
             headerText: 'Order ID: ${orderData['_id']}',
-            imageUrl: firstProduct['product']['imageURL'] ?? '',
+            imageUrl: imageUrl,
             productName: firstProduct['product']['productName'] ?? '',
             productDetail: productDetail,
             totalAmountLabel: hasMultipleProducts 
@@ -305,21 +342,42 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  imageUrl,
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
+                child: Builder(
+                  builder: (context) {
+                    String processedImageUrl = imageUrl.trim();
+                    print('WaitForConfirmationPage - Image URL: $processedImageUrl');
+                    
+                    if (processedImageUrl.isEmpty || !processedImageUrl.startsWith('http')) {
+                      return Container(
+                        width: 100,
+                        height: 100,
+                        color: Colors.grey[300],
+                        child: const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
+                          size: 40,
+                        ),
+                      );
+                    }
+                    
+                    return Image.network(
+                      processedImageUrl,
                       width: 100,
                       height: 100,
-                      color: Colors.grey[300],
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        color: Colors.grey,
-                        size: 40,
-                      ),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        print('WaitForConfirmationPage - Image load error: $error');
+                        return Container(
+                          width: 100,
+                          height: 100,
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.image_not_supported,
+                            color: Colors.grey,
+                            size: 40,
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -446,20 +504,59 @@ class _WaitForConfirmationState extends State<WaitForConfirmationPage> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  product['product']['imageURL'] ?? '',
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 100,
-                      height: 100,
-                      color: Colors.grey[300],
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        color: Colors.grey,
-                      ),
+                child: Builder(
+                  builder: (context) {
+                    String processedImageUrl = '';
+                    
+                    // Kiểm tra và lấy URL từ mảng images trước
+                    if (product['product']['images'] != null && 
+                        product['product']['images'] is List && 
+                        product['product']['images'].isNotEmpty) {
+                      var firstImage = product['product']['images'][0];
+                      if (firstImage is Map) {
+                        processedImageUrl = firstImage['url'] ?? '';
+                      } else {
+                        processedImageUrl = firstImage.toString();
+                      }
+                    }
+                    
+                    // Nếu không có trong mảng images, thử lấy từ imageURL
+                    if (processedImageUrl.isEmpty) {
+                      processedImageUrl = product['product']['imageURL'] ?? '';
+                    }
+                    
+                    processedImageUrl = processedImageUrl.trim();
+                    print('WaitForConfirmationPage - Image URL: $processedImageUrl');
+                    
+                    if (processedImageUrl.isEmpty || !processedImageUrl.startsWith('http')) {
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[300],
+                        child: const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
+                        ),
+                      );
+                    }
+                    
+                    return Image.network(
+                      processedImageUrl,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        print('WaitForConfirmationPage - Image load error: $error');
+                        return Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.image_not_supported,
+                            color: Colors.grey,
+                          ),
+                        );
+                      },
                     );
                   },
                 ),

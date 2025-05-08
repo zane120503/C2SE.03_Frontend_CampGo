@@ -20,7 +20,7 @@ class CampingSpot {
   final String description;
   final double rating;
   final List<String> facilities;
-  final List<String> images;
+  final List<CampsiteImage> images;
   final Map<String, dynamic> priceRange;
   final Map<String, dynamic> contactInfo;
   final Map<String, dynamic> openingHours;
@@ -39,17 +39,51 @@ class CampingSpot {
   });
 
   factory CampingSpot.fromJson(Map<String, dynamic> json) {
+    // Lấy danh sách ảnh từ trường images (mảng) hoặc image (object)
+    List<CampsiteImage> images = [];
+    if (json['images'] != null && json['images'] is List && json['images'].isNotEmpty) {
+      images = (json['images'] as List)
+          .where((img) => img is Map && img['url'] != null)
+          .map((img) => CampsiteImage.fromJson(img))
+          .toList();
+    } else if (json['image'] != null && json['image'] is Map && json['image']['url'] != null) {
+      images = [CampsiteImage.fromJson(json['image'])];
+    }
+
+    // Đảm bảo facilities là List<String>
+    List<String> facilities = [];
+    if (json['facilities'] != null && json['facilities'] is List) {
+      facilities = List<String>.from(json['facilities'].map((f) => f.toString()));
+    }
+
     return CampingSpot(
       id: json['_id'] ?? '',
       name: json['campsiteName'] ?? '',
       location: LatLng(json['latitude'] ?? 0.0, json['longitude'] ?? 0.0),
       description: json['description'] ?? '',
       rating: (json['rating'] ?? 0.0).toDouble(),
-      facilities: List<String>.from(json['facilities'] ?? []),
-      images: List<String>.from(json['images']?.map((img) => img['url']) ?? []),
+      facilities: facilities,
+      images: images,
       priceRange: json['priceRange'] ?? {},
       contactInfo: json['contactInfo'] ?? {},
       openingHours: json['openingHours'] ?? {},
+    );
+  }
+}
+
+class CampsiteImage {
+  final String url;
+  final String publicId;
+
+  CampsiteImage({
+    required this.url,
+    required this.publicId,
+  });
+
+  factory CampsiteImage.fromJson(Map<String, dynamic> json) {
+    return CampsiteImage(
+      url: json['url'] ?? '',
+      publicId: json['public_id'] ?? '',
     );
   }
 }
@@ -106,6 +140,42 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       _getCurrentLocation();
     });
     _loadCampsites();
+
+    // Bắt đầu lắng nghe vị trí realtime
+    _positionStreamSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5, // Cập nhật khi di chuyển 5 mét
+      ),
+    ).listen((Position position) {
+      final currentLocation = LatLng(position.latitude, position.longitude);
+      setState(() {
+        _currentPosition = currentLocation;
+        _addCampsiteMarkers();
+
+        // Nếu đang navigation, tính lại khoảng cách đến đích
+        if (_isNavigating && _destinationPoint != null) {
+          double distanceInMeters = Geolocator.distanceBetween(
+            currentLocation.latitude,
+            currentLocation.longitude,
+            _destinationPoint!.latitude,
+            _destinationPoint!.longitude,
+          );
+          _remainingDistance = distanceInMeters;
+
+          // Nếu đã đến nơi (ví dụ < 50m), dừng navigation
+          if (_remainingDistance < 50) {
+            _stopNavigation();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('You have arrived!', textAlign: TextAlign.center),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        }
+      });
+    });
   }
 
   @override
@@ -250,6 +320,8 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     try {
       setState(() => _isLoading = true);
       final updatedSpot = await APIService.getCampsiteDetails(spot.id);
+      print('Parsed images: \\${updatedSpot.images.map((e) => e.url).toList()}');
+      print('Parsed facilities: \\${updatedSpot.facilities}');
       final reviewsData = await APIService.getCampsiteReviews(spot.id);
 
       if (mounted) {
@@ -442,56 +514,13 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     });
     _animationController.forward();
 
-    // Hủy subscription cũ nếu có
-    await _positionStreamSubscription?.cancel();
-
-    // Bắt đầu theo dõi vị trí
-    _positionStreamSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Cập nhật khi di chuyển 10 mét
-      ),
-    ).listen((Position position) async {
-      final currentLatLng = LatLng(position.latitude, position.longitude);
-
-      // Cập nhật vị trí hiện tại
-      setState(() {
-        _currentPosition = currentLatLng;
-      });
-
-      // Tính khoảng cách đến đích
-      double distanceInMeters = Geolocator.distanceBetween(
-        currentLatLng.latitude,
-        currentLatLng.longitude,
-        destination.latitude,
-        destination.longitude,
-      );
-
-      setState(() {
-        _remainingDistance = distanceInMeters;
-      });
-
-      // Nếu đến gần đích (ví dụ: trong phạm vi 50m)
-      if (distanceInMeters < 50) {
-        _stopNavigation();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('You have arrived!',
-        textAlign: TextAlign.center,
-        ),
-        backgroundColor: Colors.green,
-        ),
-        );
-        return;
+    // KHÔNG tạo lại _positionStreamSubscription ở đây nữa
+    // Chỉ cần cập nhật route mỗi 30 giây nếu đang navigation
+    _updateTimer?.cancel();
+    _updateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (_isNavigating && _destinationPoint != null) {
+        _getDirections(_destinationPoint!);
       }
-
-      // Cập nhật đường đi mỗi 30 giây
-      _updateTimer?.cancel();
-      _updateTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-        if (_isNavigating && _destinationPoint != null) {
-          _getDirections(_destinationPoint!);
-        }
-      });
     });
 
     // Lấy đường đi ban đầu
@@ -508,7 +537,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
         _remainingDistance = 0;
       });
     });
-    _positionStreamSubscription?.cancel();
+    // KHÔNG cancel _positionStreamSubscription ở đây nữa
     _updateTimer?.cancel();
   }
 
@@ -777,45 +806,56 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                         ),
                                       ],
                                     ),
+                                    const SizedBox(height: 12),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Tiện ích:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                        if (_selectedSpot!.facilities.isNotEmpty)
+                                          Wrap(
+                                            spacing: 8,
+                                            children: _selectedSpot!.facilities.map((f) => Chip(label: Text(f))).toList(),
+                                          )
+                                        else
+                                          const Text('Không có tiện ích'),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),
-                              const Divider(height: 1),
                               Padding(
-                                padding: const EdgeInsets.all(16.0),
+                                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 0.0),
                                 child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     _buildActionButton(
-                                      icon: Icons.directions,
-                                      label: 'Route',
+                                      icon: Icons.turn_right,
+                                      label: 'Đường đi',
                                       onTap: () {
-                                        _getDirections(
-                                          _selectedSpot!.coordinates,
-                                        );
+                                        _getDirections(_selectedSpot!.coordinates);
                                         setState(() {
                                           _showSpotDetails = false;
                                         });
                                       },
-                                      color: Colors.blue,
+                                      color: Color(0xFF00838F),
+                                      filled: true,
                                     ),
+                                    SizedBox(width: 16),
                                     _buildActionButton(
                                       icon: Icons.navigation,
-                                      label: 'Start',
+                                      label: 'Bắt đầu',
                                       onTap: () {
-                                        _startNavigation(
-                                          _selectedSpot!.coordinates,
-                                        );
+                                        _startNavigation(_selectedSpot!.coordinates);
                                         setState(() {
                                           _showSpotDetails = false;
                                         });
                                       },
-                                      color: Colors.blue,
+                                      color: Color(0xFF00838F),
                                     ),
+                                    SizedBox(width: 16),
                                     _buildActionButton(
                                       icon: Icons.phone,
-                                      label: 'Call',
+                                      label: 'Gọi',
                                       onTap: () {
                                         final phone = _selectedSpot?.contactInfo.phone ?? '';
                                         if (phone.isNotEmpty) {
@@ -826,58 +866,43 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                           );
                                         }
                                       },
-                                      color: Colors.blue,
-                                    ),
-                                    _buildActionButton(
-                                      icon: Icons.bookmark_border,
-                                      label: 'Save',
-                                      onTap: () {
-                                        // TODO: Implement save
-                                      },
-                                      color: Colors.blue,
+                                      color: Color(0xFF00838F),
                                     ),
                                   ],
                                 ),
                               ),
-                              const Divider(height: 1),
-                              if (_selectedSpot!.images.isNotEmpty) ...[
+                              if (_selectedSpot!.images.isNotEmpty)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(
+                                      height: 200,
+                                      child: ListView.builder(
+                                        scrollDirection: Axis.horizontal,
+                                        itemCount: _selectedSpot!.images.length,
+                                        itemBuilder: (context, index) {
+                                          return Padding(
+                                            padding: const EdgeInsets.only(left: 16.0),
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Image.network(
+                                                _selectedSpot!.images[index].url,
+                                                width: 300,
+                                                height: 200,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else
                                 const Padding(
                                   padding: EdgeInsets.all(16.0),
-                                  child: Text(
-                                    'Images',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                  child: Text('Không có hình ảnh'),
                                 ),
-                                SizedBox(
-                                  height: 200,
-                                  child: ListView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: _selectedSpot!.images.length,
-                                    itemBuilder: (context, index) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          left: 16.0,
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          child: Image.network(
-                                            _selectedSpot!.images[index].url,
-                                            width: 300,
-                                            height: 200,
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                              const Divider(height: 1),
                               Padding(
                                 padding: const EdgeInsets.all(16.0),
                                 child: Column(
@@ -1139,16 +1164,32 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     required String label,
     required VoidCallback onTap,
     required Color color,
+    bool filled = false,
   }) {
     return InkWell(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(color: color, fontSize: 12)),
-        ],
+      borderRadius: BorderRadius.circular(32),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: filled ? color : color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(32),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: filled ? Colors.white : color, size: 23),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                color: filled ? Colors.white : color,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

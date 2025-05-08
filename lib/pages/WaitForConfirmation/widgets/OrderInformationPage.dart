@@ -349,50 +349,87 @@ class _OrderInformationState extends State<OrderInformation> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: imageUrl.isNotEmpty
-                  ? Image.network(
-                      imageUrl,
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 60,
-                          height: 60,
-                          color: Colors.grey[300],
-                          child: const Icon(
-                            Icons.image_not_supported,
-                            color: Colors.grey,
-                            size: 30,
-                          ),
-                        );
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          width: 60,
-                          height: 60,
-                          color: Colors.grey[300],
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                          ),
-                        );
-                      },
-                    )
-                  : Container(
-                      width: 60,
-                      height: 60,
+              child: Builder(
+                builder: (context) {
+                  String processedImageUrl = '';
+                  
+                  // Kiểm tra và lấy URL từ mảng images trước
+                  if (productData['product'] != null) {
+                    if (productData['product']['images'] != null && 
+                        productData['product']['images'] is List && 
+                        productData['product']['images'].isNotEmpty) {
+                      var firstImage = productData['product']['images'][0];
+                      if (firstImage is Map) {
+                        processedImageUrl = firstImage['url'] ?? '';
+                      } else {
+                        processedImageUrl = firstImage.toString();
+                      }
+                    }
+                    
+                    // Nếu không có trong mảng images, thử lấy từ imageURL
+                    if (processedImageUrl.isEmpty) {
+                      processedImageUrl = productData['product']['imageURL'] ?? '';
+                    }
+                  }
+                  
+                  processedImageUrl = processedImageUrl.trim();
+                  print('OrderInformationPage - Product Data: $productData');
+                  print('OrderInformationPage - Raw Image URL: $processedImageUrl');
+                  
+                  // Kiểm tra URL hợp lệ
+                  bool isValidUrl = processedImageUrl.isNotEmpty && 
+                                  processedImageUrl.startsWith('http') &&
+                                  !processedImageUrl.contains('example.com');
+                  
+                  if (!isValidUrl) {
+                    print('OrderInformationPage - Invalid image URL');
+                    return Container(
+                      width: 80,
+                      height: 80,
                       color: Colors.grey[300],
                       child: const Icon(
                         Icons.image_not_supported,
                         color: Colors.grey,
-                        size: 30,
                       ),
-                    ),
+                    );
+                  }
+                  
+                  return Image.network(
+                    processedImageUrl,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      print('OrderInformationPage - Image load error: $error');
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[300],
+                        child: const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
+                        ),
+                      );
+                    },
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[300],
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(

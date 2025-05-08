@@ -37,58 +37,39 @@ class Campsite {
   });
 
   factory Campsite.fromJson(Map<String, dynamic> json) {
-    // Xử lý trường hợp API trả về dữ liệu rút gọn
-    if (json['coordinates'] != null) {
-      return Campsite(
-        id: json['id'] ?? '',
-        name: json['name'] ?? '',
-        location: json['location'] ?? '',
-        coordinates: LatLng(
-          json['coordinates']['lat']?.toDouble() ?? 0.0,
-          json['coordinates']['lng']?.toDouble() ?? 0.0,
-        ),
-        description: json['description'] ?? '',
-        images: [],
-        facilities: [],
-        rating: (json['rating'] ?? 0.0).toDouble(),
-        reviews: [],
-        priceRange: PriceRange(min: 0, max: 0),
-        contactInfo: ContactInfo(),
-        openingHours: OpeningHours(),
-        isActive: true,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+    // Parse images
+    List<CampsiteImage> images = [];
+    if (json['images'] != null && json['images'] is List) {
+      images = (json['images'] as List)
+          .map((img) => CampsiteImage.fromJson(img))
+          .toList();
     }
 
-    // Xử lý trường hợp API trả về dữ liệu đầy đủ
+    // Parse facilities
+    List<String> facilities = [];
+    if (json['facilities'] != null && json['facilities'] is List) {
+      facilities = List<String>.from(json['facilities']);
+    }
+
     return Campsite(
-      id: json['_id'] ?? '',
-      name: json['campsiteName'] ?? '',
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
       location: json['location'] ?? '',
       coordinates: LatLng(
-        json['latitude']?.toDouble() ?? 0.0,
-        json['longitude']?.toDouble() ?? 0.0,
+        json['coordinates']?['lat'] ?? 0.0,
+        json['coordinates']?['lng'] ?? 0.0,
       ),
       description: json['description'] ?? '',
-      images: (json['images'] as List<dynamic>?)
-          ?.map((img) => CampsiteImage.fromJson(img))
-          .toList() ?? [],
-      facilities: List<String>.from(json['facilities'] ?? []),
       rating: (json['rating'] ?? 0.0).toDouble(),
-      reviews: (json['reviews'] as List<dynamic>?)
-          ?.map((review) => CampsiteReview.fromJson(review))
-          .toList() ?? [],
+      reviews: [],
+      facilities: facilities,
+      images: images,
       priceRange: PriceRange.fromJson(json['priceRange'] ?? {}),
       contactInfo: ContactInfo.fromJson(json['contactInfo'] ?? {}),
       openingHours: OpeningHours.fromJson(json['openingHours'] ?? {}),
       isActive: json['isActive'] ?? true,
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
-          : DateTime.now(),
-      updatedAt: json['updatedAt'] != null 
-          ? DateTime.parse(json['updatedAt']) 
-          : DateTime.now(),
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.now(),
     );
   }
 }

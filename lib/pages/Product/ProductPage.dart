@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:CampGo/services/api_service.dart';
 import 'package:CampGo/pages/Product/widgets/ProductReviews.dart';
+import 'dart:async';
 
 class ProductPage extends StatefulWidget {
   final String productId;
@@ -17,11 +18,16 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
   int quantity = 1;
   bool isFavorite = false;
   late TabController _tabController;
+  int _currentImageIndex = 0;
+  late PageController _pageController;
+  double _dragStartX = 0.0;
+  Timer? _autoSlideTimer;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _pageController = PageController();
     _loadProduct();
     _checkFavoriteStatus();
   }
@@ -54,6 +60,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
                   productData['images'][0]['url'] : 
                   productData['images'][0]) : 
                 ''),
+            'images': productData['images'],
             'stockQuantity': productData['stockQuantity'],
             'soldCount': productData['sold'],
             'brand': productData['brand'],
@@ -158,6 +165,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
   @override
   void dispose() {
     _tabController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -404,17 +412,17 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
         ],
         backgroundColor: Colors.white,
         scrolledUnderElevation: 0,
-      surfaceTintColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
       backgroundColor: const Color(0xFFEDECF2),
       body: Column(
         children: [
+          _buildProductImage(screenWidth, screenHeight),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  _buildProductImage(screenWidth, screenHeight),
                   const SizedBox(height: 15),
                   _buildProductDetails(),
                   const SizedBox(height: 10),
@@ -431,30 +439,72 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
   }
 
   Widget _buildProductImage(double screenWidth, double screenHeight) {
+    final images = product!['images'] as List?;
     return Container(
       width: screenWidth,
       height: screenHeight * 0.4,
       decoration: const BoxDecoration(
-        color: Color(0xFFD9D9D9),
+        color: Color.fromARGB(255, 192, 190, 190),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.elliptical(250, 70),
           bottomRight: Radius.elliptical(250, 70),
         ),
       ),
-      child: Hero(
-        tag: 'product_image_${widget.productId}',
-        child: Image.network(
-          product!['imageURL'] ?? '',
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return const Icon(
-              Icons.image_not_supported,
-              size: 80,
-              color: Colors.grey,
-            );
-          },
-        ),
-      ),
+      child: images != null && images.isNotEmpty
+          ? Stack(
+              children: [
+                PageView.builder(
+                  controller: _pageController,
+                  itemCount: images.length,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentImageIndex = index;
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final imageUrl = images[index] is Map ? images[index]['url'] : images[index];
+                    return Image.network(
+                      imageUrl ?? '',
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.image_not_supported,
+                          size: 80,
+                          color: Colors.grey,
+                        );
+                      },
+                    );
+                  },
+                ),
+                if (images.length > 1)
+                  Positioned(
+                    right: 12,
+                    bottom: 35,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        '${_currentImageIndex + 1}/${images.length}',
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                    ),
+                  ),
+              ],
+            )
+          : Image.network(
+              product!['imageURL'] ?? '',
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(
+                  Icons.image_not_supported,
+                  size: 80,
+                  color: Colors.grey,
+                );
+              },
+            ),
     );
   }
 

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import 'package:CampGo/models/user_model.dart';
+import 'package:CampGo/services/data_service.dart';
 
 class ChatBotPage extends StatefulWidget {
   const ChatBotPage({super.key});
@@ -16,11 +18,23 @@ class _ChatBotPageState extends State<ChatBotPage> {
   late GenerativeModel _model;
   late ChatSession _chat;
   bool _isLoading = false;
+  final DataService _dataService = DataService();
+  UserProfile? _userProfile;
 
   @override
   void initState() {
     super.initState();
     _initializeChat();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    UserProfile? userProfile = await _dataService.getUserProfile();
+    if (userProfile != null) {
+      setState(() {
+        _userProfile = userProfile;
+      });
+    }
   }
 
   Future<void> _initializeChat() async {
@@ -110,7 +124,7 @@ class _ChatBotPageState extends State<ChatBotPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CampGo Assistant'),
+        title: const Text('CampGo ChatBot'),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
@@ -132,19 +146,50 @@ class _ChatBotPageState extends State<ChatBotPage> {
                   final message = _messages[index];
                   final isUser = message['role'] == 'user';
 
-                  return Align(
-                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isUser ? Colors.blue[100] : Colors.grey[200],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        message['content']!,
-                        style: const TextStyle(fontSize: 16),
-                      ),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (!isUser) 
+                          Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            child: const CircleAvatar(
+                              radius: 16,
+                              backgroundColor: Colors.blue,
+                              child: Icon(Icons.assistant, color: Colors.white, size: 20),
+                            ),
+                          ),
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isUser ? Colors.blue[100] : Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              message['content']!,
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                        if (isUser)
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            child: _userProfile?.profileImage != null && 
+                                  _userProfile!.profileImage!['url'] != null
+                                ? CircleAvatar(
+                                    radius: 16,
+                                    backgroundImage: NetworkImage(_userProfile!.profileImage!['url']),
+                                  )
+                                : const CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: Colors.blue,
+                                    child: Icon(Icons.person, color: Colors.white, size: 20),
+                                  ),
+                          ),
+                      ],
                     ),
                   );
                 },
