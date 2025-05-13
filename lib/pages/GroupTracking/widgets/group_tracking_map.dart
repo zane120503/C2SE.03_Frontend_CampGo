@@ -12,6 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:CampGo/models/campsite_review.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:CampGo/pages/Campsite Owner/CampsiteOwnerPage.dart';
 
 class GroupTrackingMap extends StatefulWidget {
   final String groupId;
@@ -301,30 +302,25 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
     }
   }
 
-  void _showCallDialog(String phoneNumber) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Gọi điện'),
-        content: Text(phoneNumber, style: const TextStyle(fontSize: 20, color: Colors.blue)),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              final uri = Uri(scheme: 'tel', path: phoneNumber);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri);
-              }
-              Navigator.of(context).pop();
-            },
-            child: Text('Gọi $phoneNumber'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Hủy'),
-          ),
-        ],
-      ),
+  void _showCallDialog(String phoneNumber) async {
+    final uri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể thực hiện cuộc gọi!')),
+      );
+    }
+  }
+
+  Future<void> _openCampsiteOwnerPage() async {
+    final shouldReload = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CampsiteOwnerPage()),
     );
+    if (shouldReload == true) {
+      _loadCampsites();
+    }
   }
 
   @override
@@ -457,6 +453,17 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                     ),
                                   ],
                                 ),
+                                SizedBox(height: 4),
+                                Text(
+                                  _selectedCampsite!.location,
+                                  style: TextStyle(fontSize: 15, color: const Color.fromARGB(221, 55, 55, 55)),
+                                ),
+                                SizedBox(height: 6),
+                                const Text('Description:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                                Text(
+                                  _selectedCampsite!.description,
+                                  style: TextStyle(fontSize: 14, color: const Color.fromARGB(221, 55, 55, 55)), 
+                                ),
                                 Row(
                                   children: [
                                     Text(
@@ -490,66 +497,97 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Camping site • ${_selectedCampsite!.priceRange.min}-${_selectedCampsite!.priceRange.max}K VNĐ',
+                                  'Camping site • ' +
+                                    ((_selectedCampsite!.priceRange.min == 0 && _selectedCampsite!.priceRange.max == 0)
+                                      ? 'Free'
+                                      : '${formatPrice(_selectedCampsite!.priceRange.min)} - ${formatPrice(_selectedCampsite!.priceRange.max)} USD'),
                                   style: TextStyle(
-                                    color: Colors.grey[800],
+                                    color: (_selectedCampsite!.priceRange.min == 0 && _selectedCampsite!.priceRange.max == 0)
+                                        ? Colors.green
+                                        : Colors.black87,
                                     fontSize: 14,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green[100],
-                                        borderRadius: BorderRadius.circular(
-                                          12,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'Open now',
-                                        style: TextStyle(
-                                          color: Colors.green[700],
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
+                                if ((_selectedCampsite!.openingHours.open != null && _selectedCampsite!.openingHours.open?.isNotEmpty == true) &&
+                                    (_selectedCampsite!.openingHours.close != null && _selectedCampsite!.openingHours.close?.isNotEmpty == true))
+                                  Text(
+                                    'Opening hours • ${_selectedCampsite!.openingHours.open} - ${_selectedCampsite!.openingHours.close}',
+                                    style: TextStyle(
+                                      color: Colors.grey[700],
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Closing time ${_selectedCampsite!.openingHours.close}',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                      ),
+                                  ),
+                                if ((_selectedCampsite!.contactInfo.email != null && _selectedCampsite!.contactInfo.email.toString().isNotEmpty))
+                                  Padding(
+                                    padding: EdgeInsets.only(top: 4),
+                                    child: Text('Email: ${_selectedCampsite!.contactInfo.email}', style: TextStyle(fontSize: 14, color: Colors.black87)),
+                                  ),
+                                if ((_selectedCampsite!.contactInfo.website != null && _selectedCampsite!.contactInfo.website.toString().isNotEmpty))
+                                  Padding(
+                                    padding: EdgeInsets.only(top: 2),
+                                    child: GestureDetector(
+                                      onTap: () async {
+                                        final url = _selectedCampsite!.contactInfo.website?.toString() ?? '';
+                                        if (url.isNotEmpty && await canLaunchUrl(Uri.parse(url))) {
+                                          await launchUrl(Uri.parse(url));
+                                        }
+                                      },
+                                      child: Text('Website: ${_selectedCampsite!.contactInfo.website}', style: TextStyle(fontSize: 14, color: Colors.blue, decoration: TextDecoration.underline)),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                const Text('Tiện ích:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                if (_selectedCampsite != null && _selectedCampsite!.facilities.isNotEmpty)
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: _selectedCampsite!.facilities
+                                          .map((f) => Padding(
+                                                padding: const EdgeInsets.only(right: 8.0),
+                                                child: Chip(label: Text(f)),
+                                              ))
+                                          .toList(),
+                                    ),
+                                  )
+                                else
+                                  const Text('Không có tiện ích'),
+                                const SizedBox(height: 8),
+                                if ((_selectedCampsite!.contactInfo.email != null && _selectedCampsite!.contactInfo.email.toString().isNotEmpty))
+                                  Text('Email: ${_selectedCampsite!.contactInfo.email}', style: TextStyle(fontSize: 14, color: Colors.black87)),
+                                if ((_selectedCampsite!.contactInfo.website != null && _selectedCampsite!.contactInfo.website.toString().isNotEmpty))
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final url = _selectedCampsite!.contactInfo.website?.toString() ?? '';
+                                      if (url.isNotEmpty && await canLaunchUrl(Uri.parse(url))) {
+                                        await launchUrl(Uri.parse(url));
+                                      }
+                                    },
+                                    child: Text('Website: ${_selectedCampsite!.contactInfo.website}', style: TextStyle(fontSize: 14, color: Colors.blue, decoration: TextDecoration.underline)),
+                                  ),
                               ],
                             ),
                           ),
-                          const Divider(height: 1),
                           Padding(
-                            padding: const EdgeInsets.all(16.0),
+                            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 0.0),
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 _buildActionButton(
-                                  icon: Icons.directions,
-                                  label: 'Route',
+                                  icon: Icons.turn_right,
+                                  label: 'Đường đi',
                                   onTap: () {
                                     _getDirections(_selectedCampsite!.coordinates);
                                     setState(() {
                                       _showSpotDetails = false;
                                     });
                                   },
-                                  color: Colors.blue,
+                                  color: Color(0xFF00838F),
+                                  filled: true,
                                 ),
+                                SizedBox(width: 16),
                                 _buildActionButton(
                                   icon: Icons.navigation,
-                                  label: 'Start',
+                                  label: 'Bắt đầu',
                                   onTap: () {
                                     _startNavigation(_selectedCampsite!.coordinates);
                                     setState(() {
@@ -557,11 +595,12 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                       _showNavigationSheet = true;
                                     });
                                   },
-                                  color: Colors.blue,
+                                  color: Color(0xFF00838F),
                                 ),
+                                SizedBox(width: 16),
                                 _buildActionButton(
                                   icon: Icons.phone,
-                                  label: 'Call',
+                                  label: 'Gọi',
                                   onTap: () {
                                     final phone = _selectedCampsite?.contactInfo.phone ?? '';
                                     if (phone.isNotEmpty) {
@@ -572,19 +611,45 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                       );
                                     }
                                   },
-                                  color: Colors.blue,
-                                ),
-                                _buildActionButton(
-                                  icon: Icons.bookmark_border,
-                                  label: 'Save',
-                                  onTap: () {
-                                    // TODO: Implement save
-                                  },
-                                  color: Colors.blue,
+                                  color: Color(0xFF00838F),
                                 ),
                               ],
                             ),
                           ),
+                          SizedBox(height: 16),
+                          // Thêm phần hiển thị ảnh giống MapPage
+                          if (_selectedCampsite!.images != null && _selectedCampsite!.images.isNotEmpty)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(
+                                  height: 200,
+                                  child: ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: _selectedCampsite!.images.length,
+                                    itemBuilder: (context, index) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(left: 16.0),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.network(
+                                            _selectedCampsite!.images[index].url,
+                                            width: 300,
+                                            height: 200,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Text('Không có hình ảnh'),
+                            ),
                           const Divider(height: 1),
                           Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -673,7 +738,6 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                       );
                                     },
                                   ),
-                                const SizedBox(height: 12),
                                 Center(
                                   child: ElevatedButton.icon(
                                     icon: Icon(Icons.rate_review),
@@ -786,19 +850,38 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
     );
   }
 
-  Widget _buildActionButton({required IconData icon, required String label, required VoidCallback onTap, Color? color}) {
-    return Column(
-      children: [
-        InkWell(
-          onTap: onTap,
-          child: CircleAvatar(
-            backgroundColor: color ?? Colors.blue,
-            child: Icon(icon, color: Colors.white),
-          ),
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required Color color,
+    bool filled = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(32),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: filled ? color : color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(32),
         ),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: filled ? Colors.white : color, size: 23),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: TextStyle(
+                color: filled ? Colors.white : color,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -880,14 +963,36 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                         scrollDirection: Axis.horizontal,
                         itemCount: selectedImages.length,
                         itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: Image.file(
-                              File(selectedImages[index].path),
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                            ),
+                          return Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: Image.file(
+                                  File(selectedImages[index].path),
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      selectedImages.removeAt(index);
+                                    });
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.close, color: const Color.fromARGB(255, 255, 255, 255), size: 18),
+                                  ),
+                                ),
+                              ),
+                            ],
                           );
                         },
                       ),
@@ -946,5 +1051,13 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
     if (rating >= 4.0) return Colors.green[500]!;
     if (rating >= 3.5) return Colors.orange;
     return Colors.red;
+  }
+
+  String formatPrice(dynamic price) {
+    if (price == null) return '0';
+    if (price is int) return '${price.toString()}';
+    if (price is double) return '${price.toStringAsFixed(0)}';
+    if (price is String) return '${double.tryParse(price)?.toStringAsFixed(0) ?? '0'}';
+    return '${price.toString()}';
   }
 }

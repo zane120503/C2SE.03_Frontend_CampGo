@@ -7,6 +7,8 @@ class UserProfile {
   final Map<String, dynamic>? profileImage;
   final bool isProfileCompleted;
   final String gender;
+  final bool isCampsiteOwner;
+  final Map<String, dynamic>? campsiteOwnerRequest;
 
   UserProfile({
     required this.id,
@@ -17,6 +19,8 @@ class UserProfile {
     this.profileImage,
     required this.isProfileCompleted,
     required this.gender,
+    this.isCampsiteOwner = false,
+    this.campsiteOwnerRequest,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -29,6 +33,8 @@ class UserProfile {
       profileImage: json['profileImage'] is Map ? json['profileImage'] : null,
       isProfileCompleted: json['isProfileCompleted'] ?? false,
       gender: json['gender']?.toString() ?? 'male',
+      isCampsiteOwner: json['isCampsiteOwner'] ?? false,
+      campsiteOwnerRequest: json['campsiteOwnerRequest'] is Map ? json['campsiteOwnerRequest'] : null,
     );
   }
 
@@ -42,6 +48,8 @@ class UserProfile {
       'profileImage': profileImage,
       'isProfileCompleted': isProfileCompleted,
       'gender': gender,
+      'isCampsiteOwner': isCampsiteOwner,
+      'campsiteOwnerRequest': campsiteOwnerRequest,
     };
   }
 

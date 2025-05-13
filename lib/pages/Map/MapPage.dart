@@ -12,6 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:CampGo/pages/Campsite Owner/CampsiteOwnerPage.dart';
 
 class CampingSpot {
   final String id;
@@ -52,8 +53,16 @@ class CampingSpot {
 
     // Đảm bảo facilities là List<String>
     List<String> facilities = [];
-    if (json['facilities'] != null && json['facilities'] is List) {
-      facilities = List<String>.from(json['facilities'].map((f) => f.toString()));
+    if (json['facilities'] != null) {
+      if (json['facilities'] is String) {
+        try {
+          facilities = List<String>.from(jsonDecode(json['facilities']));
+        } catch (e) {
+          facilities = [];
+        }
+      } else if (json['facilities'] is List) {
+        facilities = List<String>.from(json['facilities'].map((f) => f.toString()));
+      }
     }
 
     return CampingSpot(
@@ -736,6 +745,17 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                         ),
                                       ],
                                     ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      _selectedSpot!.location,
+                                      style: TextStyle(fontSize: 15, color: Colors.grey[700]),
+                                    ),
+                                    SizedBox(height: 6),
+                                    const Text('Description:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                                    Text(
+                                      _selectedSpot!.description,
+                                      style: TextStyle(fontSize: 14, color: Colors.black87),
+                                    ),
                                     Row(
                                       children: [
                                         Text(
@@ -769,62 +789,50 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      'Camping site • ${_selectedSpot!.priceRange.min}-${_selectedSpot!.priceRange.max}K VNĐ',
+                                      'Camping site • ' +
+                                        ((_selectedSpot!.priceRange.min == 0 && _selectedSpot!.priceRange.max == 0)
+                                          ? 'Free'
+                                          : '${formatPrice(_selectedSpot!.priceRange.min)} - ${formatPrice(_selectedSpot!.priceRange.max)} USD'),
                                       style: TextStyle(
-                                        color: Colors.grey[800],
+                                        color: (_selectedSpot!.priceRange.min == 0 && _selectedSpot!.priceRange.max == 0)
+                                            ? Colors.green
+                                            : Colors.black87,
                                         fontSize: 14,
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green[100],
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'Open now',
-                                            style: TextStyle(
-                                              color: Colors.green[700],
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
+                                    if ((_selectedSpot!.openingHours.open != null && _selectedSpot!.openingHours.open?.isNotEmpty == true) &&
+                                        (_selectedSpot!.openingHours.close != null && _selectedSpot!.openingHours.close?.isNotEmpty == true))
+                                      Text(
+                                        'Opening hours • ${_selectedSpot!.openingHours.open} - ${_selectedSpot!.openingHours.close}',
+                                        style: TextStyle(
+                                          color: const Color.fromARGB(255, 56, 56, 56),
+                                          fontWeight: FontWeight.w500,
                                         ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Closing time ${_selectedSpot!.openingHours.close}',
-                                          style: TextStyle(
-                                            color: Colors.grey[600],
-                                          ),
+                                      ),
+                                    if ((_selectedSpot!.contactInfo.email != null && _selectedSpot!.contactInfo.email.toString().isNotEmpty))
+                                      Padding(
+                                        padding: EdgeInsets.only(top: 4),
+                                        child: Text('Email: ${_selectedSpot!.contactInfo.email}', style: TextStyle(fontSize: 14, color: Colors.black87)),
+                                      ),
+                                    if ((_selectedSpot!.contactInfo.website != null && _selectedSpot!.contactInfo.website.toString().isNotEmpty))
+                                      Padding(
+                                        padding: EdgeInsets.only(top: 2),
+                                        child: GestureDetector(
+                                          onTap: () async {
+                                            final url = _selectedSpot!.contactInfo.website?.toString() ?? '';
+                                            if (url.isNotEmpty && await canLaunchUrl(Uri.parse(url))) {
+                                              await launchUrl(Uri.parse(url));
+                                            }
+                                          },
+                                          child: Text('Website: ${_selectedSpot!.contactInfo.website}', style: TextStyle(fontSize: 14, color: Colors.blue, decoration: TextDecoration.underline)),
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text('Tiện ích:', style: TextStyle(fontWeight: FontWeight.bold)),
-                                        if (_selectedSpot!.facilities.isNotEmpty)
-                                          Wrap(
-                                            spacing: 8,
-                                            children: _selectedSpot!.facilities.map((f) => Chip(label: Text(f))).toList(),
-                                          )
-                                        else
-                                          const Text('Không có tiện ích'),
-                                      ],
-                                    ),
+                                      ),
                                   ],
                                 ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 0.0),
+                                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 0.0),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -871,6 +879,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                   ],
                                 ),
                               ),
+                              SizedBox(height: 16),
                               if (_selectedSpot!.images.isNotEmpty)
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -996,17 +1005,36 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                                         scrollDirection: Axis.horizontal,
                                                         itemCount: review.images.length,
                                                         itemBuilder: (context, imageIndex) {
-                                                          return Padding(
-                                                            padding: const EdgeInsets.only(right: 8),
-                                                            child: ClipRRect(
-                                                              borderRadius: BorderRadius.circular(8),
-                                                              child: Image.network(
-                                                                review.images[imageIndex],
-                                                                height: 100,
-                                                                width: 100,
-                                                                fit: BoxFit.cover,
+                                                          return Stack(
+                                                            children: [
+                                                              Padding(
+                                                                padding: const EdgeInsets.only(right: 8),
+                                                                child: Image.network(
+                                                                  review.images[imageIndex],
+                                                                  height: 100,
+                                                                  width: 100,
+                                                                  fit: BoxFit.cover,
+                                                                ),
                                                               ),
-                                                            ),
+                                                              Positioned(
+                                                                top: 0,
+                                                                right: 0,
+                                                                child: GestureDetector(
+                                                                  onTap: () {
+                                                                    setState(() {
+                                                                      review.images.removeAt(imageIndex);
+                                                                    });
+                                                                  },
+                                                                  child: Container(
+                                                                    decoration: BoxDecoration(
+                                                                      color: Colors.black54,
+                                                                      shape: BoxShape.circle,
+                                                                    ),
+                                                                    child: Icon(Icons.close, color: Colors.white, size: 18),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
                                                           );
                                                         },
                                                       ),
@@ -1272,14 +1300,36 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                         scrollDirection: Axis.horizontal,
                         itemCount: selectedImages.length,
                         itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: Image.file(
-                              File(selectedImages[index].path),
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                            ),
+                          return Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: Image.file(
+                                  File(selectedImages[index].path),
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      selectedImages.removeAt(index);
+                                    });
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.close, color: Colors.white, size: 18),
+                                  ),
+                                ),
+                              ),
+                            ],
                           );
                         },
                       ),
@@ -1335,30 +1385,25 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     );
   }
 
-  void _showCallDialog(String phoneNumber) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Gọi điện'),
-        content: Text(phoneNumber, style: const TextStyle(fontSize: 20, color: Colors.blue)),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              final uri = Uri(scheme: 'tel', path: phoneNumber);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri);
-              }
-              Navigator.of(context).pop();
-            },
-            child: Text('Gọi $phoneNumber'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Hủy'),
-          ),
-        ],
-      ),
+  void _showCallDialog(String phoneNumber) async {
+    final uri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể thực hiện cuộc gọi!')),
+      );
+    }
+  }
+
+  Future<void> _openCampsiteOwnerPage() async {
+    final shouldReload = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CampsiteOwnerPage()),
     );
+    if (shouldReload == true) {
+      _loadCampsites();
+    }
   }
 }
 
@@ -1451,4 +1496,12 @@ class CampsiteSearchDelegate extends SearchDelegate {
       },
     );
   }
+}
+
+String formatPrice(dynamic price) {
+  if (price == null) return '0';
+  if (price is int) return '${price.toString()}';
+  if (price is double) return '${price.toStringAsFixed(0)}';
+  if (price is String) return '${double.tryParse(price)?.toStringAsFixed(0) ?? '0'}';
+  return '${price.toString()}';
 }

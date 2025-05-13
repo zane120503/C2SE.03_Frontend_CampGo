@@ -1880,4 +1880,105 @@ class APIService {
       return {'success': false, 'message': response.body};
     }
   }
+
+  static Future<Map<String, dynamic>> requestCampsiteOwner() async {
+    final token = await ShareService.getToken();
+    if (token == null) {
+      return {'success': false, 'message': 'Bạn chưa đăng nhập'};
+    }
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/campsite-owner/request'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    final data = json.decode(response.body);
+    return data;
+  }
+
+  static Future<List<Map<String, dynamic>>> getMyCampsites() async {
+    final token = await ShareService.getToken();
+    if (token == null) {
+      throw Exception('Bạn chưa đăng nhập');
+    }
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/campsite-owner/my-campsites'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    final data = json.decode(response.body);
+    print('DATA GET MY CAMPSITES: ' + json.encode(data));
+    if (data['success'] == true && data['data'] is List) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    } else {
+      throw Exception(data['message'] ?? 'Không lấy được danh sách campsite');
+    }
+  }
+
+  static Future<Map<String, dynamic>> createOrUpdateCampsiteOwner({
+    required String name,
+    required String location,
+    required double latitude,
+    required double longitude,
+    required String description,
+    required List<String> facilities,
+    required double minPrice,
+    required double maxPrice,
+    required String phone,
+    required String email,
+    required String website,
+    required String openHour,
+    required String closeHour,
+    required List<File> images,
+    String? id,
+  }) async {
+    final token = await ShareService.getToken();
+    if (token == null) {
+      return {'success': false, 'message': 'Bạn chưa đăng nhập'};
+    }
+    var uri = Uri.parse('$baseUrl/api/campsite-owner/campsites');
+    var request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'Bearer $token';
+    request.fields['campsiteName'] = name;
+    request.fields['location'] = location;
+    request.fields['latitude'] = latitude.toString();
+    request.fields['longitude'] = longitude.toString();
+    request.fields['description'] = description;
+    request.fields['facilities'] = json.encode(facilities);
+    request.fields['priceRange[min]'] = minPrice.toString();
+    request.fields['priceRange[max]'] = maxPrice.toString();
+    request.fields['contactInfo[phone]'] = phone;
+    request.fields['contactInfo[email]'] = email;
+    request.fields['contactInfo[website]'] = website;
+    request.fields['openingHours[open]'] = openHour;
+    request.fields['openingHours[close]'] = closeHour;
+    if (id != null) request.fields['_id'] = id;
+    for (var img in images) {
+      request.files.add(await http.MultipartFile.fromPath('images', img.path));
+    }
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    final data = json.decode(response.body);
+    return data;
+  }
+
+  static Future<Map<String, dynamic>> deleteCampsite(String campsiteId) async {
+    try {
+      _initDio();
+      print('Đang gửi request xóa campsite với ID: $campsiteId');
+      final response = await _dio!.delete('/api/campsite-owner/campsites/$campsiteId');
+      print('Response từ server: ${response.data}');
+      return response.data;
+    } catch (e) {
+      print('Lỗi khi xóa campsite: $e');
+      if (e is DioException) {
+        print('Chi tiết lỗi DioException: ${e.response?.data}');
+        throw e.response?.data['message'] ?? 'Xóa campsite thất bại';
+      }
+      throw 'Xóa campsite thất bại';
+    }
+  }
 } 

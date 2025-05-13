@@ -81,8 +81,9 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
       return;
     }
 
+    final groupName = _groupNameController.text;
     final groupId = await _trackingService.createGroup(
-      _groupNameController.text,
+      groupName,
       user.id,
       user.fullName,
     );
@@ -90,9 +91,10 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
     setState(() {
       _currentGroupId = groupId;
       _isCreator = true;
+      _groupInfo = {'name': groupName}; // Gán tạm tên nhóm để UI hiển thị ngay
     });
 
-    _loadGroupInfo();
+    await _loadGroupInfo(); // Cập nhật lại groupInfo thật sự từ backend
 
     if (mounted) {
       final shortCode = shortRoomCode(groupId);
@@ -517,8 +519,8 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
             ),
           if (_currentGroupId != null)
             Positioned(
-              left: 16,
-              top: 16,
+              left: 10,
+              top: 8,
               child: Column(
                 children: [
                   const SizedBox(height: 8),
