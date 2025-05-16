@@ -493,7 +493,7 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                     textCapitalization: TextCapitalization.characters,
                     style: const TextStyle(letterSpacing: 8.0),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]')),
+                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
                       TextInputFormatter.withFunction((oldValue, newValue) {
                         return TextEditingValue(
                           text: newValue.text.toUpperCase(),

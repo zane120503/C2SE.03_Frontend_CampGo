@@ -69,11 +69,8 @@ flutter:
     - assets/data/
     - assets/images/
     - assets/images/StartNow.jpg
-    - assets/images/img1.png
-    # - assets/data/Notification.json
     - assets/data/Product.json
     - assets/data/Categories.json
-    # - assets/data/Review.json
     - assets/data/Login.json
     - assets/data/SignUp.json
     - assets/data/Cart.json
@@ -81,3 +78,5 @@ flutter:
     - assets/data/Wishlist.json
     - assets/data/UserProfile.json
     - assets/data/AddressUser.json
+    - assets/data/addresses.json
+    - assets/data/vietnam_addresses.json

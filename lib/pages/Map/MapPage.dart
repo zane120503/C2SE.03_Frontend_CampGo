@@ -551,10 +551,12 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   }
 
   Future<void> _getDirections(LatLng destination) async {
+    print('_getDirections called, _currentPosition: [32m[1m[4m[7m$_currentPosition[0m');
     if (_currentPosition == null) {
+      print('ERROR: _currentPosition is null!');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enable location to use the route feature',
+          content: Text('Vui lòng bật định vị để sử dụng tính năng chỉ đường',
           textAlign: TextAlign.center,
           ),
         ),
@@ -577,6 +579,8 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
           '$baseUrl?api_key=$apiKey&start=${_currentPosition!.longitude},${_currentPosition!.latitude}&end=${destination.longitude},${destination.latitude}',
         ),
       );
+      print('Directions API status: [34m${response.statusCode}[0m');
+      print('Directions API body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

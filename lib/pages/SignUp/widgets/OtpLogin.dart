@@ -21,7 +21,7 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
   final TextEditingController otpController = TextEditingController();
   final AuthService _authService = AuthService();
   int _secondsRemaining = 60;
-  late final Timer _timer;
+  Timer? _timer;
   bool _isLoading = false;
 
   @override
@@ -32,6 +32,7 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
   }
 
   void _startTimer() {
+    _timer?.cancel(); // Hủy timer cũ nếu có
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_secondsRemaining == 0) {
         timer.cancel();
@@ -222,7 +223,7 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
 
   @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
     otpController.dispose();
     super.dispose();
   }

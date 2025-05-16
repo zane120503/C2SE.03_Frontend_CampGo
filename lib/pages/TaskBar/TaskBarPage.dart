@@ -309,8 +309,8 @@ class _TaskBarState extends State<TaskBar> {
           print('Min Price: $minPrice');
           print('Max Price: $maxPrice');
 
-          // Gửi category ID hoặc 'all' nếu không có category được chọn
-          final categoryToSend = selectedCategory ?? 'All Products';
+          // Gửi category ID hoặc null nếu không có category được chọn (All Products)
+          final categoryToSend = selectedCategory; // null nếu All Products
           widget.onFiltersApplied(categoryToSend, minPrice, maxPrice);
           widget.onClose(); 
         }

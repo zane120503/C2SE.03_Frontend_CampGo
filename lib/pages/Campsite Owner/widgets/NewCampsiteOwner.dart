@@ -332,7 +332,10 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                             child: _buildTextField(
                               controller: _minPriceController,
                               label: 'Giá tối thiểu',
-                              keyboardType: TextInputType.number,
+                              keyboardType: TextInputType.text,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z\s]')),
+                              ],
                             ),
                           ),
                           SizedBox(width: 16),
@@ -340,7 +343,10 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                             child: _buildTextField(
                               controller: _maxPriceController,
                               label: 'Giá tối đa',
-                              keyboardType: TextInputType.number,
+                              keyboardType: TextInputType.text,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z\s]')),
+                              ],
                             ),
                           ),
                         ],

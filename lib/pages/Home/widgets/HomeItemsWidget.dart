@@ -311,15 +311,15 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
                 Stack(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(top: 20),
+                      padding: const EdgeInsets.only(top: 40),
                       child: ClipRRect(
                         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                         child: imageUrl.isNotEmpty
                             ? Image.network(
                                 imageUrl,
-                                height: 150,
+                                height: 120,
                                 width: double.infinity,
-                                fit: BoxFit.cover,
+                                fit: BoxFit.contain,
                                 errorBuilder: (context, error, stackTrace) {
                                   return _buildPlaceholder();
                                 },
@@ -459,7 +459,7 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
 
   Widget _buildPlaceholder() {
     return Container(
-      height: 150,
+      height: 120,
       color: Colors.grey[100],
       child: Center(
         child: Icon(
@@ -496,7 +496,7 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
 
     if (imageUrl.isEmpty) {
       return Container(
-        height: 140,
+        height: 120,
         color: Colors.grey[100],
         child: Center(
           child: Icon(
@@ -512,13 +512,13 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       child: Image.network(
         imageUrl,
-        height: 140,
+        height: 120,
         width: double.infinity,
-        fit: BoxFit.cover,
+        fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
           print('Error loading image: $error');
           return Container(
-            height: 140,
+            height: 120,
             color: Colors.grey[100],
             child: Center(
               child: Icon(
@@ -532,7 +532,7 @@ class _HomeItemsWidgetState extends State<HomeItemsWidget> {
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return Container(
-            height: 140,
+            height: 120,
             color: Colors.grey[100],
             child: Center(
               child: CircularProgressIndicator(

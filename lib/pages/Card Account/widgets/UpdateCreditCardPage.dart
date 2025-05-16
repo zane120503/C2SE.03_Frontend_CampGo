@@ -169,7 +169,7 @@ class _UpdateCreditCardPageState extends State<UpdateCreditCardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFEDECF2),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,

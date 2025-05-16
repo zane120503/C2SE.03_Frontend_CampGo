@@ -287,6 +287,22 @@ class _EvaluateState extends State<EvaluatePage> {
   }
 
   Widget _buildProductItem(Map<String, dynamic> product) {
+    // Xử lý lấy processedImageUrl ở đầu hàm
+    String processedImageUrl = '';
+    if (product['product']['images'] != null && product['product']['images'] is List && product['product']['images'].isNotEmpty) {
+      var firstImage = product['product']['images'][0];
+      if (firstImage is Map) {
+        processedImageUrl = firstImage['url'] ?? '';
+      } else {
+        processedImageUrl = firstImage.toString();
+      }
+    }
+    if (processedImageUrl.isEmpty) {
+      processedImageUrl = product['product']['imageURL'] ?? '';
+    }
+    processedImageUrl = processedImageUrl.trim();
+    print('EvaluatePage - Image URL: $processedImageUrl');
+
     // Tính toán giá sau khi giảm giá
     double price = (product['product']['price'] ?? 0).toDouble();
     int discount = (product['product']['discount'] ?? 0).toInt();
@@ -300,32 +316,8 @@ class _EvaluateState extends State<EvaluatePage> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Builder(
-              builder: (context) {
-                String processedImageUrl = '';
-                
-                // Kiểm tra và lấy URL từ mảng images trước
-                if (product['product']['images'] != null && 
-                    product['product']['images'] is List && 
-                    product['product']['images'].isNotEmpty) {
-                  var firstImage = product['product']['images'][0];
-                  if (firstImage is Map) {
-                    processedImageUrl = firstImage['url'] ?? '';
-                  } else {
-                    processedImageUrl = firstImage.toString();
-                  }
-                }
-                
-                // Nếu không có trong mảng images, thử lấy từ imageURL
-                if (processedImageUrl.isEmpty) {
-                  processedImageUrl = product['product']['imageURL'] ?? '';
-                }
-                
-                processedImageUrl = processedImageUrl.trim();
-                print('EvaluatePage - Image URL: $processedImageUrl');
-                
-                if (processedImageUrl.isEmpty || !processedImageUrl.startsWith('http')) {
-                  return Container(
+            child: (processedImageUrl.isEmpty || !processedImageUrl.startsWith('http'))
+                ? Container(
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
@@ -337,33 +329,29 @@ class _EvaluateState extends State<EvaluatePage> {
                       color: Colors.grey,
                       size: 30,
                     ),
-                  );
-                }
-                
-                return Image.network(
-                  processedImageUrl,
-                  width: 80,
-                  height: 80,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    print('EvaluatePage - Image load error: $error');
-                    return Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        color: Colors.grey,
-                        size: 30,
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+                  )
+                : Image.network(
+                    processedImageUrl,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      print('EvaluatePage - Image load error: $error');
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
+                          size: 30,
+                        ),
+                      );
+                    },
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -429,7 +417,7 @@ class _EvaluateState extends State<EvaluatePage> {
                                     builder: (context) => EvaluateFeedBackPage(
                                       productId: product['product']['_id'],
                                       productName: product['product']['productName'],
-                                      productImage: product['product']['imageURL'],
+                                      productImage: processedImageUrl,
                                     ),
                                   ),
                                 );

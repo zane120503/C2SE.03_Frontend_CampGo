@@ -392,24 +392,31 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          product!['name'] ?? '',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 25,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: isFavorite ? Colors.red : Colors.black,
-              size: 30,
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                product!['name'] ?? '',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 25,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
             ),
-            onPressed: toggleFavorite,
-          ),
-          const SizedBox(width: 8),
-        ],
+            IconButton(
+              icon: Icon(
+                isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: isFavorite ? Colors.red : Colors.black,
+                size: 30,
+              ),
+              onPressed: toggleFavorite,
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
         backgroundColor: Colors.white,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -443,6 +450,7 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
     return Container(
       width: screenWidth,
       height: screenHeight * 0.4,
+      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
       decoration: const BoxDecoration(
         color: Color.fromARGB(255, 192, 190, 190),
         borderRadius: BorderRadius.only(
@@ -463,16 +471,19 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
                   },
                   itemBuilder: (context, index) {
                     final imageUrl = images[index] is Map ? images[index]['url'] : images[index];
-                    return Image.network(
-                      imageUrl ?? '',
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.image_not_supported,
-                          size: 80,
-                          color: Colors.grey,
-                        );
-                      },
+                    return Container(
+                      padding: const EdgeInsets.all(10),
+                      child: Image.network(
+                        imageUrl ?? '',
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.image_not_supported,
+                            size: 60,
+                            color: Colors.grey,
+                          );
+                        },
+                      ),
                     );
                   },
                 ),
@@ -494,16 +505,19 @@ class _ProductPageState extends State<ProductPage> with SingleTickerProviderStat
                   ),
               ],
             )
-          : Image.network(
-              product!['imageURL'] ?? '',
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.image_not_supported,
-                  size: 80,
-                  color: Colors.grey,
-                );
-              },
+          : Container(
+              padding: const EdgeInsets.all(10),
+              child: Image.network(
+                product!['imageURL'] ?? '',
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.image_not_supported,
+                    size: 60,
+                    color: Colors.grey,
+                  );
+                },
+              ),
             ),
     );
   }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:CampGo/services/api_service.dart';
+import 'package:CampGo/services/address_service.dart';
 import 'package:CampGo/models/address_model.dart';
 import 'package:flutter/material.dart';
 import 'package:dropdown_search/dropdown_search.dart';
@@ -29,64 +30,14 @@ class _AddNewAddressPageState extends State<AddNewAddressPage> {
   String selectedCountry = '';
   final _formKey = GlobalKey<FormState>();
   
-  // Danh sách tỉnh thành
-  List<String> _states = [
-    'Hà Nội', 'TP Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ',
-    'An Giang', 'Bà Rịa - Vũng Tàu', 'Bắc Giang', 'Bắc Kạn', 'Bạc Liêu',
-    'Bắc Ninh', 'Bến Tre', 'Bình Định', 'Bình Dương', 'Bình Phước',
-    'Bình Thuận', 'Cà Mau', 'Cao Bằng', 'Đắk Lắk', 'Đắk Nông',
-    'Điện Biên', 'Đồng Nai', 'Đồng Tháp', 'Gia Lai', 'Hà Giang',
-    'Hà Nam', 'Hà Tĩnh', 'Hải Dương', 'Hậu Giang', 'Hòa Bình',
-    'Hưng Yên', 'Khánh Hòa', 'Kiên Giang', 'Kon Tum', 'Lai Châu',
-    'Lâm Đồng', 'Lạng Sơn', 'Lào Cai', 'Long An', 'Nam Định',
-    'Nghệ An', 'Ninh Bình', 'Ninh Thuận', 'Phú Thọ', 'Phú Yên',
-    'Quảng Bình', 'Quảng Nam', 'Quảng Ngãi', 'Quảng Ninh', 'Quảng Trị',
-    'Sóc Trăng', 'Sơn La', 'Tây Ninh', 'Thái Bình', 'Thái Nguyên',
-    'Thanh Hóa', 'Thừa Thiên Huế', 'Tiền Giang', 'Trà Vinh', 'Tuyên Quang',
-    'Vĩnh Long', 'Vĩnh Phúc', 'Yên Bái'
-  ];
-
-  // Map quận/huyện theo tỉnh thành
-  Map<String, List<String>> _citiesByState = {
-    'Hà Nội': [
-      'Ba Đình', 'Hoàn Kiếm', 'Hai Bà Trưng', 'Đống Đa', 'Tây Hồ', 'Cầu Giấy', 
-      'Thanh Xuân', 'Hoàng Mai', 'Long Biên', 'Nam Từ Liêm', 'Bắc Từ Liêm', 'Hà Đông',
-      'Sơn Tây', 'Ba Vì', 'Chương Mỹ', 'Đan Phượng', 'Đông Anh', 'Gia Lâm',
-      'Hoài Đức', 'Mê Linh', 'Mỹ Đức', 'Phú Xuyên', 'Phúc Thọ', 'Quốc Oai',
-      'Sóc Sơn', 'Thạch Thất', 'Thanh Oai', 'Thanh Trì', 'Thường Tín', 'Ứng Hòa'
-    ],
-    'TP Hồ Chí Minh': [
-      'Quận 1', 'Quận 3', 'Quận 4', 'Quận 5', 'Quận 6', 'Quận 7', 'Quận 8',
-      'Quận 10', 'Quận 11', 'Quận 12', 'Quận Bình Tân', 'Quận Bình Thạnh',
-      'Quận Gò Vấp', 'Quận Phú Nhuận', 'Quận Tân Bình', 'Quận Tân Phú',
-      'Thành phố Thủ Đức', 'Huyện Bình Chánh', 'Huyện Cần Giờ', 'Huyện Củ Chi',
-      'Huyện Hóc Môn', 'Huyện Nhà Bè'
-    ],
-    'Đà Nẵng': [
-      'Hải Châu', 'Thanh Khê', 'Sơn Trà', 'Ngũ Hành Sơn', 'Liên Chiểu', 
-      'Cẩm Lệ', 'Hòa Vang', 'Hoàng Sa'
-    ],
-  };
-
-  // Map phường/xã theo quận/huyện
-  Map<String, List<String>> _wardsByCity = {
-    'Hải Châu': [
-      'Phường Hải Châu 1', 'Phường Hải Châu 2', 'Phường Nam Dương', 
-      'Phường Phước Ninh', 'Phường Bình Hiên', 'Phường Bình Thuận',
-      'Phường Hòa Thuận Đông', 'Phường Hòa Thuận Tây', 'Phường Thạch Thang',
-      'Phường Thanh Bình', 'Phường Thuận Phước', 'Phường Hòa Cường Bắc',
-      'Phường Hòa Cường Nam'
-    ],
-    'Thanh Khê': [
-      'Phường An Khê', 'Phường Chính Gián', 'Phường Hòa Khê', 
-      'Phường Tam Thuận', 'Phường Tân Chính', 'Phường Thạc Gián',
-      'Phường Thanh Khê Đông', 'Phường Thanh Khê Tây', 'Phường Vĩnh Trung',
-      'Phường Xuân Hà'
-    ],
-    // Thêm các phường/xã khác cho các quận/huyện khác
-  };
+  // Danh sách địa chỉ sẽ được lấy từ API
+  List<String> _states = [];
+  List<String> _districts = [];
+  List<String> _wards = [];
+  bool _isLoading = false;
 
   final APIService apiService = APIService();
+  final AddressService addressService = AddressService();
 
   @override
   void initState() {
@@ -95,25 +46,88 @@ class _AddNewAddressPageState extends State<AddNewAddressPage> {
   }
 
   Future<void> _loadAddressData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      final response = await apiService.getAddresses();
-      if (response['success'] == true) {
-        setState(() {
-          if (response['data']['provinces'] != null) {
-            _states = List<String>.from(response['data']['provinces']);
-          }
-          if (response['data']['districts'] != null) {
-            _citiesByState = Map<String, List<String>>.from(
-              response['data']['districts'].map((key, value) => MapEntry(
-                key,
-                List<String>.from(value),
-              )),
-            );
-          }
-        });
-      }
+      // Lấy danh sách tỉnh/thành phố
+      final provinces = await addressService.getProvinces();
+      setState(() {
+        _states = provinces;
+        _isLoading = false;
+      });
     } catch (e) {
       print('Error loading address data: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể tải dữ liệu địa chỉ. Vui lòng thử lại sau.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadDistricts(String provinceName) async {
+    if (provinceName.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+      _districts = [];
+      _wards = [];
+      selectedCity = '';
+      selectedWard = '';
+    });
+
+    try {
+      final districts = await addressService.getDistricts(provinceName);
+      setState(() {
+        _districts = districts;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading districts: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể tải danh sách quận/huyện. Vui lòng thử lại sau.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadWards(String districtName) async {
+    if (districtName.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+      _wards = [];
+      selectedWard = '';
+    });
+
+    try {
+      final wards = await addressService.getWards(districtName);
+      setState(() {
+        _wards = wards;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading wards: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể tải danh sách phường/xã. Vui lòng thử lại sau.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -241,250 +255,267 @@ class _AddNewAddressPageState extends State<AddNewAddressPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Add new address',
+          'Thêm địa chỉ mới',
           style: TextStyle(color: Colors.black),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(30),
-              topRight: Radius.circular(30),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                const Text(
-                  'Contact information',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
                 ),
-                const SizedBox(height: 16),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildTextField(
-                        controller: _fullNameController,
-                        label: 'Full name',
-                        showDivider: true,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    const Text(
+                      'Thông tin liên hệ',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      _buildTextField(
-                        controller: _phoneController,
-                        label: 'Phone number',
-                        keyboardType: TextInputType.phone,
+                      child: Column(
+                        children: [
+                          _buildTextField(
+                            controller: _fullNameController,
+                            label: 'Họ và tên',
+                            showDivider: true,
+                          ),
+                          _buildTextField(
+                            controller: _phoneController,
+                            label: 'Số điện thoại',
+                            keyboardType: TextInputType.phone,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Address',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            DropdownSearch<String>(
-                              popupProps: PopupProps.menu(
-                                showSearchBox: true,
-                                searchFieldProps: TextFieldProps(
-                                  decoration: InputDecoration(
-                                    hintText: "Search Province/City",
-                                    prefixIcon: Icon(Icons.search),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Địa chỉ',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                DropdownSearch<String>(
+                                  popupProps: PopupProps.menu(
+                                    showSearchBox: true,
+                                    searchFieldProps: TextFieldProps(
+                                      decoration: InputDecoration(
+                                        hintText: "Tìm kiếm tỉnh/thành phố",
+                                        prefixIcon: Icon(Icons.search),
+                                      ),
+                                    ),
+                                    showSelectedItems: true,
                                   ),
-                                ),
-                                showSelectedItems: true,
-                              ),
-                              items: _states,
-                              dropdownDecoratorProps: DropDownDecoratorProps(
-                                dropdownSearchDecoration: InputDecoration(
-                                  labelText: "Province/City",
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                              onChanged: (String? value) {
-                                setState(() {
-                                  selectedState = value ?? '';
-                                  selectedCity = '';
-                                  selectedWard = '';
-                                });
-                              },
-                              selectedItem: selectedState,
-                            ),
-                            const SizedBox(height: 16),
-                            DropdownSearch<String>(
-                              enabled: selectedState.isNotEmpty,
-                              popupProps: PopupProps.menu(
-                                showSearchBox: true,
-                                searchFieldProps: TextFieldProps(
-                                  decoration: InputDecoration(
-                                    hintText: "Search District/County",
-                                    prefixIcon: Icon(Icons.search),
+                                  items: _states,
+                                  dropdownDecoratorProps: DropDownDecoratorProps(
+                                    dropdownSearchDecoration: InputDecoration(
+                                      labelText: "Tỉnh/Thành phố",
+                                      border: OutlineInputBorder(),
+                                    ),
                                   ),
+                                  onChanged: (String? value) {
+                                    setState(() {
+                                      selectedState = value ?? '';
+                                      selectedCity = '';
+                                      selectedWard = '';
+                                    });
+                                    if (value != null) {
+                                      _loadDistricts(value);
+                                    }
+                                  },
+                                  selectedItem: selectedState,
                                 ),
-                                showSelectedItems: true,
-                              ),
-                              items: _citiesByState[selectedState] ?? [],
-                              dropdownDecoratorProps: DropDownDecoratorProps(
-                                dropdownSearchDecoration: InputDecoration(
-                                  labelText: "District/County",
-                                  border: OutlineInputBorder(),
-                                  enabled: selectedState.isNotEmpty,
-                                ),
-                              ),
-                              onChanged: (String? value) {
-                                setState(() {
-                                  selectedCity = value ?? '';
-                                  selectedWard = '';
-                                });
-                              },
-                              selectedItem: selectedCity,
-                            ),
-                            const SizedBox(height: 16),
-                            DropdownSearch<String>(
-                              enabled: selectedCity.isNotEmpty,
-                              popupProps: PopupProps.menu(
-                                showSearchBox: true,
-                                searchFieldProps: TextFieldProps(
-                                  decoration: InputDecoration(
-                                    hintText: "Search Ward/Village",
-                                    prefixIcon: Icon(Icons.search),
+                                const SizedBox(height: 16),
+                                DropdownSearch<String>(
+                                  enabled: selectedState.isNotEmpty && !_isLoading,
+                                  popupProps: PopupProps.menu(
+                                    showSearchBox: true,
+                                    searchFieldProps: TextFieldProps(
+                                      decoration: InputDecoration(
+                                        hintText: "Tìm kiếm quận/huyện",
+                                        prefixIcon: Icon(Icons.search),
+                                      ),
+                                    ),
+                                    showSelectedItems: true,
                                   ),
+                                  items: _districts,
+                                  dropdownDecoratorProps: DropDownDecoratorProps(
+                                    dropdownSearchDecoration: InputDecoration(
+                                      labelText: "Quận/Huyện",
+                                      border: OutlineInputBorder(),
+                                      enabled: selectedState.isNotEmpty && !_isLoading,
+                                    ),
+                                  ),
+                                  onChanged: (String? value) {
+                                    setState(() {
+                                      selectedCity = value ?? '';
+                                      selectedWard = '';
+                                    });
+                                    if (value != null) {
+                                      _loadWards(value);
+                                    }
+                                  },
+                                  selectedItem: selectedCity,
                                 ),
-                                showSelectedItems: true,
-                              ),
-                              items: _wardsByCity[selectedCity] ?? [],
-                              dropdownDecoratorProps: DropDownDecoratorProps(
-                                dropdownSearchDecoration: InputDecoration(
-                                  labelText: "Ward/Village",
-                                  border: OutlineInputBorder(),
-                                  enabled: selectedCity.isNotEmpty,
+                                const SizedBox(height: 16),
+                                DropdownSearch<String>(
+                                  enabled: selectedCity.isNotEmpty && !_isLoading,
+                                  popupProps: PopupProps.menu(
+                                    showSearchBox: true,
+                                    searchFieldProps: TextFieldProps(
+                                      decoration: InputDecoration(
+                                        hintText: "Tìm kiếm phường/xã",
+                                        prefixIcon: Icon(Icons.search),
+                                      ),
+                                    ),
+                                    showSelectedItems: true,
+                                  ),
+                                  items: _wards,
+                                  dropdownDecoratorProps: DropDownDecoratorProps(
+                                    dropdownSearchDecoration: InputDecoration(
+                                      labelText: "Phường/Xã",
+                                      border: OutlineInputBorder(),
+                                      enabled: selectedCity.isNotEmpty && !_isLoading,
+                                    ),
+                                  ),
+                                  onChanged: (String? value) {
+                                    setState(() {
+                                      selectedWard = value ?? '';
+                                    });
+                                  },
+                                  selectedItem: selectedWard,
                                 ),
-                              ),
-                              onChanged: (String? value) {
-                                setState(() {
-                                  selectedWard = value ?? '';
-                                });
-                              },
-                              selectedItem: selectedWard,
+                              ],
                             ),
-                          ],
+                          ),
+                          _buildTextField(
+                            controller: _streetController,
+                            label: 'Số nhà, tên đường',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Set as default address'),
+                          Switch(
+                            value: isDefaultAddress,
+                            onChanged: (value) {
+                              setState(() {
+                                isDefaultAddress = value;
+                              });
+                            },
+                            activeColor: Colors.red,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    TextFormField(
+                      controller: _countryController,
+                      decoration: InputDecoration(
+                        labelText: 'Country',
+                        hintText: 'Enter country name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        prefixIcon: Icon(Icons.flag),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter country name';
+                        }
+                        if (!RegExp(r'^[a-zA-ZÀ-ỹ\s]+$').hasMatch(value)) {
+                          return 'Country name must contain only letters';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _zipCodeController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Postal code',
+                        hintText: 'Enter postal code',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        prefixIcon: Icon(Icons.local_post_office),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter postal code';
+                        }
+                        if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                          return 'Postal code must contain only numbers';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: _submitAddress,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      _buildTextField(
-                        controller: _streetController,
-                        label: 'House number, Street name',
+                      child: const Text(
+                        'Complete',
+                        style: TextStyle(fontSize: 16, color: Colors.white),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Set as default address'),
-                      Switch(
-                        value: isDefaultAddress,
-                        onChanged: (value) {
-                          setState(() {
-                            isDefaultAddress = value;
-                          });
-                        },
-                        activeColor: Colors.red,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _countryController,
-                  decoration: InputDecoration(
-                    labelText: 'Country',
-                    hintText: 'Enter country name',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
                     ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    prefixIcon: Icon(Icons.flag),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter country name';
-                    }
-                    if (!RegExp(r'^[a-zA-ZÀ-ỹ\s]+$').hasMatch(value)) {
-                      return 'Country name must contain only letters';
-                    }
-                    return null;
-                  },
+                  ],
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _zipCodeController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Postal code',
-                    hintText: 'Enter postal code',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    prefixIcon: Icon(Icons.local_post_office),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter postal code';
-                    }
-                    if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                      return 'Postal code must contain only numbers';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _submitAddress,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Complete',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+        ],
       ),
     );
   }

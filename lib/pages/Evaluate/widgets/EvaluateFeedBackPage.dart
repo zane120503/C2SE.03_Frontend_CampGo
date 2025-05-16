@@ -66,38 +66,12 @@ class _EvaluateFeedBackPageState extends State<EvaluateFeedBackPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Debug log kiểm tra giá trị productImage
+    print('EvaluateFeedBackPage - productImage: [32m[1m[4m${widget.productImage}[0m');
     if (_hasReviewed) {
       return Scaffold(
         backgroundColor: const Color(0xFFEDECF2),
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(82.0),
-          child: AppBar(
-            backgroundColor: Colors.white,
-            leading: Padding(
-              padding: const EdgeInsets.only(top: 15.0),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back,
-                  size: 30,
-                  color: Colors.black,
-                ),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-            title: Container(
-              margin: const EdgeInsets.only(top: 0),
-              child: const Text(
-                'Write A Review',
-                style: TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-            centerTitle: true,
-          ),
-        ),
+        appBar: _buildAppBar(),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -155,224 +129,238 @@ class _EvaluateFeedBackPageState extends State<EvaluateFeedBackPage> {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFEDECF2),
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(82.0),
-          child: AppBar(
-            backgroundColor: Colors.white,
-            leading: Padding(
-              padding: const EdgeInsets.only(top: 15.0),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back,
-                  size: 30,
-                  color: Colors.black,
-                ),
-                onPressed: () => Navigator.pop(context),
-              ),
+        appBar: _buildAppBar(),
+        body: Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFEDECF2),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(30),
+              topRight: Radius.circular(30),
             ),
-            title: Container(
-              margin: const EdgeInsets.only(top: 0),
-              child: const Text(
-                'Write A Review',
-                style: TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-            centerTitle: true,
           ),
-        ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Product information
-                Card(
-                  child: ListTile(
-                    leading: widget.productImage != null && widget.productImage!.startsWith('http')
-                        ? Image.network(
-                            widget.productImage!,
-                            width: 50,
-                            height: 50,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              print('Error loading product image: $error');
-                              return Container(
-                                width: 50,
-                                height: 50,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.image_not_supported),
-                              );
-                            },
-                          )
-                        : Container(
-                            width: 50,
-                            height: 50,
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.image_not_supported),
-                          ),
-                    title: Text(
-                      widget.productName,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Rating stars
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(5, (index) {
-                    return IconButton(
-                      icon: Icon(
-                        index < _rating ? Icons.star : Icons.star_border,
-                        color: Colors.amber,
-                        size: 40,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Product information
+                  Card(
+                    child: ListTile(
+                      leading: (widget.productImage != null && widget.productImage!.isNotEmpty && widget.productImage!.startsWith('http'))
+                          ? Image.network(
+                              widget.productImage!,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                print('Error loading product image: [31m$error[0m');
+                                return Container(
+                                  width: 50,
+                                  height: 50,
+                                  color: Colors.grey[300],
+                                  child: const Icon(Icons.image_not_supported),
+                                );
+                              },
+                            )
+                          : Container(
+                              width: 50,
+                              height: 50,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.image_not_supported),
+                            ),
+                      title: Text(
+                        widget.productName,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _rating = index + 1;
-                        });
-                      },
-                    );
-                  }),
-                ),
-
-                const SizedBox(height: 16),
-                // Comment field
-                TextField(
-                  controller: _commentController,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    hintText: 'Write your review here...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  textInputAction: TextInputAction.done,
-                  onEditingComplete: () {
-                    FocusScope.of(context).unfocus();
-                  },
-                ),
-
-                // Image picker
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _pickImages,
-                  icon: const Icon(Icons.add_photo_alternate),
-                  label: const Text('Add Photos'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 16),
 
-                // Selected images preview
-                if (_selectedImages.isNotEmpty)
-                  Container(
-                    height: 100,
-                    margin: const EdgeInsets.symmetric(vertical: 16),
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _selectedImages.length,
-                      itemBuilder: (context, index) {
-                        final imagePath = _selectedImages[index].path;
-                        return Stack(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.file(
-                                  _selectedImages[index],
-                                  width: 100,
-                                  height: 100,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    print('Error loading image: $error');
-                                    return Container(
-                                      width: 100,
-                                      height: 100,
-                                      color: Colors.grey[300],
-                                      child: const Icon(Icons.image_not_supported),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              right: 7.5,
-                              top: 0,
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedImages.removeAt(index);
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.close,
-                                    size: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
+                  // Rating stars
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        icon: Icon(
+                          index < _rating ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 40,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _rating = index + 1;
+                          });
+                        },
+                      );
+                    }),
                   ),
 
-                // Submit button
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isSubmitting ? null : _submitReview,
+                  const SizedBox(height: 16),
+                  // Comment field
+                  TextField(
+                    controller: _commentController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: 'Write your review here...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    textInputAction: TextInputAction.done,
+                    onEditingComplete: () {
+                      FocusScope.of(context).unfocus();
+                    },
+                  ),
+
+                  // Image picker
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _pickImages,
+                    icon: const Icon(Icons.add_photo_alternate),
+                    label: const Text('Add Photos'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepOrange,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text(
-                            'Submit Review',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
                   ),
-                ),
-              ],
+
+                  // Selected images preview
+                  if (_selectedImages.isNotEmpty)
+                    Container(
+                      height: 100,
+                      margin: const EdgeInsets.symmetric(vertical: 16),
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _selectedImages.length,
+                        itemBuilder: (context, index) {
+                          final imagePath = _selectedImages[index].path;
+                          return Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    _selectedImages[index],
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      print('Error loading image: $error');
+                                      return Container(
+                                        width: 100,
+                                        height: 100,
+                                        color: Colors.grey[300],
+                                        child: const Icon(Icons.image_not_supported),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                right: 7.5,
+                                top: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedImages.removeAt(index);
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+
+                  // Submit button
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isSubmitting ? null : _submitReview,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepOrange,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Submit Review',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(58.0),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(30),
+            topRight: Radius.circular(30),
+          ),
+        ),
+        child: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, size: 30, color: Colors.black),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text(
+            'Write A Review',
+            style: TextStyle(
+              fontSize: 23,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          centerTitle: true,
         ),
       ),
     );
