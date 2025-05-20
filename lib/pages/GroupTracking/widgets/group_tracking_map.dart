@@ -68,7 +68,11 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
       setState(() {
         _currentPosition = LatLng(position.latitude, position.longitude);
       });
-      _mapController.move(_currentPosition!, 15.0);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_currentPosition != null) {
+          _mapController.move(_currentPosition!, 15.0);
+        }
+      });
     } catch (e) {
       print('Error getting location: $e');
     }

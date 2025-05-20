@@ -90,7 +90,10 @@ class RealtimeTrackingService {
   // Lấy thông tin nhóm
   Future<Map<String, dynamic>?> getGroupInfo(String groupId) async {
     final snapshot = await _database.child('groups/$groupId').get();
-    return snapshot.value as Map<String, dynamic>?;
+    if (snapshot.value is Map) {
+      return Map<String, dynamic>.from(snapshot.value as Map);
+    }
+    return null;
   }
 
   // Rời nhóm
