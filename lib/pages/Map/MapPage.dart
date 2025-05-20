@@ -1009,36 +1009,14 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                                         scrollDirection: Axis.horizontal,
                                                         itemCount: review.images.length,
                                                         itemBuilder: (context, imageIndex) {
-                                                          return Stack(
-                                                            children: [
-                                                              Padding(
-                                                                padding: const EdgeInsets.only(right: 8),
-                                                                child: Image.network(
-                                                                  review.images[imageIndex],
-                                                                  height: 100,
-                                                                  width: 100,
-                                                                  fit: BoxFit.cover,
-                                                                ),
-                                                              ),
-                                                              Positioned(
-                                                                top: 0,
-                                                                right: 0,
-                                                                child: GestureDetector(
-                                                                  onTap: () {
-                                                                    setState(() {
-                                                                      review.images.removeAt(imageIndex);
-                                                                    });
-                                                                  },
-                                                                  child: Container(
-                                                                    decoration: BoxDecoration(
-                                                                      color: Colors.black54,
-                                                                      shape: BoxShape.circle,
-                                                                    ),
-                                                                    child: Icon(Icons.close, color: Colors.white, size: 18),
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            ],
+                                                          return Padding(
+                                                            padding: const EdgeInsets.only(right: 8),
+                                                            child: Image.network(
+                                                              review.images[imageIndex],
+                                                              height: 100,
+                                                              width: 100,
+                                                              fit: BoxFit.cover,
+                                                            ),
                                                           );
                                                         },
                                                       ),

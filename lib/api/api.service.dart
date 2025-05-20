@@ -405,6 +405,7 @@ class APIService {
     List<String> imagePaths, {
     String? firstName,
     String? lastName,
+    String? orderId,
   }) async {
     try {
       _initDio();
@@ -421,56 +422,26 @@ class APIService {
       print('Images: $imagePaths');
       print('First Name: $firstName');
       print('Last Name: $lastName');
+      print('OrderId: $orderId');
       print('Using token: $token');
 
       Response response;
 
       if (imagePaths.isNotEmpty) {
-        // Nếu có ảnh, sử dụng FormData
-        final formData = FormData();
-        
-        // Thêm các trường bắt buộc
-        formData.fields.addAll([
-          MapEntry('productId', productId),
-          MapEntry('rating', rating.toString()),
-          MapEntry('comment', comment),
-          if (firstName != null) MapEntry('firstName', firstName),
-          if (lastName != null) MapEntry('lastName', lastName),
-        ]);
-        
-        // Thêm ảnh
-        for (var imagePath in imagePaths) {
-          // Kiểm tra xem đường dẫn ảnh có hợp lệ không
-          if (imagePath.startsWith('file://')) {
-            imagePath = imagePath.replaceFirst('file://', '');
-          }
-          
-          String? mimeType = lookupMimeType(imagePath);
-          if (mimeType == null) {
-            throw Exception('Không thể xác định loại file');
-          }
+        // Nếu có ảnh, gửi dữ liệu dạng multipart
+        final formData = FormData.fromMap({
+          'productId': productId,
+          'rating': rating,
+          'comment': comment,
+          if (firstName != null) 'firstName': firstName,
+          if (lastName != null) 'lastName': lastName,
+          if (orderId != null) 'orderId': orderId,
+          'images': [
+            for (var path in imagePaths)
+              await MultipartFile.fromFile(path, filename: path.split('/').last),
+          ],
+        });
 
-          // Kiểm tra kích thước file
-          final file = File(imagePath);
-          if (!file.existsSync()) {
-            throw Exception('File không tồn tại: $imagePath');
-          }
-
-          final fileSize = file.lengthSync();
-          if (fileSize > 5 * 1024 * 1024) { // 5MB
-            throw Exception('Kích thước file quá lớn (tối đa 5MB)');
-          }
-
-          formData.files.add(MapEntry(
-            'images',
-            await MultipartFile.fromFile(
-              imagePath,
-              contentType: MediaType.parse(mimeType),
-            ),
-          ));
-        }
-
-        print('Sending form data with images');
         response = await _dio!.post(
           '/api/products/reviews',
           data: formData,
@@ -492,6 +463,7 @@ class APIService {
           'comment': comment,
           if (firstName != null) 'firstName': firstName,
           if (lastName != null) 'lastName': lastName,
+          if (orderId != null) 'orderId': orderId,
         };
 
         print('Sending JSON data: $data');

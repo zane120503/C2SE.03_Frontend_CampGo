@@ -46,7 +46,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '517502393576',
     projectId: 'campgo-project',
     authDomain: 'campgo-project.firebaseapp.com',
-    storageBucket: 'campgo-project.firebasestorage.app',
+    storageBucket: 'campgo-project.appspot.com',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
@@ -54,7 +54,7 @@ class DefaultFirebaseOptions {
     appId: '1:517502393576:android:f16759205fdaddbc5efd5d',
     messagingSenderId: '517502393576',
     projectId: 'campgo-project',
-    storageBucket: 'campgo-project.firebasestorage.app',
+    storageBucket: 'campgo-project.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -62,7 +62,7 @@ class DefaultFirebaseOptions {
     appId: '1:517502393576:ios:ffb925941aac01615efd5d',
     messagingSenderId: '517502393576',
     projectId: 'campgo-project',
-    storageBucket: 'campgo-project.firebasestorage.app',
+    storageBucket: 'campgo-project.appspot.com',
     iosBundleId: 'com.example.CampGo',
   );
 
@@ -71,7 +71,7 @@ class DefaultFirebaseOptions {
     appId: '1:517502393576:ios:b5392978cae9fe425efd5d',
     messagingSenderId: '517502393576',
     projectId: 'campgo-project',
-    storageBucket: 'campgo-project.firebasestorage.app',
+    storageBucket: 'campgo-project.appspot.com',
     iosBundleId: 'com.example.campGoFrontend',
   );
 
@@ -81,6 +81,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: '517502393576',
     projectId: 'campgo-project',
     authDomain: 'campgo-project.firebaseapp.com',
-    storageBucket: 'campgo-project.firebasestorage.app',
+    storageBucket: 'campgo-project.appspot.com',
   );
 }

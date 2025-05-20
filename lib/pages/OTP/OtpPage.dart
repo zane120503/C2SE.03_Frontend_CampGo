@@ -39,11 +39,10 @@ class _OtpPageState extends State<OtpPage> {
         setState(() {
           _isOtpExpired = true;
         });
-        // Hiển thị thông báo OTP hết hạn
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('The OTP has expired. Please request a new code.',  
+              content: Text('Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.',
               textAlign: TextAlign.center,
               ),
               backgroundColor: Colors.red,
@@ -114,7 +113,7 @@ class _OtpPageState extends State<OtpPage> {
     if (_isOtpExpired) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('The OTP has expired. Please request a new code.',
+          content: Text('Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.',
           textAlign: TextAlign.center,
           ),
           backgroundColor: Colors.red,
@@ -126,7 +125,7 @@ class _OtpPageState extends State<OtpPage> {
     if (otpController.text.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter the 6-digit OTP',
+          content: Text('Vui lòng nhập đủ 6 ký tự OTP',
           textAlign: TextAlign.center,
           ),
           backgroundColor: Colors.red,
@@ -183,10 +182,17 @@ class _OtpPageState extends State<OtpPage> {
         );
       } else {
         if (!mounted) return;
+        String errorMessage = response['message'] ?? 'Mã OTP không chính xác';
+        if (errorMessage.contains('expired')) {
+          errorMessage = 'Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.';
+          setState(() {
+            _isOtpExpired = true;
+          });
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              response['message'] ?? 'The OTP is incorrect',
+              errorMessage,
               textAlign: TextAlign.center,
             ),
             backgroundColor: Colors.red,
@@ -213,6 +219,18 @@ class _OtpPageState extends State<OtpPage> {
   }
 
   Future<void> _resendOTP() async {
+    if (_secondsRemaining > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng đợi mã OTP hiện tại hết hạn trước khi yêu cầu mã mới.',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -229,7 +247,7 @@ class _OtpPageState extends State<OtpPage> {
         _startTimer();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('The new OTP has been sent to your email',
+            content: Text('Mã OTP mới đã được gửi đến email của bạn',
             textAlign: TextAlign.center,
             ),
             backgroundColor: Colors.green,

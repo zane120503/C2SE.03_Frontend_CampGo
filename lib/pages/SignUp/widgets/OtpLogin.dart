@@ -23,6 +23,7 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
   int _secondsRemaining = 60;
   Timer? _timer;
   bool _isLoading = false;
+  bool _isOtpExpired = false;
 
   @override
   void initState() {
@@ -32,10 +33,23 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
   }
 
   void _startTimer() {
-    _timer?.cancel(); // Hủy timer cũ nếu có
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_secondsRemaining == 0) {
         timer.cancel();
+        setState(() {
+          _isOtpExpired = true;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.',
+              textAlign: TextAlign.center,
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       } else {
         setState(() {
           _secondsRemaining--;
@@ -92,10 +106,22 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
   }
 
   Future<void> _verifyOTP() async {
+    if (_isOtpExpired) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (otpController.text.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter 6 OTP digits',
+          content: Text('Vui lòng nhập đủ 6 ký tự OTP',
           textAlign: TextAlign.center,
           ),
           backgroundColor: Colors.red,
@@ -141,10 +167,18 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
         );
       } else {
         if (!mounted) return;
+        String errorMessage = response['message'] ?? 'Mã OTP không chính xác';
+        if (errorMessage.contains('expired')) {
+          errorMessage = 'Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.';
+          setState(() {
+            _isOtpExpired = true;
+          });
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(response['message'] ?? 'OTP is incorrect',
-            textAlign: TextAlign.center,
+            content: Text(
+              errorMessage,
+              textAlign: TextAlign.center,
             ),
             backgroundColor: Colors.red,
           ),
@@ -170,6 +204,18 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
   }
 
   Future<void> _resendOTP() async {
+    if (_secondsRemaining > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng đợi mã OTP hiện tại hết hạn trước khi yêu cầu mã mới.',
+          textAlign: TextAlign.center,
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -180,12 +226,13 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
         if (!mounted) return;
         setState(() {
           _secondsRemaining = 60;
+          _isOtpExpired = false;
           otpController.clear();
-          _startTimer();
         });
+        _startTimer();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('New OTP has been sent to your email',
+            content: Text('Mã OTP mới đã được gửi đến email của bạn',
             textAlign: TextAlign.center,
             ),
             backgroundColor: Colors.green,
@@ -309,18 +356,27 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
                           length: 6,
                           controller: otpController,
                           obscureText: false,
+                          enabled: !_isOtpExpired,
                           animationType: AnimationType.fade,
                           pinTheme: PinTheme(
                             shape: PinCodeFieldShape.box,
                             borderRadius: BorderRadius.circular(3),
                             fieldHeight: 50,
                             fieldWidth: 50,
-                            activeColor: const Color.fromARGB(255, 57, 57, 57),
-                            selectedColor: const Color.fromARGB(255, 57, 57, 57),
-                            inactiveColor: const Color.fromARGB(255, 57, 57, 57),
+                            activeColor: _isOtpExpired 
+                                ? Colors.grey 
+                                : const Color.fromARGB(255, 57, 57, 57),
+                            selectedColor: _isOtpExpired 
+                                ? Colors.grey 
+                                : const Color.fromARGB(255, 57, 57, 57),
+                            inactiveColor: _isOtpExpired 
+                                ? Colors.grey 
+                                : const Color.fromARGB(255, 57, 57, 57),
                             activeFillColor: Colors.white,
                             selectedFillColor: Colors.white,
-                            inactiveFillColor: Colors.white,
+                            inactiveFillColor: _isOtpExpired 
+                                ? Colors.grey.withOpacity(0.1) 
+                                : Colors.white,
                             borderWidth: 1.5,
                           ),
                           animationDuration: const Duration(milliseconds: 300),
@@ -348,10 +404,12 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
                         _isLoading
                             ? const CircularProgressIndicator()
                             : ElevatedButton(
-                                onPressed: _verifyOTP,
+                                onPressed: _isOtpExpired ? null : _verifyOTP,
                                 style: ElevatedButton.styleFrom(
                                   minimumSize: const Size(400, 55),
-                                  backgroundColor: const Color.fromARGB(255, 215, 159, 54),
+                                  backgroundColor: _isOtpExpired
+                                      ? Colors.grey
+                                      : const Color.fromARGB(255, 215, 159, 54),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -371,10 +429,15 @@ class _OtpLoginPageState extends State<OtpLoginPage> {
                         // Resend OTP
                         TextButton(
                           onPressed: _secondsRemaining == 0 ? _resendOTP : null,
-                          child: const Text(
+                          child: Text(
                             'Resend OTP?',
                             style: TextStyle(
-                              color: Color.fromARGB(255, 37, 39, 41),
+                              color: _secondsRemaining == 0 
+                                  ? const Color.fromARGB(255, 215, 159, 54)
+                                  : Colors.grey,
+                              fontWeight: _secondsRemaining == 0 
+                                  ? FontWeight.bold 
+                                  : FontWeight.normal,
                             ),
                           ),
                         ),

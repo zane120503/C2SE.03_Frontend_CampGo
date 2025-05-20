@@ -8,12 +8,14 @@ class EvaluateFeedBackPage extends StatefulWidget {
   final String productId;
   final String productName;
   final String? productImage;
+  final String orderId;
 
   const EvaluateFeedBackPage({
     super.key,
     required this.productId,
     required this.productName,
     this.productImage,
+    required this.orderId,
   });
 
   @override
@@ -48,6 +50,7 @@ class _EvaluateFeedBackPageState extends State<EvaluateFeedBackPage> {
             setState(() {
               _hasReviewed = reviews.any((review) => 
                 '${review['first_name'] ?? ''} ${review['last_name'] ?? ''}' == userName
+                && review['order_id'] == widget.orderId
               );
             });
           }
@@ -473,6 +476,7 @@ class _EvaluateFeedBackPageState extends State<EvaluateFeedBackPage> {
         imagePaths,
         firstName: userInfo['userName']?.split(' ').first,
         lastName: userInfo['userName']?.split(' ').last,
+        orderId: widget.orderId,
       );
 
       if (success) {
@@ -484,6 +488,7 @@ class _EvaluateFeedBackPageState extends State<EvaluateFeedBackPage> {
           'comment': _commentController.text,
           'images': imagePaths,
           'created_at': DateTime.now().toIso8601String(),
+          'order_id': widget.orderId,
         };
 
         ScaffoldMessenger.of(context).showSnackBar(

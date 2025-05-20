@@ -276,7 +276,7 @@ class _EvaluateState extends State<EvaluatePage> {
                     margin: const EdgeInsets.symmetric(vertical: 4),
                   ),
                   const SizedBox(height: 8),
-                  ...products.map((product) => _buildProductItem(product)).toList(),
+                  ...products.map((product) => _buildProductItem(product, orderId: orderData['_id'])).toList(),
                 ],
               ),
             ),
@@ -286,7 +286,7 @@ class _EvaluateState extends State<EvaluatePage> {
     );
   }
 
-  Widget _buildProductItem(Map<String, dynamic> product) {
+  Widget _buildProductItem(Map<String, dynamic> product, {required String orderId}) {
     // Xử lý lấy processedImageUrl ở đầu hàm
     String processedImageUrl = '';
     if (product['product']['images'] != null && product['product']['images'] is List && product['product']['images'].isNotEmpty) {
@@ -418,6 +418,7 @@ class _EvaluateState extends State<EvaluatePage> {
                                       productId: product['product']['_id'],
                                       productName: product['product']['productName'],
                                       productImage: processedImageUrl,
+                                      orderId: orderId,
                                     ),
                                   ),
                                 );

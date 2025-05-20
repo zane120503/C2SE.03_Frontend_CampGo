@@ -52,8 +52,13 @@ dependencies:
   dropdown_search: ^5.0.6
   firebase_core: ^3.13.0
   firebase_database: ^11.3.5
+  firebase_storage: ^12.4.5
   google_generative_ai: ^0.2.0
   url_launcher: ^6.1.7
+  flutter_image_compress: ^2.2.0
+  multi_image_picker_view: ^3.0.0
+  wechat_assets_picker: ^9.5.0
+  photo_manager: ^3.0.0-dev.3
 
 dev_dependencies:
   flutter_test:

@@ -15,6 +15,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'firebase_options.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -25,6 +26,10 @@ void main() async {
   // Cấu hình Firebase Realtime Database với URL đúng
   FirebaseDatabase.instance.databaseURL =
       'https://campgo-project-default-rtdb.asia-southeast1.firebasedatabase.app/';
+
+  // Cấu hình Firebase Storage
+  FirebaseStorage.instance.setMaxUploadRetryTime(const Duration(seconds: 30));
+  FirebaseStorage.instance.setMaxOperationRetryTime(const Duration(seconds: 30));
 
   // Tạo AuthProvider
   final authProvider = AuthProvider();
