@@ -1,12 +1,9 @@
 import 'package:CampGo/pages/Home/HomePage.dart';
 import 'package:CampGo/pages/Home/widgets/HomeMainNavigationBar.dart';
 import 'package:CampGo/pages/Login/LoginPage.dart';
-import 'package:CampGo/pages/ChatBot/ChatBotPage.dart';
 import 'package:CampGo/pages/Product/ProductPage.dart';
-import 'package:CampGo/pages/Search/SearchPage.dart';
 import 'package:CampGo/pages/SignUp/SignUpPage.dart';
 import 'package:CampGo/pages/StartNow/StartNowPage.dart';
-import 'package:CampGo/pages/Checkout/CheckOutPage.dart';
 import 'package:CampGo/pages/Cart/CartPage.dart';
 import 'package:CampGo/pages/GroupTracking/GroupTrackingPage.dart';
 import 'package:flutter/material.dart';
@@ -58,14 +55,12 @@ class MyApp extends StatelessWidget {
           "/main": (context) => const HomeMainNavigationBar(),
           "/cart": (context) => const CartPage(),
           "/group-tracking": (context) => const GroupTrackingPage(),
-          // "/search": (context) => SearchPage(),
           "/product": (context) {
             final args =
                 ModalRoute.of(context)?.settings.arguments
                     as Map<String, dynamic>?;
             return ProductPage(productId: args?['productId']?.toString() ?? '');
           },
-          // "/notifications": (context) => NotificationPage(),
         },
         initialRoute: "/",
       ),

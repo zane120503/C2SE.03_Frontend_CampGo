@@ -7,9 +7,6 @@ import '../../providers/auth_provider.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:wechat_assets_picker/wechat_assets_picker.dart';
-import 'dart:io';
 import '../../services/api_service.dart';
 
 class GroupTrackingPage extends StatefulWidget {
@@ -31,8 +28,6 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
   OverlayEntry? _menuOverlayEntry;
   final GlobalKey<State<GroupTrackingMap>> _mapKey = GlobalKey<State<GroupTrackingMap>>();
   bool _chatSheetOpen = false;
-  File? _selectedImage;
-  List<File> _selectedImages = [];
   Map<String, String> _chatAvatars = {};
 
   @override
@@ -505,99 +500,6 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
     Overlay.of(context).insert(_menuOverlayEntry!);
   }
 
-  void _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: source, imageQuality: 70);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
-    }
-  }
-
-  void _pickMultipleImages() async {
-    try {
-      print('Bắt đầu chọn ảnh...');
-      final List<AssetEntity>? assets = await AssetPicker.pickAssets(
-        context,
-        pickerConfig: AssetPickerConfig(
-          maxAssets: 10,
-          requestType: RequestType.image,
-          textDelegate: AssetPickerTextDelegate(),
-          specialPickerType: SpecialPickerType.noPreview,
-          selectedAssets: [],
-          themeColor: Colors.blue,
-        ),
-      );
-      
-      if (assets != null && assets.isNotEmpty) {
-        print('Đã chọn ${assets.length} ảnh');
-        _selectedImages = [];
-        for (final asset in assets) {
-          final file = await asset.file;
-          if (file != null) {
-            print('Đã lấy được file ảnh: ${file.path}');
-            _selectedImages.add(file);
-          }
-        }
-        
-        // Sau khi chọn xong, upload và gửi từng ảnh
-        if (_selectedImages.isNotEmpty && _currentGroupId != null) {
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          final user = authProvider.user;
-          if (user != null) {
-            String avatarUrl = '';
-            if (user.profileImage != null && user.profileImage!['url'] != null) {
-              avatarUrl = user.profileImage!['url'];
-            }
-            
-            for (final img in _selectedImages) {
-              try {
-                print('Bắt đầu upload ảnh: ${img.path}');
-                String? imageUrl = await _trackingService.uploadImageToFirebaseStorage(
-                  img, 
-                  _currentGroupId!, 
-                  user.id
-                );
-                
-                if (imageUrl != null && imageUrl.isNotEmpty) {
-                  print('Upload ảnh thành công, URL: $imageUrl');
-                  print('Bắt đầu gửi tin nhắn với ảnh...');
-                  
-                  await _trackingService.sendMessage(
-                    _currentGroupId!,
-                    user.id,
-                    user.fullName,
-                    '',
-                    avatarUrl,
-                    imageUrl: imageUrl,
-                  );
-                  print('Đã gửi tin nhắn với ảnh thành công');
-                } else {
-                  print('Lỗi: Không nhận được URL ảnh sau khi upload');
-                }
-              } catch (e) {
-                print('Lỗi khi xử lý ảnh ${img.path}: $e');
-              }
-            }
-            
-            setState(() {
-              _selectedImages.clear();
-            });
-          } else {
-            print('Lỗi: Không tìm thấy thông tin người dùng');
-          }
-        } else {
-          print('Lỗi: Không có ảnh được chọn hoặc không có groupId');
-        }
-      } else {
-        print('Không có ảnh nào được chọn');
-      }
-    } catch (e) {
-      print('Lỗi khi chọn ảnh: $e');
-    }
-  }
-
   Future<String?> _getAvatarUrl(String userId) async {
     if (_chatAvatars.containsKey(userId)) {
       return _chatAvatars[userId];
@@ -702,19 +604,6 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                                                   ),
                                                 ),
                                               ),
-                                            if (msg['imageUrl'] != null && msg['imageUrl'] != '')
-                                              Padding(
-                                                padding: const EdgeInsets.only(bottom: 4),
-                                                child: ClipRRect(
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  child: Image.network(
-                                                    msg['imageUrl'],
-                                                    width: 180,
-                                                    height: 180,
-                                                    fit: BoxFit.cover,
-                                                  ),
-                                                ),
-                                              ),
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                               decoration: BoxDecoration(
@@ -756,122 +645,40 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                   padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.photo, color: Colors.purple),
-                        onPressed: _pickMultipleImages,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.camera_alt, color: Colors.pink),
-                        onPressed: () => _pickImage(ImageSource.camera),
-                      ),
-                      if (_selectedImage != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.file(
-                                  _selectedImage!,
-                                  width: 80,
-                                  height: 80,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedImage = null;
-                                    });
-                                  },
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.5),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(Icons.close, color: Colors.white, size: 18),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          child: Column(
-                            children: [
-                              if (_selectedImage != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: Stack(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.file(
-                                          _selectedImage!,
-                                          width: 80,
-                                          height: 80,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                      Positioned(
-                                        top: 0,
-                                        right: 0,
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              _selectedImage = null;
-                                            });
-                                          },
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              color: Colors.black.withOpacity(0.5),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(Icons.close, color: Colors.white, size: 18),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              TextField(
-                                controller: _chatController,
-                                decoration: const InputDecoration(
-                                  hintText: 'Nhập tin nhắn...',
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                ),
-                                minLines: 1,
-                                maxLines: 3,
-                                textInputAction: TextInputAction.done,
-                                onSubmitted: (value) async {
-                                  final text = value.trim();
-                                  if (text.isNotEmpty && _currentGroupId != null) {
-                                    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                                    final user = authProvider.user;
-                                    if (user != null) {
-                                      String avatarUrl = '';
-                                      if (user.profileImage != null && user.profileImage!['url'] != null) {
-                                        avatarUrl = user.profileImage!['url'];
-                                      }
-                                      await _trackingService.sendMessage(
-                                        _currentGroupId!,
-                                        user.id,
-                                        user.fullName,
-                                        text,
-                                        avatarUrl,
-                                      );
-                                      _chatController.clear();
-                                    }
+                          child: TextField(
+                            controller: _chatController,
+                            decoration: const InputDecoration(
+                              hintText: 'Nhập tin nhắn...',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            minLines: 1,
+                            maxLines: 3,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (value) async {
+                              final text = value.trim();
+                              if (text.isNotEmpty && _currentGroupId != null) {
+                                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                                final user = authProvider.user;
+                                if (user != null) {
+                                  String avatarUrl = '';
+                                  if (user.profileImage != null && user.profileImage!['url'] != null) {
+                                    avatarUrl = user.profileImage!['url'];
                                   }
-                                },
-                              ),
-                            ],
+                                  await _trackingService.sendMessage(
+                                    _currentGroupId!,
+                                    user.id,
+                                    user.fullName,
+                                    text,
+                                    avatarUrl,
+                                  );
+                                  _chatController.clear();
+                                }
+                              }
+                            },
                           ),
                         ),
                       ),
@@ -887,9 +694,7 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                               if (user.profileImage != null && user.profileImage!['url'] != null) {
                                 avatarUrl = user.profileImage!['url'];
                               }
-                              
                               if (text.isNotEmpty) {
-                                // Gửi text nếu có
                                 await _trackingService.sendMessage(
                                   _currentGroupId!,
                                   user.id,
@@ -898,26 +703,6 @@ class _GroupTrackingPageState extends State<GroupTrackingPage> {
                                   avatarUrl,
                                 );
                                 _chatController.clear();
-                              }
-                              
-                              if (_selectedImage != null) {
-                                // Gửi ảnh nếu có
-                                String? imageUrl = await _trackingService.uploadImageToFirebaseStorage(
-                                  _selectedImage!,
-                                  _currentGroupId!,
-                                  user.id
-                                );
-                                await _trackingService.sendMessage(
-                                  _currentGroupId!,
-                                  user.id,
-                                  user.fullName,
-                                  '',
-                                  avatarUrl,
-                                  imageUrl: imageUrl,
-                                );
-                                setState(() {
-                                  _selectedImage = null;
-                                });
                               }
                             }
                           }
