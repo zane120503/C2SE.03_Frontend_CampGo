@@ -11,6 +11,7 @@ import 'package:CampGo/services/share_service.dart';
 import 'package:dio/dio.dart';
 import 'package:CampGo/models/campsite.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class APIService {
   static String? _authToken;
@@ -1776,108 +1777,167 @@ class APIService {
   }
 
   // Phương thức thêm đánh giá cho campsite
-  static Future<Map<String, dynamic>> addCampsiteReviewWithDetails(
-    String campsiteId,
-    double rating,
-    String comment,
-    List<String> images,
-  ) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/campsite/$campsiteId/review'),
-        headers: await _getHeaders(),
-        body: json.encode({
-          'rating': rating,
-          'comment': comment,
-          'images': images,
-        }),
-      );
-
-      if (response.statusCode == 201) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        return {
-          'success': true,
-          'message': 'Thêm đánh giá thành công',
-          'data': data['data'],
-        };
-      } else {
-        return {
-          'success': false,
-          'message': 'Không thể thêm đánh giá',
-        };
-      }
-    } catch (e) {
-      print('Error adding campsite review: $e');
-      return {
-        'success': false,
-        'message': 'Lỗi khi thêm đánh giá: $e',
-      };
-    }
-  }
-
-  // Hàm nén ảnh
-  static Future<File> compressImage(File file) async {
-    final bytes = await file.readAsBytes();
-    final image = img.decodeImage(bytes);
-    
-    if (image == null) return file;
-    
-    // Nén ảnh với chất lượng 70% và giảm kích thước xuống 50%
-    final compressedImage = img.copyResize(
-      image,
-      width: (image.width * 0.5).round(),
-      height: (image.height * 0.5).round(),
-    );
-    
-    final compressedBytes = img.encodeJpg(compressedImage, quality: 70);
-    
-    // Lưu ảnh đã nén vào thư mục tạm
-    final tempDir = await getTemporaryDirectory();
-    final tempFile = File('${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
-    await tempFile.writeAsBytes(compressedBytes);
-    
-    return tempFile;
-  }
-
   static Future<Map<String, dynamic>> addCampsiteReviewWithFiles(
     String campsiteId,
     double rating,
     String comment,
-    List<File> images,
-  ) async {
-    final uri = Uri.parse('$baseUrl/api/campsite/$campsiteId/review');
-    var request = http.MultipartRequest('POST', uri);
-    request.fields['rating'] = rating.toString();
-    request.fields['comment'] = comment;
+    List<File> images, {
+    required String owner,
+  }) async {
+    try {
+      print('Starting to add review for campsite: $campsiteId');
+      print('Review data - Rating: $rating, Comment: $comment, Images: ${images.length}, Owner: $owner');
+      
+      final uri = Uri.parse('$baseUrl/api/campsite/$campsiteId/review');
+      var request = http.MultipartRequest('POST', uri);
+      
+      // Kiểm tra và lấy token
+      final token = await ShareService.getToken();
+      if (token == null || token.isEmpty) {
+        print('No valid token found');
+        return {
+          'success': false,
+          'message': 'Vui lòng đăng nhập để gửi đánh giá',
+          'error': 'AUTH_REQUIRED'
+        };
+      }
 
-    // Nén từng ảnh trước khi gửi
-    for (var file in images) {
-      final compressedFile = await compressImage(file);
-      final mimeTypeData = lookupMimeType(compressedFile.path)?.split('/');
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'images',
-          compressedFile.path,
-          contentType: mimeTypeData != null
-              ? MediaType(mimeTypeData[0], mimeTypeData[1])
-              : MediaType('image', 'jpeg'),
-        ),
-      );
-    }
-
-    // Lấy token từ local storage
-    final token = await ShareService.getToken();
-    if (token != null && token.isNotEmpty) {
+      // Thêm token vào header
       request.headers['Authorization'] = 'Bearer $token';
-    }
+      print('Added token to request headers');
 
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
+      // Validate dữ liệu đầu vào
+      if (rating < 1 || rating > 5) {
+        return {
+          'success': false,
+          'message': 'Đánh giá phải từ 1 đến 5 sao',
+          'error': 'INVALID_RATING'
+        };
+      }
 
-    if (response.statusCode == 201) {
-      return {'success': true, 'data': json.decode(response.body)};
-    } else {
-      return {'success': false, 'message': response.body};
+      if (comment.trim().isEmpty) {
+        return {
+          'success': false,
+          'message': 'Vui lòng nhập nội dung đánh giá',
+          'error': 'EMPTY_COMMENT'
+        };
+      }
+
+      if (owner.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Thiếu thông tin người đánh giá',
+          'error': 'INVALID_OWNER'
+        };
+      }
+
+      // Thêm các fields vào request
+      request.fields.addAll({
+        'rating': rating.toString(),
+        'comment': comment,
+        'owner': owner,
+      });
+      
+      print('Request fields: ${request.fields}');
+      
+      // Xử lý và thêm ảnh
+      for (var file in images) {
+        try {
+          if (!await file.exists()) {
+            print('Image file does not exist: ${file.path}');
+            continue;
+          }
+
+          final compressedFile = await compressImage(file);
+          final mimeTypeData = lookupMimeType(compressedFile.path)?.split('/');
+          
+          if (mimeTypeData == null) {
+            print('Could not determine mime type for: ${compressedFile.path}');
+            continue;
+          }
+
+          final multipartFile = await http.MultipartFile.fromPath(
+            'images',
+            compressedFile.path,
+            contentType: MediaType(mimeTypeData[0], mimeTypeData[1]),
+          );
+          
+          request.files.add(multipartFile);
+          print('Successfully added image: ${compressedFile.path}');
+        } catch (e) {
+          print('Error processing image: $e');
+          return {
+            'success': false,
+            'message': 'Lỗi khi xử lý ảnh: $e',
+            'error': 'IMAGE_PROCESSING_ERROR'
+          };
+        }
+      }
+
+      print('Sending request with ${request.files.length} images');
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final responseBody = json.decode(response.body);
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: $responseBody');
+
+      // Xử lý các status code khác nhau
+      switch (response.statusCode) {
+        case 200:
+        case 201:
+          if (responseBody['success'] == true) {
+            return {
+              'success': true,
+              'data': responseBody['data'],
+              'message': responseBody['message'] ?? 'Thêm đánh giá thành công'
+            };
+          } else {
+            return {
+              'success': false,
+              'message': responseBody['message'] ?? 'Không thể thêm đánh giá',
+              'error': responseBody['error'] ?? 'UNKNOWN_ERROR'
+            };
+          }
+        case 401:
+          return {
+            'success': false,
+            'message': 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại',
+            'error': 'UNAUTHORIZED'
+          };
+        case 403:
+          return {
+            'success': false,
+            'message': 'Bạn không có quyền thực hiện thao tác này',
+            'error': 'FORBIDDEN'
+          };
+        case 404:
+          return {
+            'success': false,
+            'message': 'Không tìm thấy địa điểm cắm trại',
+            'error': 'NOT_FOUND'
+          };
+        case 413:
+          return {
+            'success': false,
+            'message': 'Kích thước ảnh quá lớn',
+            'error': 'PAYLOAD_TOO_LARGE'
+          };
+        default:
+          return {
+            'success': false,
+            'message': responseBody['message'] ?? 'Lỗi server: ${response.statusCode}',
+            'error': 'SERVER_ERROR'
+          };
+      }
+    } catch (e, stackTrace) {
+      print('Error adding review: $e');
+      print('Stack trace: $stackTrace');
+      return {
+        'success': false,
+        'message': 'Lỗi khi thêm đánh giá: $e',
+        'error': 'UNKNOWN_ERROR'
+      };
     }
   }
 
@@ -1980,5 +2040,51 @@ class APIService {
       }
       throw 'Xóa campsite thất bại';
     }
+  }
+
+  // Hàm upload ảnh lên server backend (Cloudinary)
+  static Future<String?> uploadImageToServer(File file) async {
+    try {
+      var uri = Uri.parse('${baseUrl}/api/upload-chat-image');
+      var request = http.MultipartRequest('POST', uri);
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'image',
+          file.path,
+          contentType: MediaType('image', 'jpeg'),
+        ),
+      );
+      var response = await request.send();
+      if (response.statusCode == 200) {
+        final respStr = await response.stream.bytesToString();
+        final data = json.decode(respStr);
+        if (data['success'] == true) {
+          return data['url'];
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Lỗi upload ảnh lên server: $e');
+      return null;
+    }
+  }
+
+  // Hàm nén ảnh
+  static Future<File> compressImage(File file) async {
+    final bytes = await file.readAsBytes();
+    final image = img.decodeImage(bytes);
+    if (image == null) return file;
+    // Nén ảnh với chất lượng 70% và giảm kích thước xuống 50%
+    final compressedImage = img.copyResize(
+      image,
+      width: (image.width * 0.5).round(),
+      height: (image.height * 0.5).round(),
+    );
+    final compressedBytes = img.encodeJpg(compressedImage, quality: 70);
+    // Lưu ảnh đã nén vào thư mục tạm
+    final tempDir = await getTemporaryDirectory();
+    final tempFile = File('${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
+    await tempFile.writeAsBytes(compressedBytes);
+    return tempFile;
   }
 } 

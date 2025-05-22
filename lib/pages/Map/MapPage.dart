@@ -13,6 +13,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:CampGo/pages/Campsite Owner/CampsiteOwnerPage.dart';
+import 'package:CampGo/services/share_service.dart';
 
 class CampingSpot {
   final String id;
@@ -128,6 +129,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
   Timer? _updateTimer;
   String? _avatarUrl;
   final ImagePicker _picker = ImagePicker();
+  String? userId;
+  bool _isDescriptionExpanded = false;
+  bool _showSeeMore = false;
 
   // Vị trí mặc định (Đà Nẵng)
   static const LatLng _defaultLocation = LatLng(16.0544, 108.2022);
@@ -149,6 +153,17 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       _getCurrentLocation();
     });
     _loadCampsites();
+    ShareService.getUserInfo().then((info) {
+      print('User info from ShareService: $info');
+      if (mounted && info != null && info['userId'] != null) {
+        setState(() {
+          userId = info['userId'];
+          print('Set userId to: $userId');
+        });
+      } else {
+        print('Failed to get userId from ShareService');
+      }
+    });
 
     // Bắt đầu lắng nghe vị trí realtime
     _positionStreamSubscription = Geolocator.getPositionStream(
@@ -358,6 +373,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
           }
           _showSpotDetails = true;
           _isLoading = false;
+          if (_selectedSpot != null) {
+            _checkDescriptionLines(_selectedSpot!.description);
+          }
         });
       }
     } catch (e) {
@@ -628,6 +646,19 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     });
   }
 
+  void _checkDescriptionLines(String description) {
+    final span = TextSpan(text: description, style: const TextStyle(fontSize: 14, color: Colors.black87));
+    final tp = TextPainter(
+      text: span,
+      maxLines: 3,    
+      textDirection: TextDirection.ltr,
+    );
+    tp.layout(maxWidth: MediaQuery.of(context).size.width - 32);
+    setState(() {
+      _showSeeMore = tp.didExceedMaxLines;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -758,8 +789,22 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                     const Text('Description:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                                     Text(
                                       _selectedSpot!.description,
-                                      style: TextStyle(fontSize: 14, color: Colors.black87),
+                                      maxLines: _isDescriptionExpanded ? null : 3,
+                                      overflow: _isDescriptionExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 14, color: Colors.black87),
                                     ),
+                                    if (_showSeeMore)
+                                      GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _isDescriptionExpanded = !_isDescriptionExpanded;
+                                          });
+                                        },
+                                        child: Text(
+                                          _isDescriptionExpanded ? 'Thu gọn' : 'Xem thêm',
+                                          style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
                                     Row(
                                       children: [
                                         Text(
@@ -832,6 +877,22 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                           child: Text('Website: ${_selectedSpot!.contactInfo.website}', style: TextStyle(fontSize: 14, color: Colors.blue, decoration: TextDecoration.underline)),
                                         ),
                                       ),
+                                    const Text('Tiện ích:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    if (_selectedSpot != null && _selectedSpot!.facilities.isNotEmpty)
+                                      SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: Row(
+                                          children: _selectedSpot!.facilities
+                                              .map((f) => Padding(
+                                                    padding: const EdgeInsets.only(right: 8.0),
+                                                    child: Chip(label: Text(f)),
+                                                  ))
+                                              .toList(),
+                                        ),
+                                      )
+                                    else
+                                      const Text('Không có tiện ích'),
+                                    const SizedBox(height: 8),
                                   ],
                                 ),
                               ),
@@ -961,7 +1022,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                                             ? NetworkImage(review.userProfileImageUrl!)
                                                             : null,
                                                         child: review.userProfileImageUrl == null
-                                                            ? Text(review.userName.isNotEmpty ? review.userName[0].toUpperCase() : '?')
+                                                            ? Text(review.fullName.isNotEmpty ? review.fullName[0].toUpperCase() : '?')
                                                             : null,
                                                       ),
                                                       const SizedBox(width: 8),
@@ -969,7 +1030,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                                         crossAxisAlignment: CrossAxisAlignment.start,
                                                         children: [
                                                           Text(
-                                                            review.userName,
+                                                            review.fullName,
                                                             style: const TextStyle(
                                                               fontWeight: FontWeight.bold,
                                                             ),
@@ -1034,11 +1095,11 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                               ElevatedButton.icon(
                                 icon: Icon(Icons.rate_review),
                                 label: Text('Write a review'),
-                                onPressed: () {
+                                onPressed: (userId != null && _selectedSpot!.reviews.any((r) => r.userId == userId)) ? null : () {
                                   _showReviewDialog(_selectedSpot!);
                                 },
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green[700],
+                                  backgroundColor: (userId != null && _selectedSpot!.reviews.any((r) => r.userId == userId)) ? Colors.grey : Colors.green[700],
                                   foregroundColor: Colors.white,
                                 ),
                               ),
@@ -1208,6 +1269,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     double rating = 5;
     TextEditingController commentController = TextEditingController();
     List<XFile> selectedImages = [];
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
@@ -1216,17 +1278,33 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16, right: 16, top: 24,
-          ),
-          child: StatefulBuilder(
-            builder: (context, setState) {
-              return Column(
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 16, right: 16, top: 24,
+              ),
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Review campsite', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Review campsite', 
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)
+                      ),
+                      if (isSubmitting)
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.green[700]!),
+                          ),
+                        ),
+                    ],
+                  ),
                   SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1236,7 +1314,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                         color: Colors.amber,
                         size: 32,
                       ),
-                      onPressed: () {
+                      onPressed: isSubmitting ? null : () {
                         setState(() {
                           rating = index + 1.0;
                         });
@@ -1248,6 +1326,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                     decoration: InputDecoration(
                       labelText: 'Review content',
                       border: OutlineInputBorder(),
+                      errorText: commentController.text.trim().isEmpty && isSubmitting 
+                        ? 'Vui lòng nhập nội dung đánh giá' 
+                        : null,
                     ),
                     minLines: 2,
                     maxLines: 5,
@@ -1255,6 +1336,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                     onEditingComplete: () {
                       FocusScope.of(context).unfocus();
                     },
+                    enabled: !isSubmitting,
                   ),
                   SizedBox(height: 12),
                   Row(
@@ -1262,12 +1344,21 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                       ElevatedButton.icon(
                         icon: Icon(Icons.photo),
                         label: Text('Select images'),
-                        onPressed: () async {
-                          final images = await _picker.pickMultiImage();
-                          if (images != null) {
-                            setState(() {
-                              selectedImages = images;
-                            });
+                        onPressed: isSubmitting ? null : () async {
+                          try {
+                            final images = await _picker.pickMultiImage();
+                            if (images != null) {
+                              setState(() {
+                                selectedImages = images;
+                              });
+                            }
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Lỗi khi chọn ảnh: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
                           }
                         },
                       ),
@@ -1293,24 +1384,25 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                   fit: BoxFit.cover,
                                 ),
                               ),
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      selectedImages.removeAt(index);
-                                    });
-                                  },
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      shape: BoxShape.circle,
+                              if (!isSubmitting)
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        selectedImages.removeAt(index);
+                                      });
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.black54,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.close, color: Colors.white, size: 18),
                                     ),
-                                    child: Icon(Icons.close, color: Colors.white, size: 18),
                                   ),
                                 ),
-                              ),
                             ],
                           );
                         },
@@ -1318,50 +1410,125 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                     ),
                   SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: () async {
-                      List<File> imageFiles = selectedImages.map((xfile) => File(xfile.path)).toList();
-                      print('Sending review with files: ${imageFiles.map((x) => x.path).toList()}');
-                      final result = await APIService.addCampsiteReviewWithFiles(
-                        spot.id,
-                        rating,
-                        commentController.text,
-                        imageFiles,
-                      );
-                      print('Result of sending review: $result');
-                      if (result['success'] == false) {
-                        print('Error sending review: ${result['message']}');
+                    onPressed: isSubmitting ? null : () async {
+                      // Validate input
+                      if (commentController.text.trim().isEmpty) {
+                        setState(() {
+                          isSubmitting = true;
+                        });
+                        await Future.delayed(Duration(milliseconds: 100));
+                        setState(() {
+                          isSubmitting = false;
+                        });
+                        return;
                       }
-                      Navigator.pop(context);
-                      if (result['success'] == true) {
+
+                      setState(() {
+                        isSubmitting = true;
+                      });
+
+                      try {
+                        if (userId == null) {
+                          throw Exception('AUTH_REQUIRED');
+                        }
+
+                        print('Sending review with userId: $userId');
+                        List<File> imageFiles = selectedImages.map((xfile) => File(xfile.path)).toList();
+                        
+                        final result = await APIService.addCampsiteReviewWithFiles(
+                          spot.id,
+                          rating,
+                          commentController.text.trim(),
+                          imageFiles,
+                          owner: userId!,
+                        );
+
+                        print('Review submission result: $result');
+
+                        if (!mounted) return;
+
+                        if (result['success'] == true) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(result['message'] ?? 'Đánh giá thành công!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          _showSpotInfo(spot); // Refresh spot info
+                        } else {
+                          String errorMessage = result['message'] ?? 'Không thể gửi đánh giá';
+                          String errorType = result['error'] ?? 'UNKNOWN_ERROR';
+                          
+                          switch (errorType) {
+                            case 'AUTH_REQUIRED':
+                              errorMessage = 'Vui lòng đăng nhập để gửi đánh giá';
+                              break;
+                            case 'INVALID_RATING':
+                              errorMessage = 'Đánh giá phải từ 1 đến 5 sao';
+                              break;
+                            case 'EMPTY_COMMENT':
+                              errorMessage = 'Vui lòng nhập nội dung đánh giá';
+                              break;
+                            case 'IMAGE_PROCESSING_ERROR':
+                              errorMessage = 'Lỗi khi xử lý ảnh. Vui lòng thử lại';
+                              break;
+                            case 'PAYLOAD_TOO_LARGE':
+                              errorMessage = 'Kích thước ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn';
+                              break;
+                            case 'UNAUTHORIZED':
+                              errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại';
+                              break;
+                            case 'FORBIDDEN':
+                              errorMessage = 'Bạn không có quyền thực hiện thao tác này';
+                              break;
+                            case 'NOT_FOUND':
+                              errorMessage = 'Không tìm thấy địa điểm cắm trại';
+                              break;
+                          }
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(errorMessage),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+
+                          // Nếu lỗi liên quan đến authentication, đóng dialog
+                          if (errorType == 'AUTH_REQUIRED' || errorType == 'UNAUTHORIZED') {
+                            Navigator.pop(context);
+                          }
+                        }
+                      } catch (e) {
+                        print('Error submitting review: $e');
+                        if (!mounted) return;
+                        
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Review successfully!',
-                          textAlign: TextAlign.center,
-                          ),
-                          backgroundColor: Colors.green,
+                          SnackBar(
+                            content: Text('Lỗi không xác định: $e'),
+                            backgroundColor: Colors.red,
                           ),
                         );
-                        _showSpotInfo(spot);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to send review!',
-                          textAlign: TextAlign.center,
-                          ),
-                          backgroundColor: Colors.red,
-                          ),
-                        );
+                      } finally {
+                        if (mounted) {
+                          setState(() {
+                            isSubmitting = false;
+                          });
+                        }
                       }
                     },
-                    child: Text('Send review'),
+                    child: Text(isSubmitting ? 'Đang gửi...' : 'Gửi đánh giá'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[700],
                       foregroundColor: Colors.white,
+                      minimumSize: Size(double.infinity, 45),
                     ),
                   ),
                   SizedBox(height: 16),
                 ],
-              );
-            },
-          ),
+              ),
+            );
+          },
         );
       },
     );

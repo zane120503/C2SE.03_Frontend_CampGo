@@ -101,10 +101,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         // Lưu thông tin mới vào local storage
         await ShareService.saveUserDetails({
-          'first_name': _firstNameController.text,
-          'last_name': _lastNameController.text,
-          'phone_number': _phoneController.text,
-          'gender': _selectedGender,
+          'first_name': userData['first_name']?.toString() ?? userData['firstName']?.toString() ?? _firstNameController.text,
+          'last_name': userData['last_name']?.toString() ?? userData['lastName']?.toString() ?? _lastNameController.text,
+          'firstName': userData['firstName']?.toString() ?? userData['first_name']?.toString() ?? _firstNameController.text,
+          'lastName': userData['lastName']?.toString() ?? userData['last_name']?.toString() ?? _lastNameController.text,
+          'phone_number': userData['phone_number']?.toString() ?? userData['phoneNumber']?.toString() ?? _phoneController.text.trim(),
+          'phoneNumber': userData['phoneNumber']?.toString() ?? userData['phone_number']?.toString() ?? _phoneController.text.trim(),
+          'gender': userData['gender']?.toString() ?? 'male',
           'isProfileCompleted': true,
           'profileImage': userData['profileImage'] is String
               ? {'url': userData['profileImage']}
@@ -122,7 +125,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
         // Cập nhật Provider AuthProvider với user mới
         if (mounted) {
           final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          authProvider.setUser(UserProfile.fromJson(userData));
+          authProvider.setUser(UserProfile(
+            id: userData['_id']?.toString() ?? '',
+            firstName: userData['first_name']?.toString() ?? userData['firstName']?.toString() ?? _firstNameController.text,
+            lastName: userData['last_name']?.toString() ?? userData['lastName']?.toString() ?? _lastNameController.text,
+            email: userData['email']?.toString() ?? _emailController.text.trim(),
+            phoneNumber: userData['phone_number']?.toString() ?? userData['phoneNumber']?.toString() ?? _phoneController.text.trim(),
+            profileImage: userData['profileImage'] is Map ? userData['profileImage'] : null,
+            isProfileCompleted: true,
+            gender: userData['gender']?.toString() ?? 'male',
+          ));
         }
       } else {
         throw Exception('Cannot get user information');
@@ -224,9 +236,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         // Lưu thêm thông tin chi tiết
         await ShareService.saveUserDetails({
-          'first_name': userData['first_name']?.toString() ?? '',
-          'last_name': userData['last_name']?.toString() ?? '',
-          'phone_number': userData['phone_number']?.toString() ?? '',
+          'first_name': userData['first_name']?.toString() ?? userData['firstName']?.toString() ?? firstName,
+          'last_name': userData['last_name']?.toString() ?? userData['lastName']?.toString() ?? lastName,
+          'firstName': userData['firstName']?.toString() ?? userData['first_name']?.toString() ?? firstName,
+          'lastName': userData['lastName']?.toString() ?? userData['last_name']?.toString() ?? lastName,
+          'phone_number': userData['phone_number']?.toString() ?? userData['phoneNumber']?.toString() ?? _phoneController.text.trim(),
+          'phoneNumber': userData['phoneNumber']?.toString() ?? userData['phone_number']?.toString() ?? _phoneController.text.trim(),
           'gender': userData['gender']?.toString() ?? 'male',
           'profileImage': userData['profileImage'] is String
               ? {'url': userData['profileImage']}
@@ -236,7 +251,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
         // Cập nhật Provider AuthProvider với user mới
         if (mounted) {
           final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          authProvider.setUser(UserProfile.fromJson(userData));
+          authProvider.setUser(UserProfile(
+            id: userData['_id']?.toString() ?? '',
+            firstName: userData['first_name']?.toString() ?? userData['firstName']?.toString() ?? firstName,
+            lastName: userData['last_name']?.toString() ?? userData['lastName']?.toString() ?? lastName,
+            email: userData['email']?.toString() ?? _emailController.text.trim(),
+            phoneNumber: userData['phone_number']?.toString() ?? userData['phoneNumber']?.toString() ?? _phoneController.text.trim(),
+            profileImage: userData['profileImage'] is Map ? userData['profileImage'] : null,
+            isProfileCompleted: true,
+            gender: userData['gender']?.toString() ?? 'male',
+          ));
         }
 
         if (!mounted) return;

@@ -1,5 +1,6 @@
 import 'package:latlong2/latlong.dart';
 import 'campsite_review.dart';
+import 'user_model.dart';
 
 class Campsite {
   final String id;
@@ -17,6 +18,7 @@ class Campsite {
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final UserProfile? owner;
 
   Campsite({
     required this.id,
@@ -34,6 +36,7 @@ class Campsite {
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
+    this.owner,
   });
 
   factory Campsite.fromJson(Map<String, dynamic> json) {
@@ -51,6 +54,20 @@ class Campsite {
       facilities = List<String>.from(json['facilities']);
     }
 
+    // Parse reviews
+    List<CampsiteReview> reviews = [];
+    if (json['reviews'] != null && json['reviews'] is List) {
+      reviews = (json['reviews'] as List)
+          .map((review) => CampsiteReview.fromJson(review))
+          .toList();
+    }
+
+    // Parse owner information
+    UserProfile? owner;
+    if (json['owner'] != null && json['owner'] is Map) {
+      owner = UserProfile.fromJson(json['owner']);
+    }
+
     return Campsite(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
@@ -61,7 +78,7 @@ class Campsite {
       ),
       description: json['description'] ?? '',
       rating: (json['rating'] ?? 0.0).toDouble(),
-      reviews: [],
+      reviews: reviews,
       facilities: facilities,
       images: images,
       priceRange: PriceRange.fromJson(json['priceRange'] ?? {}),
@@ -70,8 +87,11 @@ class Campsite {
       isActive: json['isActive'] ?? true,
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
       updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.now(),
+      owner: owner,
     );
   }
+
+  String get ownerFullName => owner?.fullName ?? 'Unknown Owner';
 }
 
 class CampsiteImage {

@@ -26,10 +26,10 @@ class UserProfile {
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
       id: json['_id']?.toString() ?? '',
-      firstName: json['first_name']?.toString() ?? '',
-      lastName: json['last_name']?.toString() ?? '',
+      firstName: json['first_name']?.toString() ?? json['firstName']?.toString() ?? '',
+      lastName: json['last_name']?.toString() ?? json['lastName']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
-      phoneNumber: json['phone_number']?.toString() ?? '',
+      phoneNumber: json['phone_number']?.toString() ?? json['phoneNumber']?.toString() ?? '',
       profileImage: json['profileImage'] is Map ? json['profileImage'] : null,
       isProfileCompleted: json['isProfileCompleted'] ?? false,
       gender: json['gender']?.toString() ?? 'male',

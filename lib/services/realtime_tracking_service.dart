@@ -19,7 +19,8 @@ class RealtimeTrackingService {
   Future<String> createGroup(
     String groupName,
     String userId,
-    String userName,
+    String firstName,
+    String lastName,
   ) async {
     final groupRef = _database.child('groups').push();
     final groupId = groupRef.key!;
@@ -38,7 +39,9 @@ class RealtimeTrackingService {
       'short_code': shortCode,
       'members': {
         userId: {
-          'name': userName,
+          'name': (firstName + ' ' + lastName).trim(),
+          'firstName': firstName,
+          'lastName': lastName,
           'location': {
             'latitude': 0,
             'longitude': 0,
@@ -58,9 +61,11 @@ class RealtimeTrackingService {
   }
 
   // Tham gia nhóm
-  Future<void> joinGroup(String groupId, String userId, String userName) async {
+  Future<void> joinGroup(String groupId, String userId, String firstName, String lastName) async {
     await _database.child('groups/$groupId/members/$userId').set({
-      'name': userName,
+      'name': (firstName + ' ' + lastName).trim(),
+      'firstName': firstName,
+      'lastName': lastName,
       'location': {
         'latitude': 0,
         'longitude': 0,

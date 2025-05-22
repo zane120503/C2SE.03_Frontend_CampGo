@@ -234,8 +234,17 @@ class AuthService {
             isProfileCompleted: user['isProfileCompleted'] ?? false,
           );
 
-          // Lưu chi tiết user
-          await ShareService.saveUserDetails(user);
+          // Lưu chi tiết user (bổ sung cả snake_case và camelCase)
+          await ShareService.saveUserDetails({
+            'first_name': user['first_name'] ?? user['firstName'] ?? '',
+            'last_name': user['last_name'] ?? user['lastName'] ?? '',
+            'firstName': user['firstName'] ?? user['first_name'] ?? '',
+            'lastName': user['lastName'] ?? user['last_name'] ?? '',
+            'phone_number': user['phone_number'] ?? user['phoneNumber'] ?? '',
+            'phoneNumber': user['phoneNumber'] ?? user['phone_number'] ?? '',
+            'gender': user['gender'] ?? 'male',
+            'profileImage': user['profileImage'],
+          });
 
           print('User info saved successfully');
 

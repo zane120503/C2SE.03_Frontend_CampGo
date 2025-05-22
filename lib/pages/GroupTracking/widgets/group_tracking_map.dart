@@ -52,6 +52,8 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
   List<CampsiteReview> _reviews = [];
   final ImagePicker _picker = ImagePicker();
   int _totalReviews = 0;
+  bool _isDescriptionExpanded = false;
+  bool _showSeeMore = false;
 
   @override
   void initState() {
@@ -294,6 +296,9 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
           }
           _showSpotDetails = true;
         });
+        if (_selectedCampsite != null) {
+          _checkDescriptionLines(_selectedCampsite!.description);
+        }
       }
     } catch (e) {
       print('Error loading spot details: $e');
@@ -325,6 +330,19 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
     if (shouldReload == true) {
       _loadCampsites();
     }
+  }
+
+  void _checkDescriptionLines(String description) {
+    final span = TextSpan(text: description, style: const TextStyle(fontSize: 14, color: Color.fromARGB(221, 55, 55, 55)));
+    final tp = TextPainter(
+      text: span,
+      maxLines: 3,
+      textDirection: TextDirection.ltr, 
+    );
+    tp.layout(maxWidth: MediaQuery.of(context).size.width - 32);
+    setState(() {
+      _showSeeMore = tp.didExceedMaxLines;
+    });
   }
 
   @override
@@ -466,8 +484,22 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                 const Text('Description:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                                 Text(
                                   _selectedCampsite!.description,
-                                  style: TextStyle(fontSize: 14, color: const Color.fromARGB(221, 55, 55, 55)), 
+                                  maxLines: _isDescriptionExpanded ? null : 3,
+                                  overflow: _isDescriptionExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14, color: Color.fromARGB(221, 55, 55, 55)),
                                 ),
+                                if (_showSeeMore)
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _isDescriptionExpanded = !_isDescriptionExpanded;
+                                      });
+                                    },
+                                    child: Text(
+                                      _isDescriptionExpanded ? 'Thu gọn' : 'Xem thêm',
+                                      style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
                                 Row(
                                   children: [
                                     Text(
@@ -556,18 +588,6 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                 else
                                   const Text('Không có tiện ích'),
                                 const SizedBox(height: 8),
-                                if ((_selectedCampsite!.contactInfo.email != null && _selectedCampsite!.contactInfo.email.toString().isNotEmpty))
-                                  Text('Email: ${_selectedCampsite!.contactInfo.email}', style: TextStyle(fontSize: 14, color: Colors.black87)),
-                                if ((_selectedCampsite!.contactInfo.website != null && _selectedCampsite!.contactInfo.website.toString().isNotEmpty))
-                                  GestureDetector(
-                                    onTap: () async {
-                                      final url = _selectedCampsite!.contactInfo.website?.toString() ?? '';
-                                      if (url.isNotEmpty && await canLaunchUrl(Uri.parse(url))) {
-                                        await launchUrl(Uri.parse(url));
-                                      }
-                                    },
-                                    child: Text('Website: ${_selectedCampsite!.contactInfo.website}', style: TextStyle(fontSize: 14, color: Colors.blue, decoration: TextDecoration.underline)),
-                                  ),
                               ],
                             ),
                           ),
@@ -654,7 +674,6 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                               padding: EdgeInsets.all(16.0),
                               child: Text('Không có hình ảnh'),
                             ),
-                          const Divider(height: 1),
                           Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Column(
@@ -690,13 +709,13 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                                 children: [
                                                   CircleAvatar(
                                                     backgroundImage: review.userProfileImageUrl != null ? NetworkImage(review.userProfileImageUrl!) : null,
-                                                    child: review.userProfileImageUrl == null ? Text(review.userName.isNotEmpty ? review.userName[0].toUpperCase() : '?') : null,
+                                                    child: review.userProfileImageUrl == null ? Text(review.fullName.isNotEmpty ? review.fullName[0].toUpperCase() : '?') : null,
                                                   ),
                                                   const SizedBox(width: 8),
                                                   Column(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
-                                                      Text(review.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                                      Text(review.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
                                                       Row(
                                                         children: [
                                                           ...List.generate(5, (i) {
@@ -746,11 +765,15 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                   child: ElevatedButton.icon(
                                     icon: Icon(Icons.rate_review),
                                     label: Text('Write a review'),
-                                    onPressed: () {
-                                      _showReviewDialog(_selectedCampsite!);
-                                    },
+                                    onPressed: (_selectedCampsite != null && widget.userId.isNotEmpty && _reviews.any((r) => r.userId == widget.userId))
+                                        ? null
+                                        : () {
+                                            _showReviewDialog(_selectedCampsite!);
+                                          },
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green[700],
+                                      backgroundColor: (_selectedCampsite != null && widget.userId.isNotEmpty && _reviews.any((r) => r.userId == widget.userId))
+                                          ? Colors.grey
+                                          : Colors.green[700],
                                       foregroundColor: Colors.white,
                                     ),
                                   ),
@@ -1011,6 +1034,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                         rating,
                         commentController.text,
                         imageFiles,
+                        owner: widget.userId,
                       );
                       print('Result of sending review: $result');
                       if (result['success'] == false) {
