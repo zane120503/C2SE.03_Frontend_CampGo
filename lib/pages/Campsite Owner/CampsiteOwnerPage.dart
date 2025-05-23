@@ -70,7 +70,7 @@ class _CampsiteOwnerPageState extends State<CampsiteOwnerPage> {
           SnackBar(
             content: Center(
               child: Text(
-                'Xóa campsite thành công!',
+                'Delete campsite successfully!',
                 textAlign: TextAlign.center,
               ),
             ),
@@ -86,7 +86,7 @@ class _CampsiteOwnerPageState extends State<CampsiteOwnerPage> {
           SnackBar(
             content: Center(
               child: Text(
-                result['message'] ?? 'Xóa campsite thất bại!',
+                result['message'] ?? 'Delete campsite failed!',
                 textAlign: TextAlign.center,
               ),
             ),
@@ -102,7 +102,7 @@ class _CampsiteOwnerPageState extends State<CampsiteOwnerPage> {
         SnackBar(
           content: Center(
             child: Text(
-              'Lỗi: ${e.toString()}',
+              'Error: ${e.toString()}',
               textAlign: TextAlign.center,
             ),
           ),
@@ -138,7 +138,7 @@ class _CampsiteOwnerPageState extends State<CampsiteOwnerPage> {
             onPressed: () => Navigator.pop(context),
           ),
           title: const Text(
-            'Quản lý Campsite',
+            'Manage Campsite',
             style: TextStyle(
               fontSize: 23,
               fontWeight: FontWeight.bold,
@@ -175,7 +175,7 @@ class _CampsiteOwnerPageState extends State<CampsiteOwnerPage> {
                         ),
                         SizedBox(height: 16),
                         Text(
-                          'Đang tải danh sách campsite...',
+                          'Loading campsite list...',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 16,
@@ -196,7 +196,7 @@ class _CampsiteOwnerPageState extends State<CampsiteOwnerPage> {
                             ),
                             SizedBox(height: 16),
                             Text(
-                              'Lỗi: $_error',
+                              'Error: $_error',
                               style: TextStyle(
                                 color: Colors.red,
                                 fontSize: 16,
@@ -221,7 +221,7 @@ class _CampsiteOwnerPageState extends State<CampsiteOwnerPage> {
                                         ),
                                         SizedBox(height: 16),
                                         Text(
-                                          'Chưa có campsite nào',
+                                          'No campsite',
                                           style: TextStyle(
                                             color: Colors.grey[600],
                                             fontSize: 16,
@@ -229,7 +229,7 @@ class _CampsiteOwnerPageState extends State<CampsiteOwnerPage> {
                                         ),
                                         SizedBox(height: 8),
                                         Text(
-                                          'Thêm mới campsite để bắt đầu',
+                                          'Add new campsite to start',
                                           style: TextStyle(
                                             color: Colors.grey[500],
                                             fontSize: 14,
@@ -267,16 +267,16 @@ class _CampsiteOwnerPageState extends State<CampsiteOwnerPage> {
                                             return await showDialog(
                                               context: context,
                                               builder: (context) => AlertDialog(
-                                                title: Text('Xác nhận xóa'),
-                                                content: Text('Bạn có chắc chắn muốn xóa campsite này?'),
+                                                title: Text('Confirm delete'),
+                                                content: Text('Are you sure you want to delete this campsite?'),
                                                 actions: [
                                                   TextButton(
                                                     onPressed: () => Navigator.of(context).pop(false),
-                                                    child: Text('Hủy'),
+                                                    child: Text('Cancel'),
                                                   ),
                                                   TextButton(
                                                     onPressed: () => Navigator.of(context).pop(true),
-                                                    child: Text('Xóa'),
+                                                    child: Text('Delete'),
                                                   ),
                                                 ],
                                               ),
@@ -299,7 +299,7 @@ class _CampsiteOwnerPageState extends State<CampsiteOwnerPage> {
                                                     children: [
                                                       Expanded(
                                                         child: Text(
-                                                          campsite.name ?? 'Chưa có tên',
+                                                          campsite.name ?? 'No name',
                                                           style: TextStyle(
                                                             fontSize: 16,
                                                             fontWeight: FontWeight.w600,
@@ -348,13 +348,13 @@ class _CampsiteOwnerPageState extends State<CampsiteOwnerPage> {
                                                     ),
                                                   ),
                                                   SizedBox(height: 8),
-                                                  Text('Số điện thoại: ${campsite.phone}', style: TextStyle(fontSize: 14)),
+                                                  Text('Phone number: ${campsite.phone}', style: TextStyle(fontSize: 14)),
                                                   if (campsite.email.isNotEmpty)
                                                     Text('Email: ${campsite.email}', style: TextStyle(fontSize: 14)),
                                                   if (campsite.website.isNotEmpty)
                                                     Text('Website: ${campsite.website}', style: TextStyle(fontSize: 14)),
                                                   if (campsite.openHour.isNotEmpty && campsite.closeHour.isNotEmpty)
-                                                    Text('Giờ mở cửa: ${campsite.openHour} - ${campsite.closeHour}', style: TextStyle(fontSize: 14)),
+                                                    Text('Open hours: ${campsite.openHour} - ${campsite.closeHour}', style: TextStyle(fontSize: 14)),
                                                 ],
                                               ),
                                             ),
@@ -380,7 +380,7 @@ class _CampsiteOwnerPageState extends State<CampsiteOwnerPage> {
                                 ),
                                 icon: Icon(Icons.add, color: Colors.white),
                                 label: Text(
-                                  'Thêm mới Campsite',
+                                  'Add new campsite',
                                   style: TextStyle(color: Colors.white),
                                 ),
                               ),

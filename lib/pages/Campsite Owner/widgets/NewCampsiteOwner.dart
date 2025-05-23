@@ -57,7 +57,9 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
       if (validImages.length != picked.length) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Chỉ chấp nhận ảnh jpg, jpeg, png!'),
+            content: Text('Only photos accepted jpg, jpeg, png!',
+            textAlign: TextAlign.center,
+            ), // Thêm dòng này    
             backgroundColor: Colors.red,
           ),
         );
@@ -97,7 +99,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
       if (minPrice > maxPrice) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Center(child: Text('Giá tối thiểu phải nhỏ hơn giá tối đa', textAlign: TextAlign.center)),
+            content: Center(child: Text('Minimum price must be less than maximum price', textAlign: TextAlign.center)),
             backgroundColor: Colors.red,
           ),
         );
@@ -127,7 +129,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
             SnackBar(
               content: Center(
                 child: Text(
-                  'Thêm campsite thành công!',
+                  'Add campsite successfully!',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -143,7 +145,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
             SnackBar(
               content: Center(
                 child: Text(
-                  result['message'] ?? 'Thêm campsite thất bại!',
+                  result['message'] ?? 'Add campsite failed!',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -159,7 +161,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
           SnackBar(
             content: Center(
               child: Text(
-                'Lỗi: ${e.toString()}',
+                'Error: ${e.toString()}',
                 textAlign: TextAlign.center,
               ),
             ),
@@ -186,7 +188,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Thêm mới Campsite',
+          'Add new campsite',
           style: TextStyle(color: Colors.black),
         ),
       ),
@@ -206,7 +208,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 const Text(
-                  'Thông tin cơ bản',
+                  'Basic information',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
@@ -219,33 +221,33 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                     children: [
                       _buildTextField(
                         controller: _nameController,
-                        label: 'Tên Campsite',
+                        label: 'Campsite Name',
                         showDivider: true,
-                        validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập tên' : null,
+                        validator: (value) => value == null || value.isEmpty ? 'Please enter the name' : null,
                       ),
                       _buildTextField(
                         controller: _locationController,
-                        label: 'Địa chỉ',
+                        label: 'Address',
                         showDivider: true,
-                        validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập địa chỉ' : null,
+                        validator: (value) => value == null || value.isEmpty ? 'Please enter the address' : null,
                       ),
                       Row(
                         children: [
                           Expanded(
                             child: _buildTextField(
                               controller: _latitudeController,
-                              label: 'Vĩ độ',
+                              label: 'Latitude',
                               keyboardType: TextInputType.numberWithOptions(decimal: true),
-                              validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập vĩ độ' : null,
+                              validator: (value) => value == null || value.isEmpty ? 'Please enter the latitude' : null,
                             ),
                           ),
                           SizedBox(width: 16),
                           Expanded(
                             child: _buildTextField(
                               controller: _longitudeController,
-                              label: 'Kinh độ',
+                              label: 'Longitude',
                               keyboardType: TextInputType.numberWithOptions(decimal: true),
-                              validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập kinh độ' : null,
+                              validator: (value) => value == null || value.isEmpty ? 'Please enter the longitude' : null,
                             ),
                           ),
                         ],
@@ -255,7 +257,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Mô tả và tiện ích',
+                  'Description and facilities',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
@@ -268,10 +270,10 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                     children: [
                       _buildTextField(
                         controller: _descriptionController,
-                        label: 'Mô tả',
+                        label: 'Description',
                         maxLines: 3,
                         showDivider: true,
-                        validator: (value) => value == null || value.isEmpty ? 'Vui lòng nhập mô tả' : null,
+                        validator: (value) => value == null || value.isEmpty ? 'Please enter the description' : null,
                       ),
                       Column(
                         children: [
@@ -281,7 +283,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                                 Expanded(
                                   child: _buildTextField(
                                     controller: _facilitiesControllers[i],
-                                    label: 'Tiện ích ${i + 1}',
+                                    label: 'Facility ${i + 1}',
                                   ),
                                 ),
                                 IconButton(
@@ -305,7 +307,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                             child: TextButton.icon(
                               onPressed: _addFacilityField,
                               icon: Icon(Icons.add),
-                              label: Text('Thêm tiện ích'),
+                              label: Text('Add facility'),
                             ),
                           ),
                         ],
@@ -315,7 +317,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Thông tin liên hệ và giá',
+                  'Contact information and price',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
@@ -331,7 +333,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                           Expanded(
                             child: _buildTextField(
                               controller: _minPriceController,
-                              label: 'Giá tối thiểu',
+                              label: 'Minimum price',
                               keyboardType: TextInputType.text,
                               inputFormatters: [
                                 FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z\s]')),
@@ -342,7 +344,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                           Expanded(
                             child: _buildTextField(
                               controller: _maxPriceController,
-                              label: 'Giá tối đa',
+                              label: 'Maximum price',
                               keyboardType: TextInputType.text,
                               inputFormatters: [
                                 FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z\s]')),
@@ -365,12 +367,12 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                         ),
                       _buildTextField(
                         controller: _phoneController,
-                        label: 'Số điện thoại',
+                        label: 'Phone number',
                         keyboardType: TextInputType.phone,
                         showDivider: true,
                         validator: (value) {
                           if (value != null && value.isNotEmpty && value.length > 10) {
-                            return 'Số điện thoại không được quá 10 số';
+                            return 'Phone number cannot be more than 10 digits';
                           }
                           return null;
                         },
@@ -391,7 +393,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Giờ mở cửa',
+                  'Open hours',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
@@ -405,7 +407,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                       Expanded(
                         child: _buildTextField(
                           controller: _openHourController,
-                          label: 'Giờ mở cửa',
+                          label: 'Open hours',
                           keyboardType: TextInputType.text,
                           inputFormatters: [
                             FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z:]')),
@@ -415,13 +417,13 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                               final regex = RegExp(r'^(\d{2}):(\d{2})$');
                               if (RegExp(r'^[0-9:]+$').hasMatch(value)) {
                                 if (!regex.hasMatch(value)) {
-                                  return 'Giờ không hợp lệ. Định dạng HH:mm';
+                                  return 'Invalid time format. Format: HH:mm';
                                 }
                                 final parts = value.split(':');
                                 final h = int.tryParse(parts[0]) ?? -1;
                                 final m = int.tryParse(parts[1]) ?? -1;
                                 if (h < 0 || h > 23 || m < 0 || m > 59) {
-                                  return 'Giờ không hợp lệ. Chỉ 00-23:00-59';
+                                  return 'Invalid time format. Format: 00-23:00-59';
                                 }
                               }
                             }
@@ -433,7 +435,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                       Expanded(
                         child: _buildTextField(
                           controller: _closeHourController,
-                          label: 'Giờ đóng cửa',
+                          label: 'Close hours',
                           keyboardType: TextInputType.text,
                           inputFormatters: [
                             FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z:]')),
@@ -443,13 +445,13 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                               final regex = RegExp(r'^(\d{2}):(\d{2})$');
                               if (RegExp(r'^[0-9:]+$').hasMatch(value)) {
                                 if (!regex.hasMatch(value)) {
-                                  return 'Giờ không hợp lệ. Định dạng HH:mm';
+                                  return 'Invalid time format. Format: HH:mm';
                                 }
                                 final parts = value.split(':');
                                 final h = int.tryParse(parts[0]) ?? -1;
                                 final m = int.tryParse(parts[1]) ?? -1;
                                 if (h < 0 || h > 23 || m < 0 || m > 59) {
-                                  return 'Giờ không hợp lệ. Chỉ 00-23:00-59';
+                                  return 'Invalid time format. Format: 00-23:00-59';
                                 }
                               }
                             }
@@ -462,7 +464,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Hình ảnh',
+                  'Images',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
@@ -477,14 +479,14 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                       ElevatedButton.icon(
                         onPressed: _pickImages,
                         icon: Icon(Icons.add_a_photo),
-                        label: Text('Chọn ảnh'),
+                        label: Text('Choose image'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color.fromARGB(255, 180, 180, 180),
                         ),
                       ),
                       SizedBox(height: 12),
                       _images.isEmpty
-                          ? Text('Chưa chọn ảnh')
+                          ? Text('No image selected')
                           : SizedBox(
                               height: 80,
                               child: ListView.builder(
@@ -539,7 +541,7 @@ class _NewCampsiteOwnerPageState extends State<NewCampsiteOwnerPage> {
                     ),
                   ),
                   child: const Text(
-                    'Hoàn tất',
+                    'Complete',
                     style: TextStyle(fontSize: 16, color: Colors.white),
                   ),
                 ),
