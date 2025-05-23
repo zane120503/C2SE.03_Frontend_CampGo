@@ -217,4 +217,9 @@ class RealtimeTrackingService {
   Stream<DatabaseEvent> listenToMessages(String groupId) {
     return _database.child('groups/$groupId/messages').orderByChild('timestamp').onValue;
   }
+
+  // Lắng nghe thay đổi thông tin nhóm
+  Stream<DatabaseEvent> listenToGroupInfo(String groupId) {
+    return _database.child('groups/$groupId').onValue;
+  }
 }

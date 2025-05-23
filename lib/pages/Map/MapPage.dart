@@ -14,6 +14,7 @@ import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:CampGo/pages/Campsite Owner/CampsiteOwnerPage.dart';
 import 'package:CampGo/services/share_service.dart';
+import 'package:photo_view/photo_view.dart';
 
 class CampingSpot {
   final String id;
@@ -192,7 +193,8 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
             _stopNavigation();
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('You have arrived!', textAlign: TextAlign.center),
+                content: Text('You have arrived!', 
+                textAlign: TextAlign.center),
                 backgroundColor: Colors.green,
               ),
             );
@@ -503,6 +505,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
           content: Text('Current location updated',
           textAlign: TextAlign.center,
           ),
+          backgroundColor: Colors.green,
           duration: Duration(seconds: 2),
         ),
       );
@@ -513,6 +516,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
           content: Text(e.toString(),
           textAlign: TextAlign.center,
           ),
+          backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
       );
@@ -574,9 +578,10 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       print('ERROR: _currentPosition is null!');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Vui lòng bật định vị để sử dụng tính năng chỉ đường',
+          content: Text('Please enable location to use directions', 
           textAlign: TextAlign.center,
           ),
+          backgroundColor: Colors.red,
         ),
       );
       return;
@@ -630,6 +635,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
             'Unable to load route information. Please try again later.',
             textAlign: TextAlign.center,
           ),
+          backgroundColor: Colors.red,
         ),
       );
     } finally {
@@ -657,6 +663,34 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
     setState(() {
       _showSeeMore = tp.didExceedMaxLines;
     });
+  }
+
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Container(
+            color: Colors.black,
+            child: PhotoView(
+              imageProvider: NetworkImage(imageUrl),
+              minScale: PhotoViewComputedScale.contained,
+              maxScale: PhotoViewComputedScale.covered * 2,
+              backgroundDecoration: const BoxDecoration(color: Colors.black),
+              loadingBuilder: (context, event) => const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+              errorBuilder: (context, error, stackTrace) => const Center(
+                child: Icon(Icons.error, color: Colors.white, size: 42),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -801,7 +835,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                           });
                                         },
                                         child: Text(
-                                          _isDescriptionExpanded ? 'Thu gọn' : 'Xem thêm',
+                                          _isDescriptionExpanded ? 'Collapse' : 'See more',
                                           style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
                                         ),
                                       ),
@@ -877,7 +911,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                           child: Text('Website: ${_selectedSpot!.contactInfo.website}', style: TextStyle(fontSize: 14, color: Colors.blue, decoration: TextDecoration.underline)),
                                         ),
                                       ),
-                                    const Text('Tiện ích:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    const Text('Facilities:', style: TextStyle(fontWeight: FontWeight.bold)),
                                     if (_selectedSpot != null && _selectedSpot!.facilities.isNotEmpty)
                                       SingleChildScrollView(
                                         scrollDirection: Axis.horizontal,
@@ -891,7 +925,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                         ),
                                       )
                                     else
-                                      const Text('Không có tiện ích'),
+                                      const Text('No facilities'),
                                     const SizedBox(height: 8),
                                   ],
                                 ),
@@ -903,7 +937,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                   children: [
                                     _buildActionButton(
                                       icon: Icons.turn_right,
-                                      label: 'Đường đi',
+                                      label: 'Directions',
                                       onTap: () {
                                         _getDirections(_selectedSpot!.coordinates);
                                         setState(() {
@@ -916,7 +950,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                     SizedBox(width: 16),
                                     _buildActionButton(
                                       icon: Icons.navigation,
-                                      label: 'Bắt đầu',
+                                      label: 'Start',
                                       onTap: () {
                                         _startNavigation(_selectedSpot!.coordinates);
                                         setState(() {
@@ -928,14 +962,18 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                     SizedBox(width: 16),
                                     _buildActionButton(
                                       icon: Icons.phone,
-                                      label: 'Gọi',
+                                      label: 'Call',
                                       onTap: () {
                                         final phone = _selectedSpot?.contactInfo.phone ?? '';
                                         if (phone.isNotEmpty) {
                                           _showCallDialog(phone);
                                         } else {
                                           ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Không có số điện thoại!')),
+                                            const SnackBar(content: Text('No phone number!',
+                                            textAlign: TextAlign.center,
+                                            ),
+                                            backgroundColor: Colors.red,
+                                            ),
                                           );
                                         }
                                       },
@@ -955,15 +993,18 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                         scrollDirection: Axis.horizontal,
                                         itemCount: _selectedSpot!.images.length,
                                         itemBuilder: (context, index) {
-                                          return Padding(
-                                            padding: const EdgeInsets.only(left: 16.0),
-                                            child: ClipRRect(
-                                              borderRadius: BorderRadius.circular(8),
-                                              child: Image.network(
-                                                _selectedSpot!.images[index].url,
-                                                width: 300,
-                                                height: 200,
-                                                fit: BoxFit.cover,
+                                          return GestureDetector(
+                                            onTap: () => _showFullScreenImage(context, _selectedSpot!.images[index].url),
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(left: 16.0),
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(8),
+                                                child: Image.network(
+                                                  _selectedSpot!.images[index].url,
+                                                  width: 300,
+                                                  height: 200,
+                                                  fit: BoxFit.cover,
+                                                ),
                                               ),
                                             ),
                                           );
@@ -975,7 +1016,12 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                               else
                                 const Padding(
                                   padding: EdgeInsets.all(16.0),
-                                  child: Text('Không có hình ảnh'),
+                                  child: Text('No images',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                  ),
+                                  ),
                                 ),
                               Padding(
                                 padding: const EdgeInsets.all(16.0),
@@ -1070,13 +1116,19 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                                                         scrollDirection: Axis.horizontal,
                                                         itemCount: review.images.length,
                                                         itemBuilder: (context, imageIndex) {
-                                                          return Padding(
-                                                            padding: const EdgeInsets.only(right: 8),
-                                                            child: Image.network(
-                                                              review.images[imageIndex],
-                                                              height: 100,
-                                                              width: 100,
-                                                              fit: BoxFit.cover,
+                                                          return GestureDetector(
+                                                            onTap: () => _showFullScreenImage(context, review.images[imageIndex]),
+                                                            child: Padding(
+                                                              padding: const EdgeInsets.only(right: 8),
+                                                              child: ClipRRect(
+                                                                borderRadius: BorderRadius.circular(8),
+                                                                child: Image.network(
+                                                                  review.images[imageIndex],
+                                                                  height: 100,
+                                                                  width: 100,
+                                                                  fit: BoxFit.cover,
+                                                                ),
+                                                              ),
                                                             ),
                                                           );
                                                         },
@@ -1327,7 +1379,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                       labelText: 'Review content',
                       border: OutlineInputBorder(),
                       errorText: commentController.text.trim().isEmpty && isSubmitting 
-                        ? 'Vui lòng nhập nội dung đánh giá' 
+                        ? 'Please enter a review' 
                         : null,
                     ),
                     minLines: 2,
@@ -1355,7 +1407,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                           } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Lỗi khi chọn ảnh: $e'),
+                                content: Text('Error selecting images: $e',
+                                textAlign: TextAlign.center,
+                                ),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -1451,45 +1505,49 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(result['message'] ?? 'Đánh giá thành công!'),
+                              content: Text(result['message'] ?? 'Review successfully!',
+                              textAlign: TextAlign.center,
+                              ),
                               backgroundColor: Colors.green,
                             ),
                           );
                           _showSpotInfo(spot); // Refresh spot info
                         } else {
-                          String errorMessage = result['message'] ?? 'Không thể gửi đánh giá';
+                          String errorMessage = result['message'] ?? 'Cannot send review';
                           String errorType = result['error'] ?? 'UNKNOWN_ERROR';
                           
                           switch (errorType) {
                             case 'AUTH_REQUIRED':
-                              errorMessage = 'Vui lòng đăng nhập để gửi đánh giá';
+                              errorMessage = 'Please login to send a review';
                               break;
                             case 'INVALID_RATING':
-                              errorMessage = 'Đánh giá phải từ 1 đến 5 sao';
+                              errorMessage = 'Rating must be between 1 and 5 stars';
                               break;
                             case 'EMPTY_COMMENT':
-                              errorMessage = 'Vui lòng nhập nội dung đánh giá';
+                              errorMessage = 'Please enter a review';
                               break;
                             case 'IMAGE_PROCESSING_ERROR':
-                              errorMessage = 'Lỗi khi xử lý ảnh. Vui lòng thử lại';
+                              errorMessage = 'Error processing image. Please try again';
                               break;
                             case 'PAYLOAD_TOO_LARGE':
-                              errorMessage = 'Kích thước ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn';
+                              errorMessage = 'Image size is too large. Please select a smaller image';
                               break;
                             case 'UNAUTHORIZED':
-                              errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại';
+                              errorMessage = 'Session expired. Please login again';
                               break;
                             case 'FORBIDDEN':
-                              errorMessage = 'Bạn không có quyền thực hiện thao tác này';
+                              errorMessage = 'You do not have permission to perform this action';
                               break;
                             case 'NOT_FOUND':
-                              errorMessage = 'Không tìm thấy địa điểm cắm trại';
+                              errorMessage = 'Campground not found';
                               break;
                           }
 
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(errorMessage),
+                              content: Text(errorMessage,
+                              textAlign: TextAlign.center,
+                              ),
                               backgroundColor: Colors.red,
                             ),
                           );
@@ -1505,7 +1563,9 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                         
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Lỗi không xác định: $e'),
+                            content: Text('Error submitting review: $e',
+                            textAlign: TextAlign.center,
+                            ),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -1517,7 +1577,7 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
                         }
                       }
                     },
-                    child: Text(isSubmitting ? 'Đang gửi...' : 'Gửi đánh giá'),
+                    child: Text(isSubmitting ? 'Sending...' : 'Send review'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[700],
                       foregroundColor: Colors.white,
@@ -1540,7 +1600,11 @@ class _MapPageState extends State<MapPage> with SingleTickerProviderStateMixin {
       await launchUrl(uri);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể thực hiện cuộc gọi!')),
+        const SnackBar(content: Text('Cannot make a call!',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.red,
+        ),
       );
     }
   }

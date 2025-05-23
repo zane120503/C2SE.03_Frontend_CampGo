@@ -13,6 +13,7 @@ import 'dart:io';
 import 'package:CampGo/models/campsite_review.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:CampGo/pages/Campsite Owner/CampsiteOwnerPage.dart';
+import 'package:photo_view/photo_view.dart';
 
 class GroupTrackingMap extends StatefulWidget {
   final String groupId;
@@ -242,7 +243,11 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
         _stopNavigation();
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('You have arrived!')));
+        ).showSnackBar(const SnackBar(content: Text('You have arrived!',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.green,
+        ));
         return;
       }
       _getDirections(destination);
@@ -317,7 +322,11 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
       await launchUrl(uri);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể thực hiện cuộc gọi!')),
+        const SnackBar(content: Text('Cannot make a call!',
+        textAlign: TextAlign.center,
+        ),
+        backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -343,6 +352,34 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
     setState(() {
       _showSeeMore = tp.didExceedMaxLines;
     });
+  }
+
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Container(
+            color: Colors.black,
+            child: PhotoView(
+              imageProvider: NetworkImage(imageUrl),
+              minScale: PhotoViewComputedScale.contained,
+              maxScale: PhotoViewComputedScale.covered * 2,
+              backgroundDecoration: const BoxDecoration(color: Colors.black),
+              loadingBuilder: (context, event) => const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+              errorBuilder: (context, error, stackTrace) => const Center(
+                child: Icon(Icons.error, color: Colors.white, size: 42),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -496,7 +533,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                       });
                                     },
                                     child: Text(
-                                      _isDescriptionExpanded ? 'Thu gọn' : 'Xem thêm',
+                                      _isDescriptionExpanded ? 'Collapse' : 'See more',
                                       style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
                                     ),
                                   ),
@@ -572,7 +609,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                       child: Text('Website: ${_selectedCampsite!.contactInfo.website}', style: TextStyle(fontSize: 14, color: Colors.blue, decoration: TextDecoration.underline)),
                                     ),
                                   ),
-                                const Text('Tiện ích:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const Text('Facilities:', style: TextStyle(fontWeight: FontWeight.bold)),
                                 if (_selectedCampsite != null && _selectedCampsite!.facilities.isNotEmpty)
                                   SingleChildScrollView(
                                     scrollDirection: Axis.horizontal,
@@ -586,7 +623,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                     ),
                                   )
                                 else
-                                  const Text('Không có tiện ích'),
+                                  const Text('No facilities'),
                                 const SizedBox(height: 8),
                               ],
                             ),
@@ -598,7 +635,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                               children: [
                                 _buildActionButton(
                                   icon: Icons.turn_right,
-                                  label: 'Đường đi',
+                                  label: 'Route',
                                   onTap: () {
                                     _getDirections(_selectedCampsite!.coordinates);
                                     setState(() {
@@ -611,7 +648,7 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                 SizedBox(width: 16),
                                 _buildActionButton(
                                   icon: Icons.navigation,
-                                  label: 'Bắt đầu',
+                                  label: 'Start',
                                   onTap: () {
                                     _startNavigation(_selectedCampsite!.coordinates);
                                     setState(() {
@@ -624,14 +661,18 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                 SizedBox(width: 16),
                                 _buildActionButton(
                                   icon: Icons.phone,
-                                  label: 'Gọi',
+                                  label: 'Call',
                                   onTap: () {
                                     final phone = _selectedCampsite?.contactInfo.phone ?? '';
                                     if (phone.isNotEmpty) {
                                       _showCallDialog(phone);
                                     } else {
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Không có số điện thoại!')),
+                                        const SnackBar(content: Text('No phone number!',
+                                        textAlign: TextAlign.center,
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        ),
                                       );
                                     }
                                   },
@@ -652,15 +693,18 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                     scrollDirection: Axis.horizontal,
                                     itemCount: _selectedCampsite!.images.length,
                                     itemBuilder: (context, index) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(left: 16.0),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: Image.network(
-                                            _selectedCampsite!.images[index].url,
-                                            width: 300,
-                                            height: 200,
-                                            fit: BoxFit.cover,
+                                      return GestureDetector(
+                                        onTap: () => _showFullScreenImage(context, _selectedCampsite!.images[index].url),
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(left: 16.0),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Image.network(
+                                              _selectedCampsite!.images[index].url,
+                                              width: 300,
+                                              height: 200,
+                                              fit: BoxFit.cover,
+                                            ),
                                           ),
                                         ),
                                       );
@@ -672,7 +716,9 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                           else
                             const Padding(
                               padding: EdgeInsets.all(16.0),
-                              child: Text('Không có hình ảnh'),
+                                child: Text('No images',
+                                textAlign: TextAlign.center,
+                                ),
                             ),
                           Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -739,15 +785,18 @@ class _GroupTrackingMapState extends State<GroupTrackingMap> {
                                                     scrollDirection: Axis.horizontal,
                                                     itemCount: review.images.length,
                                                     itemBuilder: (context, imageIndex) {
-                                                      return Padding(
-                                                        padding: const EdgeInsets.only(right: 8),
-                                                        child: ClipRRect(
-                                                          borderRadius: BorderRadius.circular(8),
-                                                          child: Image.network(
-                                                            review.images[imageIndex],
-                                                            height: 100,
-                                                            width: 100,
-                                                            fit: BoxFit.cover,
+                                                      return GestureDetector(
+                                                        onTap: () => _showFullScreenImage(context, review.images[imageIndex]),
+                                                        child: Padding(
+                                                          padding: const EdgeInsets.only(right: 8),
+                                                          child: ClipRRect(
+                                                            borderRadius: BorderRadius.circular(8),
+                                                            child: Image.network(
+                                                              review.images[imageIndex],
+                                                              height: 100,
+                                                              width: 100,
+                                                              fit: BoxFit.cover,
+                                                            ),
                                                           ),
                                                         ),
                                                       );

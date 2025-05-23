@@ -363,56 +363,10 @@ class _WaitingForDeliveryState extends State<WaitingForDeliveryPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        try {
-                          final result = await APIService.returnOrder(orderData['_id']);
-                          if (result['success']) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(result['message']),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                            _loadOrders(); // Reload danh sách
-                          } else {
-                            throw Exception(result['message']);
-                          }
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(e.toString()),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
-                      icon: const Icon(
-                        Icons.assignment_return,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      label: const Text(
-                        'Return/Refund',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepOrange,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.5,
                     child: ElevatedButton.icon(
                       onPressed: canReceive ? () async {
                         try {
@@ -461,35 +415,29 @@ class _WaitingForDeliveryState extends State<WaitingForDeliveryPage> {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: canReceive ? Colors.green : Colors.grey,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _expandedOrders[orderData['_id']] = !isExpanded;
-                });
-              },
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    isExpanded ? 'See Less' : 'See More',
-                    style: TextStyle(
-                      color: Colors.deepOrange[400],
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _expandedOrders[orderData['_id']] = !isExpanded;
+                      });
+                    },
+                    child: Text(
+                      isExpanded ? 'See Less' : 'See More',
+                      style: TextStyle(
+                        color: Colors.deepOrange[400],
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ],
